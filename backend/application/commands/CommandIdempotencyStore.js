@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 
 const {
   CLIENT_IDEMPOTENT,
+  INTERNAL_IDEMPOTENT,
   stableStringify,
 } = require('./CommandEnvelope');
 
@@ -84,11 +85,12 @@ class CommandIdempotencyStore {
   }
 
   _validateEnvelope(envelope = {}) {
-    if (envelope.compatibility?.idempotencyClassification !== CLIENT_IDEMPOTENT
+    if (![CLIENT_IDEMPOTENT, INTERNAL_IDEMPOTENT]
+      .includes(envelope.compatibility?.idempotencyClassification)
         || envelope.compatibility?.serverFallbackId) {
       throw new CommandIdempotencyError(
         'IDEMPOTENCY_CLIENT_KEY_REQUIRED',
-        'A stable client idempotency key is required',
+        'A stable client or internal idempotency key is required',
         { status: 400 },
       );
     }

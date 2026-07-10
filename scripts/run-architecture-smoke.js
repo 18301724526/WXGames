@@ -53,6 +53,8 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/api/GameAPI.test.js',
   'scripts/check-client-command-sender-coverage.js',
   'scripts/check-client-command-sender-coverage.test.js',
+  'scripts/check-command-owner-blocking-map.js',
+  'scripts/check-command-owner-blocking-map.test.js',
   'scripts/check-command-owner-entry-coverage.js',
   'scripts/check-command-owner-entry-coverage.test.js',
   'scripts/check-command-pipeline-foundation.js',
@@ -507,6 +509,7 @@ const TEST_FILES = Object.freeze([
   'frontend/js/api/ClientCommandSender.test.js',
   'frontend/js/api/GameAPI.test.js',
   'scripts/check-client-command-sender-coverage.test.js',
+  'scripts/check-command-owner-blocking-map.test.js',
   'scripts/check-command-owner-entry-coverage.test.js',
   'scripts/check-command-pipeline-foundation.test.js',
   'scripts/check-command-route-migration.test.js',
@@ -763,6 +766,9 @@ function main() {
   ]);
   run('client command sender coverage blocking guard', process.execPath, [
     'scripts/check-client-command-sender-coverage.js',
+  ]);
+  run('command owner migrated blocking map guard', process.execPath, [
+    'scripts/check-command-owner-blocking-map.js',
   ]);
   run('command owner entry coverage blocking guard', process.execPath, [
     'scripts/check-command-owner-entry-coverage.js',

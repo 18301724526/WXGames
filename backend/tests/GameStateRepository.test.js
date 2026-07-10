@@ -72,6 +72,28 @@ test('GameStateRepository records schema migration ledger during init', () => {
   }
 });
 
+test('GameStateRepository init and encounter planning do not materialize shared encounters', () => {
+  const db = new Database(':memory:');
+  try {
+    const repository = new GameStateRepository(db);
+    repository.init();
+
+    const countEncounters = () => db
+      .prepare('SELECT COUNT(*) AS count FROM world_encounters')
+      .get().count;
+    assert.equal(countEncounters(), 0);
+    repository.save(GameStateNormalizer.createInitialGameState('encounter-planning-activity-source'));
+    assert.ok(repository.planWorldEncounters().length > 0);
+    assert.equal(countEncounters(), 0);
+
+    const secondRepository = new GameStateRepository(db);
+    secondRepository.init();
+    assert.equal(countEncounters(), 0);
+  } finally {
+    db.close();
+  }
+});
+
 test('GameStateRepository increments revision and rejects stale expected revisions', () => {
   const db = new Database(':memory:');
   const repository = new GameStateRepository(db);
@@ -98,6 +120,82 @@ test('GameStateRepository increments revision and rejects stale expected revisio
     const saved = repository.findByPlayerId('revision-repo-test');
     assert.equal(saved.revision, 2);
     assert.notEqual(saved.resources.food, 999);
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository commits player and shared command mutations atomically', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+  try {
+    const playerId = 'command-shared-atomic';
+    repository.save(GameStateService.createInitialGameState(playerId));
+    const state = repository.findByPlayerId(playerId);
+    state.happiness = 77;
+    const encounter = {
+      id: 'command-shared-encounter',
+      q: 3,
+      r: -1,
+      status: 'active',
+      defender: { soldiers: 10 },
+    };
+
+    assert.throws(() => repository.commitCommandState(state, {
+      encounters: [{ encounter, now: '2026-07-10T01:00:00.000Z' }],
+      people: [{
+        person: { id: 'invalid-player-person', factionId: `player_${playerId}` },
+        now: '2026-07-10T01:00:00.000Z',
+      }],
+    }), /player-owned people live in game_states/);
+    assert.equal(repository.findByPlayerId(playerId).revision, 1);
+    assert.equal(repository.findByPlayerId(playerId).happiness, 100);
+    assert.equal(repository.worldEncounterRepo.getEncounter(
+      encounter.id,
+      { refreshRespawns: false },
+    ), null);
+
+    const committed = repository.commitCommandState(state, {
+      encounters: [{ encounter, now: '2026-07-10T01:00:00.000Z' }],
+    });
+    assert.equal(committed.savedState.revision, 2);
+    assert.equal(committed.shared.encounterCount, 1);
+    assert.equal(repository.findByPlayerId(playerId).happiness, 77);
+    assert.equal(repository.worldEncounterRepo.getEncounter(
+      encounter.id,
+      { refreshRespawns: false },
+    ).status, 'active');
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository commits multiple owner-locked player states atomically', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+  try {
+    repository.save(GameStateService.createInitialGameState('social-player-a'));
+    repository.save(GameStateService.createInitialGameState('social-player-b'));
+    const stateA = repository.findByPlayerId('social-player-a');
+    const stateB = repository.findByPlayerId('social-player-b');
+    stateA.happiness = 71;
+    stateB.happiness = 72;
+
+    const committed = repository.commitCommandState(null, {
+      playerStates: [{ state: stateA }, { state: stateB }],
+    }, {
+      persistState: false,
+      ownerKeys: ['player:social-player-a', 'player:social-player-b'],
+    });
+
+    assert.equal(committed.savedState, null);
+    assert.equal(committed.shared.playerStateCount, 2);
+    assert.equal(repository.findByPlayerId('social-player-a').happiness, 71);
+    assert.equal(repository.findByPlayerId('social-player-b').happiness, 72);
+    assert.equal(repository.findByPlayerId('social-player-a').revision, 2);
+    assert.equal(repository.findByPlayerId('social-player-b').revision, 2);
   } finally {
     db.close();
   }
@@ -675,6 +773,112 @@ test('GameStateRepository exposes shared world ownership across player saves', (
   }
 });
 
+test('GameStateRepository command saves only synchronize territory owners that were locked', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const playerId = 'shared-world-scoped-save';
+    const state = GameStateNormalizer.createInitialGameState(playerId);
+    const territoryId = 'site_scoped_save_1';
+    state.territories = [...state.territories, {
+      id: territoryId,
+      x: 6,
+      y: 1,
+      type: 'town',
+      owner: 'player',
+      ownerPlayerId: playerId,
+      status: 'occupied',
+      cityName: 'Initial Name',
+    }];
+    repository.save(state);
+
+    const stalePlayerState = repository.findByPlayerId(playerId);
+    const canonicalState = repository.findByPlayerId(playerId);
+    canonicalState.territories.find((territory) => territory.id === territoryId).cityName = 'Canonical Name';
+    repository.save(canonicalState);
+
+    stalePlayerState.revision = canonicalState.revision;
+    stalePlayerState.happiness = 88;
+    repository.save(stalePlayerState, { ownerKeys: [`player:${playerId}`] });
+    assert.equal(repository.getSharedWorldTerritory(territoryId).cityName, 'Canonical Name');
+
+    stalePlayerState.territories.find((territory) => territory.id === territoryId).cityName = 'Authorized Name';
+    repository.save(stalePlayerState, {
+      ownerKeys: [
+        `player:${playerId}`,
+        `territory-owner:${playerId}`,
+        `territory:${territoryId}`,
+      ],
+    });
+    assert.equal(repository.getSharedWorldTerritory(territoryId).cityName, 'Authorized Name');
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository territory transfers require previous and next owner collection locks', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const territoryId = 'site_owner_transfer_lock';
+    const previousOwnerId = 'territory-transfer-previous';
+    const nextOwnerId = 'territory-transfer-next';
+    const previousState = GameStateNormalizer.createInitialGameState(previousOwnerId);
+    previousState.territories = [...previousState.territories, {
+      id: territoryId,
+      x: 7,
+      y: 2,
+      type: 'town',
+      owner: 'player',
+      ownerPlayerId: previousOwnerId,
+      status: 'occupied',
+    }];
+    repository.save(previousState);
+
+    const nextState = GameStateNormalizer.createInitialGameState(nextOwnerId);
+    nextState.territories = [...nextState.territories, {
+      id: territoryId,
+      x: 7,
+      y: 2,
+      type: 'town',
+      owner: 'player',
+      ownerPlayerId: nextOwnerId,
+      status: 'occupied',
+    }];
+    assert.throws(
+      () => repository.save(nextState, {
+        ownerKeys: [
+          `player:${nextOwnerId}`,
+          `territory-owner:${nextOwnerId}`,
+          `territory:${territoryId}`,
+        ],
+      }),
+      (error) => (
+        error?.code === 'COMMAND_SHARED_MUTATION_OWNER_NOT_LOCKED'
+        && error.missingOwnerKeys?.includes(`territory-owner:${previousOwnerId}`)
+      ),
+    );
+    assert.equal(repository.getSharedWorldTerritory(territoryId).ownerPlayerId, previousOwnerId);
+    assert.equal(repository.findByPlayerId(nextOwnerId), null);
+
+    repository.save(nextState, {
+      ownerKeys: [
+        `player:${nextOwnerId}`,
+        `territory-owner:${previousOwnerId}`,
+        `territory-owner:${nextOwnerId}`,
+        `territory:${territoryId}`,
+      ],
+    });
+    assert.equal(repository.getSharedWorldTerritory(territoryId).ownerPlayerId, nextOwnerId);
+  } finally {
+    db.close();
+  }
+});
+
 test('GameStateRepository canonical reads do not carry shared world projection fields', () => {
   const db = new Database(':memory:');
   const repository = new GameStateRepository(db);
@@ -839,6 +1043,43 @@ test('GameStateRepository resetPlayerState clears previous shared world ownershi
 
     assert.equal(freshState.revision, 1);
     assert.equal(projection.sharedWorldTerritories.some((site) => site.id === sharedSite.id), false);
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository command reset requires player and territory collection locks', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  try {
+    const playerId = 'shared-world-reset-locks';
+    repository.save(GameStateNormalizer.createInitialGameState(playerId));
+
+    assert.throws(
+      () => repository.resetPlayerState(
+        playerId,
+        GameStateNormalizer.createInitialGameState(playerId),
+        { ownerKeys: [`territory-owner:${playerId}`] },
+      ),
+      (error) => (
+        error?.code === 'COMMAND_SHARED_MUTATION_OWNER_NOT_LOCKED'
+        && error.missingOwnerKeys?.includes(`player:${playerId}`)
+      ),
+    );
+    assert.throws(
+      () => repository.resetPlayerState(
+        playerId,
+        GameStateNormalizer.createInitialGameState(playerId),
+        { ownerKeys: [`player:${playerId}`] },
+      ),
+      (error) => (
+        error?.code === 'COMMAND_SHARED_MUTATION_OWNER_NOT_LOCKED'
+        && error.missingOwnerKeys?.includes(`territory-owner:${playerId}`)
+      ),
+    );
+    assert.ok(repository.findByPlayerId(playerId));
   } finally {
     db.close();
   }

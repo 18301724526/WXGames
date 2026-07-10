@@ -36,6 +36,14 @@ function isCampPlanningEncounter(encounter = {}) {
   );
 }
 
+function assertReadOnlyOptions(options = {}) {
+  if (options.refreshRespawns === true) {
+    const error = new Error('Encounter respawns must be committed through the command pipeline');
+    error.code = 'WORLD_ENCOUNTER_WRITE_REQUIRES_COMMAND_PIPELINE';
+    throw error;
+  }
+}
+
 class WorldEncounterRepository {
   constructor(db, options = {}) {
     this.db = db;
@@ -79,32 +87,33 @@ class WorldEncounterRepository {
     return rows.map((row) => this.rowToEncounter(row)).filter(Boolean);
   }
 
-  refreshRespawns(now = new Date()) {
+  projectRespawn(encounter, now = new Date()) {
+    if (!encounter) return null;
+    const projected = clone(encounter);
     const stamp = now instanceof Date ? now : new Date(now || Date.now());
-    const encounters = this.readAllEncounters();
-    for (const encounter of encounters) {
-      const next = clone(encounter);
-      if (WorldCombatEncounterService.respawnCampIfReady(next, stamp)) {
-        this.upsertEncounter(next, stamp);
-      }
-    }
+    WorldCombatEncounterService.respawnCampIfReady(projected, stamp);
+    return projected;
   }
 
   getAllEncounters(options = {}) {
-    if (options.refreshRespawns !== false) {
-      this.refreshRespawns(options.now instanceof Date ? options.now : new Date(options.now || Date.now()));
-    }
-    return this.readAllEncounters(options.worldId || this.worldId);
+    assertReadOnlyOptions(options);
+    const now = options.now instanceof Date ? options.now : new Date(options.now || Date.now());
+    const encounters = this.readAllEncounters(options.worldId || this.worldId);
+    return options.projectRespawns === true
+      ? encounters.map((encounter) => this.projectRespawn(encounter, now))
+      : encounters;
   }
 
   getEncounter(id, options = {}) {
     const encounterId = String(id || '');
     if (!encounterId) return null;
-    if (options.refreshRespawns !== false) {
-      this.refreshRespawns(options.now instanceof Date ? options.now : new Date(options.now || Date.now()));
-    }
+    assertReadOnlyOptions(options);
+    const now = options.now instanceof Date ? options.now : new Date(options.now || Date.now());
     const row = this.db.prepare('SELECT * FROM world_encounters WHERE id = ?').get(encounterId);
-    return this.rowToEncounter(row);
+    const encounter = this.rowToEncounter(row);
+    return options.projectRespawns === true
+      ? this.projectRespawn(encounter, now)
+      : encounter;
   }
 
   getActiveEncounter(id, options = {}) {
@@ -158,33 +167,40 @@ class WorldEncounterRepository {
     this.db.prepare('DELETE FROM world_encounters WHERE id = ?').run(String(id || ''));
   }
 
-  ensureSeeded(options = {}) {
+  planSeeded(options = {}) {
     const worldSeed = options.worldSeed || this.worldSeed;
     if (!worldSeed) return [];
+    const now = options.now instanceof Date ? options.now : new Date(options.now || Date.now());
+    const existing = this.getAllEncounters({
+      ...options,
+      now,
+      refreshRespawns: false,
+      projectRespawns: true,
+    });
     const activitySources = Array.isArray(options.activitySources)
       ? options.activitySources
       : (options.anchor ? [options.anchor] : []);
-    if (!activitySources.length) return this.getAllEncounters(options);
-    const now = options.now instanceof Date ? options.now : new Date(options.now || Date.now());
-    const existing = this.getAllEncounters({ ...options, now });
-    const occupiedTileIds = new Set(options.occupiedTileIds instanceof Set ? options.occupiedTileIds : []);
+    if (!activitySources.length) return existing;
+    const occupiedTileIds = new Set(
+      options.occupiedTileIds instanceof Set ? options.occupiedTileIds : [],
+    );
     for (const encounter of existing) {
       if (encounter?.tileId) occupiedTileIds.add(encounter.tileId);
     }
-    const existingCamps = existing.filter(isCampPlanningEncounter);
     const specs = WorldCampSpawner.planCampsForActivitySources(worldSeed, activitySources, {
       ...options,
       occupiedTileIds,
-      existingCamps,
+      existingCamps: existing.filter(isCampPlanningEncounter),
     });
     const existingIds = new Set(existing.map((encounter) => encounter.id));
-    const missingSpecs = specs.filter((spec) => !existingIds.has(spec.id));
-    const seed = this.db.transaction((rawSpecs) => {
-      rawSpecs.forEach((spec) => this.upsertEncounter(WorldCampSpawner.campSpecToEncounter(spec, now), now));
-    });
-    seed(missingSpecs);
-    return this.getAllEncounters({ ...options, now });
+    const planned = specs
+      .filter((spec) => !existingIds.has(spec.id))
+      .map((spec) => WorldCampSpawner.campSpecToEncounter(spec, now));
+    return [...existing, ...planned].sort((left, right) => (
+      String(left?.id || '').localeCompare(String(right?.id || ''))
+    ));
   }
+
 }
 
 module.exports = {

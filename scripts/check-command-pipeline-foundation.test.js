@@ -36,3 +36,15 @@ test('command pipeline foundation guard fires when a pipeline stage disappears',
 
   assert.ok(violations.includes("pipeline stage marker is missing: trace.mark('committing')"));
 });
+
+test('command pipeline foundation guard fires when reset state creation escapes the committer', () => {
+  const file = 'backend/application/commands/CommandCommitter.js';
+  const live = fs.readFileSync(file, 'utf8');
+  const violations = inspectFoundation({
+    sources: {
+      [file]: live.replace('createState: persistence.createState', 'createState: null'),
+    },
+  }).violations;
+
+  assert.ok(violations.includes('CommandCommitter does not own persistence and idempotency recording'));
+});

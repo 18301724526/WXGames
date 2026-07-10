@@ -143,9 +143,14 @@ function inspectFoundation(options = {}) {
       || !contextSource.includes('OWNER_CONTEXT_REQUIRED')) {
     violations.push('pipeline owner context enforcement is missing');
   }
-  if (!committerSource.includes('requireOwnerContext')
-      || !committerSource.includes('this.repository.save(context.state)')
-      || !committerSource.includes('this.idempotencyStore.recordResult')) {
+  if (![
+    'requireOwnerContext',
+    'this.repository.save(context.state, { ownerKeys })',
+    'this.repository.commitCommandState(',
+    'this.repository.resetPlayerState(',
+    'createState: persistence.createState',
+    'this.idempotencyStore.recordResult',
+  ].every((token) => committerSource.includes(token))) {
     violations.push('CommandCommitter does not own persistence and idempotency recording');
   }
   if (pipelineSource.includes('repository.save(')) {

@@ -8,12 +8,16 @@ const { buildCommandPayload } = require('../application/commands/CommandEnvelope
 const { GameCommandDefinitionFactory } = require('../application/commands/GameCommandDefinitionFactory');
 const { CommandExecutionPipeline } = require('../application/commands/CommandExecutionPipeline');
 const { CommandIdempotencyStore } = require('../application/commands/CommandIdempotencyStore');
+const { createRepositoryOwnerResolver } = require('../application/commands/CommandOwnerResolver');
 const GameStateRepository = require('../repositories/GameStateRepository');
 const registerBuildingRoutes = require('../routes/buildingRoutes');
 const registerGameRoutes = require('../routes/gameRoutes');
 const registerPlayerRoutes = require('../routes/playerRoutes');
 const GameStateService = require('../services/GameStateService');
+const TerritoryService = require('../services/TerritoryService');
 const TutorialService = require('../services/TutorialService');
+const WorldCombatEncounterService = require('../services/worldCombat/WorldCombatEncounterService');
+const WorldMapService = require('../services/WorldMapService');
 const {
   publishCurrentConfigRuntime,
   resetConfigRuntime,
@@ -98,6 +102,7 @@ function createRuntime() {
   const commandExecutionPipeline = new CommandExecutionPipeline({
     repository,
     idempotencyStore,
+    ownerResolver: createRepositoryOwnerResolver(repository),
   });
   const commandDefinitionFactory = new GameCommandDefinitionFactory({
     repository,
@@ -117,6 +122,70 @@ function createBuildReadyState(playerId) {
     TutorialService.createInitialTutorialState(),
     TutorialService.TUTORIAL_STEPS.cityEntered,
   );
+  return state;
+}
+
+function createTerritoryClaimReadyState(playerId, territoryId) {
+  const state = GameStateService.createInitialGameState(playerId);
+  state.tutorial = TutorialService.manualAdvance(
+    state.tutorial,
+    TutorialService.TUTORIAL_STEPS.completed,
+  );
+  state.territories.push({
+    id: territoryId,
+    x: 1,
+    y: 0,
+    q: 1,
+    r: 0,
+    type: 'town',
+    owner: 'neutral',
+    status: 'discovered',
+    naturalName: 'Shared Crossing',
+    capitalDistance: 0,
+    defense: 0,
+  });
+  const started = TerritoryService.startConquest(state, territoryId, {});
+  assert.equal(started.success, true);
+  started.mission.status = 'ready';
+  started.mission.completesAt = new Date(0).toISOString();
+  return state;
+}
+
+function createWorldCombatReadyState(playerId, encounter) {
+  const state = GameStateService.createInitialGameState(playerId);
+  state.tutorial = TutorialService.manualAdvance(
+    state.tutorial,
+    TutorialService.TUTORIAL_STEPS.completed,
+  );
+  state.famousPeople = [{
+    id: 'phase6-hero',
+    name: 'Phase 6 Hero',
+    attributes: { force: 100, command: 100, speed: 80 },
+  }];
+  state.exploreMissions = [{
+    id: 'phase6-combat-mission',
+    status: 'idle',
+    position: {
+      q: encounter.q,
+      r: encounter.r,
+      tileId: encounter.tileId,
+    },
+    homeOrigin: { q: 0, r: 0, tileId: WorldMapService.getTileId(0, 0) },
+    origin: { q: 0, r: 0, tileId: WorldMapService.getTileId(0, 0) },
+    formation: { cityId: 'capital', slot: 1 },
+    formationSnapshot: {
+      schema: 'formation-snapshot-v1',
+      cityId: 'capital',
+      slot: 1,
+      soldiersCommitted: 500,
+      soldiersRemaining: 500,
+      members: [{
+        personId: 'phase6-hero',
+        soldiersCommitted: 500,
+        soldiersRemaining: 500,
+      }],
+    },
+  }];
   return state;
 }
 
@@ -317,6 +386,137 @@ test('player reset uses CommandCommitter once and replays duplicate requests', (
     assert.deepEqual(replay.payload, first.payload);
     assert.equal(resetStateCreations, 1);
     assert.equal(runtime.repository.findByPlayerId(playerId).revision, 1);
+  } finally {
+    runtime.db.close();
+  }
+});
+
+test('Phase 6 territory contest grants one shared owner across two player streams', () => {
+  const runtime = createRuntime();
+  try {
+    const territoryId = 'phase6-shared-territory';
+    const playerA = 'phase6-territory-a';
+    const playerB = 'phase6-territory-b';
+    runtime.repository.save(createTerritoryClaimReadyState(playerA, territoryId));
+    runtime.repository.save(createTerritoryClaimReadyState(playerB, territoryId));
+    const { app, routes } = createAppHarness();
+    registerGameRoutes(app, {
+      authMiddleware: (req, res, next) => next(),
+      repository: runtime.repository,
+      gameStateService: GameStateService,
+      presenceService: null,
+      commandExecutionPipeline: runtime.commandExecutionPipeline,
+      commandDefinitionFactory: runtime.commandDefinitionFactory,
+    });
+    const route = routes.find((item) => item.method === 'POST' && item.path === '/api/game/action');
+    const first = invokeRoute(route, commandRequest(
+      route,
+      playerA,
+      'claimConquest',
+      { action: 'claimConquest', territoryId },
+      'phase6-territory-a',
+    ));
+    const contender = invokeRoute(route, commandRequest(
+      route,
+      playerB,
+      'claimConquest',
+      { action: 'claimConquest', territoryId },
+      'phase6-territory-b',
+    ));
+
+    assert.equal(first.statusCode, 200);
+    assert.equal(first.payload.command.ownerKey, `territory:${territoryId}`);
+    assert.deepEqual(first.payload.command.ownerKeys, [
+      `player:${playerA}`,
+      `territory-owner:${playerA}`,
+      `territory:${territoryId}`,
+    ].sort());
+    assert.equal(contender.statusCode, 409);
+    assert.equal(contender.payload.error, 'TERRITORY_ALREADY_OCCUPIED');
+    assert.equal(runtime.repository.getSharedWorldTerritory(territoryId).ownerPlayerId, playerA);
+    assert.equal(
+      runtime.repository.findByPlayerId(playerB).territories
+        .find((territory) => territory.id === territoryId).status,
+      'contested',
+    );
+  } finally {
+    runtime.db.close();
+  }
+});
+
+test('Phase 6 encounter resolve storm commits shared status and player report once', () => {
+  const runtime = createRuntime();
+  try {
+    const playerId = 'phase6-encounter-player';
+    const now = new Date('2026-07-10T00:00:00.000Z');
+    const encounter = WorldCombatEncounterService.createEncounter(
+      GameStateService.createInitialGameState(playerId),
+      now,
+    );
+    encounter.id = 'phase6-shared-encounter';
+    encounter.tileId = WorldMapService.getTileId(encounter.q, encounter.r);
+    encounter.defender.soldiers = 1;
+    runtime.repository.worldEncounterRepo.upsertEncounter(encounter, now);
+    runtime.repository.save(createWorldCombatReadyState(playerId, encounter));
+    const { app, routes } = createAppHarness();
+    registerGameRoutes(app, {
+      authMiddleware: (req, res, next) => next(),
+      repository: runtime.repository,
+      gameStateService: GameStateService,
+      presenceService: null,
+      commandExecutionPipeline: runtime.commandExecutionPipeline,
+      commandDefinitionFactory: runtime.commandDefinitionFactory,
+    });
+    const route = routes.find((item) => item.method === 'POST' && item.path === '/api/game/action');
+    const opened = invokeRoute(route, commandRequest(
+      route,
+      playerId,
+      'startWorldCombat',
+      {
+        action: 'startWorldCombat',
+        encounterId: encounter.id,
+        missionId: 'phase6-combat-mission',
+        formationSlot: 1,
+        cityId: 'capital',
+        targetQ: encounter.q,
+        targetR: encounter.r,
+      },
+      'phase6-encounter-open',
+    ));
+    assert.equal(opened.statusCode, 200);
+    assert.equal(opened.payload.command.ownerKey, `encounter:${encounter.id}`);
+
+    const responses = [];
+    for (let index = 0; index < 50; index += 1) {
+      responses.push(invokeRoute(route, commandRequest(
+        route,
+        playerId,
+        'resolveWorldCombat',
+        {
+          action: 'resolveWorldCombat',
+          battleId: opened.payload.battleId,
+          encounterId: encounter.id,
+          inputStream: [
+            { tick: 0, type: 'order', side: 0, order: 'allOut' },
+            { tick: 0, type: 'order', side: 1, order: 'allOut' },
+          ],
+        },
+        'phase6-encounter-resolve',
+      )));
+    }
+
+    responses.forEach((response) => {
+      assert.equal(response.statusCode, 200);
+      assert.deepEqual(response.payload, responses[0].payload);
+    });
+    const storedEncounter = runtime.repository.worldEncounterRepo.getEncounter(
+      encounter.id,
+      { refreshRespawns: false },
+    );
+    const storedState = runtime.repository.findByPlayerId(playerId);
+    assert.equal(storedEncounter.status, 'resolved');
+    assert.equal(storedState.worldCombat.recentReports.length, 1);
+    assert.equal(storedState.revision, 3);
   } finally {
     runtime.db.close();
   }

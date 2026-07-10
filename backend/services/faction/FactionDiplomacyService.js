@@ -43,24 +43,51 @@ function createFactionDiplomacyService(deps = {}) {
     return newState;
   }
 
+  function planAdvanceEdge(a, b, ctxAtoB, ctxBtoA, now) {
+    const cfg = getConfig();
+    const ab0 = getEdge(a, b);
+    const ba0 = getEdge(b, a);
+    let ab = {
+      ...ab0,
+      favorability: diplomacyCore.clampFavorability(
+        ab0.favorability + diplomacyCore.favorabilityDrift(ab0, ctxAtoB, cfg),
+      ),
+    };
+    let ba = {
+      ...ba0,
+      favorability: diplomacyCore.clampFavorability(
+        ba0.favorability + diplomacyCore.favorabilityDrift(ba0, ctxBtoA, cfg),
+      ),
+    };
+    const mutual = diplomacyCore.mutualFavorability(ab.favorability, ba.favorability);
+    const result = diplomacyCore.passiveTransition(
+      ab.state,
+      mutual,
+      ab.nemesisStreak,
+      cfg,
+    );
+    ab = { ...ab, nemesisStreak: result.nemesisStreak };
+    ba = { ...ba, nemesisStreak: result.nemesisStreak };
+    if (result.state !== ab.state) {
+      const resetStreak = result.state !== diplomacyCore.STATE.NEMESIS
+        ? 0
+        : Math.max(ab.nemesisStreak, ba.nemesisStreak);
+      ab = { ...ab, state: result.state, nemesisStreak: resetStreak, since: now || null };
+      ba = { ...ba, state: result.state, nemesisStreak: resetStreak, since: now || null };
+    }
+    return {
+      forward: { fromFactionId: a, toFactionId: b, edge: ab, now: now || null },
+      reverse: { fromFactionId: b, toFactionId: a, edge: ba, now: now || null },
+    };
+  }
+
   // Per-tick: drift both directed favorabilities, then run the passive (mutualFav-driven) transition;
   // if the symmetric state should change, mirror it. ctxAtoB/ctxBtoA are the drift contexts
   // (sharedEnemies/bordering/rulerCompat) for each direction.
   function advanceEdge(a, b, ctxAtoB, ctxBtoA, now) {
-    const cfg = getConfig();
-    const ab0 = getEdge(a, b);
-    const ba0 = getEdge(b, a);
-    const ab = adjustFavorability(a, b, diplomacyCore.favorabilityDrift(ab0, ctxAtoB, cfg), now);
-    adjustFavorability(b, a, diplomacyCore.favorabilityDrift(ba0, ctxBtoA, cfg), now);
-    const mutual = diplomacyCore.mutualFavorability(ab.favorability, getEdge(b, a).favorability);
-    const result = diplomacyCore.passiveTransition(ab.state, mutual, ab.nemesisStreak, cfg);
-    // nemesisStreak drives a SYMMETRIC transition, so it must be stored symmetrically — mirror it onto
-    // BOTH directed rows. Storing it on only (a,b) made progress toward NEMESIS argument-order-dependent:
-    // alternating advanceEdge(a,b)/advanceEdge(b,a) would split the streak across two rows and never reach
-    // the threshold. Mirroring keeps the pair's streak single-sourced regardless of call order.
-    repo.upsertEdge(a, b, { ...getEdge(a, b), nemesisStreak: result.nemesisStreak }, now);
-    repo.upsertEdge(b, a, { ...getEdge(b, a), nemesisStreak: result.nemesisStreak }, now);
-    if (result.state !== ab.state) applyStateChange(a, b, result.state, now);
+    const plan = planAdvanceEdge(a, b, ctxAtoB, ctxBtoA, now);
+    repo.upsertEdge(a, b, plan.forward.edge, now);
+    repo.upsertEdge(b, a, plan.reverse.edge, now);
     return getEdge(a, b);
   }
 
@@ -90,6 +117,7 @@ function createFactionDiplomacyService(deps = {}) {
     mutualFavorability,
     adjustFavorability,
     applyStateChange,
+    planAdvanceEdge,
     advanceEdge,
     performAction,
     effects,

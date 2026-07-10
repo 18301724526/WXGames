@@ -30,6 +30,7 @@ const ObservabilityService = require('./services/ObservabilityService');
 const { CommandIdempotencyStore } = require('./application/commands/CommandIdempotencyStore');
 const { CommandExecutionPipeline } = require('./application/commands/CommandExecutionPipeline');
 const { GameCommandDefinitionFactory } = require('./application/commands/GameCommandDefinitionFactory');
+const { createRepositoryOwnerResolver } = require('./application/commands/CommandOwnerResolver');
 const OpsControlService = require('./services/OpsControlService');
 const OpsAuthService = require('./services/OpsAuthService');
 const ConfigReleaseService = require('./services/config/ConfigReleaseService');
@@ -72,6 +73,7 @@ const commandIdempotencyStore = new CommandIdempotencyStore(db);
 const commandExecutionPipeline = new CommandExecutionPipeline({
   repository,
   idempotencyStore: commandIdempotencyStore,
+  ownerResolver: createRepositoryOwnerResolver(repository),
 });
 const commandDefinitionFactory = new GameCommandDefinitionFactory({
   repository,

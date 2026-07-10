@@ -15,7 +15,6 @@ const PLAYER_COMMAND_TYPES = Object.freeze([
   'dismissFamousPersonCandidate',
   'heartbeat',
   'heartbeatMarchSettlement',
-  'renameCity',
   'renamePolity',
   'research',
   'resolveCapture',
@@ -49,13 +48,14 @@ function playerRule() {
 const COMMAND_OWNER_RULES = {
   ...Object.fromEntries(PLAYER_COMMAND_TYPES.map((type) => [type, playerRule()])),
   playerLogin: Object.freeze({ kind: 'player-identity', fields: ['username'] }),
-  playerReset: playerRule(),
+  playerReset: Object.freeze({ kind: 'player-territory-owner' }),
   startConquest: Object.freeze({
     kind: 'shared',
     prefix: 'territory',
     fields: ['territoryId'],
     missingTargetError: 'OWNER_TARGET_MISSING_TERRITORY_ID',
     includePlayer: true,
+    includePlayerTerritoryOwner: true,
   }),
   claimConquest: Object.freeze({
     kind: 'shared',
@@ -63,6 +63,15 @@ const COMMAND_OWNER_RULES = {
     fields: ['territoryId'],
     missingTargetError: 'OWNER_TARGET_MISSING_TERRITORY_ID',
     includePlayer: true,
+    includePlayerTerritoryOwner: true,
+  }),
+  renameCity: Object.freeze({
+    kind: 'shared',
+    prefix: 'territory',
+    fields: ['territoryId'],
+    missingTargetError: 'OWNER_TARGET_MISSING_TERRITORY_ID',
+    includePlayer: true,
+    includePlayerTerritoryOwner: true,
   }),
   startWorldMarch: Object.freeze({
     kind: 'player-encounter-handoff',
@@ -89,6 +98,23 @@ const COMMAND_OWNER_RULES = {
   opsRestartAccepted: Object.freeze({ kind: 'constant', ownerKey: 'ops:global' }),
   configReleasePublish: Object.freeze({ kind: 'constant', ownerKey: 'config:gameplay' }),
   configReleaseRollback: Object.freeze({ kind: 'constant', ownerKey: 'config:gameplay' }),
+  worldWorkerPlayerTick: Object.freeze({
+    kind: 'player-with-encounters',
+    fields: ['encounterIds'],
+  }),
+  worldWorkerPersonUpdate: Object.freeze({
+    kind: 'world-social-batch',
+    ownerKey: 'world-social:global',
+    playerFields: ['playerIds'],
+    personFields: ['personIds'],
+    missingTargetError: 'OWNER_TARGET_SOCIAL_BATCH_EMPTY',
+  }),
+  worldWorkerDiplomacyTick: Object.freeze({
+    kind: 'shared',
+    prefix: 'diplomacy',
+    fields: ['pairId'],
+    missingTargetError: 'OWNER_TARGET_DIPLOMACY_PAIR_MISSING',
+  }),
   worldWorkerRuntimeTick: Object.freeze({
     kind: 'split-required',
     missingTargetError: 'OWNER_WORKER_COMMAND_SPLIT_REQUIRED',
@@ -125,7 +151,28 @@ function uniqueSorted(values = []) {
   return Array.from(new Set(values.filter(Boolean))).sort();
 }
 
-function resolveCommandOwners(envelope = {}) {
+function resolveEncounterHandoffTarget(envelope = {}, options = {}) {
+  const payload = envelope.payload && typeof envelope.payload === 'object' ? envelope.payload : {};
+  const explicit = readTarget(payload, ['encounterId', 'combatEncounterId']);
+  if (explicit) return { ...explicit, lookupPerformed: false };
+  if (typeof options.lookupEncounterByCoordinate !== 'function') return null;
+  const rawQ = payload.targetQ ?? payload.q ?? payload.x;
+  const rawR = payload.targetR ?? payload.r ?? payload.y;
+  if (!Number.isFinite(Number(rawQ)) || !Number.isFinite(Number(rawR))) {
+    return { field: '', value: '', lookupPerformed: true };
+  }
+  const encounter = options.lookupEncounterByCoordinate({
+    q: Math.floor(Number(rawQ)),
+    r: Math.floor(Number(rawR)),
+  });
+  return {
+    field: encounter?.id ? 'lookup:targetCoordinate' : '',
+    value: cleanOwnerPart(encounter?.id),
+    lookupPerformed: true,
+  };
+}
+
+function resolveCommandOwners(envelope = {}, options = {}) {
   const type = normalizeCommandType(envelope.type || envelope.action);
   const rule = COMMAND_OWNER_RULES[type];
   if (!rule) {
@@ -139,6 +186,8 @@ function resolveCommandOwners(envelope = {}) {
   let ownerKey = '';
   let ownerKeys = [];
   let targetField = '';
+  let targetId = '';
+  let lookupPerformed = false;
 
   if (rule.kind === 'player') {
     ownerKey = requirePlayerId(envelope, type);
@@ -153,17 +202,59 @@ function resolveCommandOwners(envelope = {}) {
     const target = readTarget(payload, rule.fields);
     if (!target) missing(rule.missingTargetError, type, rule.fields);
     targetField = target.field;
+    targetId = target.value;
     ownerKey = `${rule.prefix}:${target.value}`;
+    const playerKey = rule.includePlayer ? requirePlayerId(envelope, type) : '';
+    const playerId = playerKey.startsWith('player:') ? playerKey.slice('player:'.length) : '';
+    const currentTerritoryOwnerId = rule.includePlayerTerritoryOwner
+      && typeof options.lookupTerritoryOwner === 'function'
+      ? cleanOwnerPart(options.lookupTerritoryOwner(target.value))
+      : '';
     ownerKeys = uniqueSorted([
-      rule.includePlayer ? requirePlayerId(envelope, type) : '',
+      playerKey,
+      rule.includePlayerTerritoryOwner && playerId ? `territory-owner:${playerId}` : '',
+      currentTerritoryOwnerId ? `territory-owner:${currentTerritoryOwnerId}` : '',
       ownerKey,
+    ]);
+  } else if (rule.kind === 'player-territory-owner') {
+    ownerKey = requirePlayerId(envelope, type);
+    ownerKeys = uniqueSorted([
+      ownerKey,
+      `territory-owner:${ownerKey.slice('player:'.length)}`,
     ]);
   } else if (rule.kind === 'player-encounter-handoff') {
     const playerKey = requirePlayerId(envelope, type);
-    const target = readTarget(payload, rule.fields);
+    const target = resolveEncounterHandoffTarget(envelope, options);
     targetField = target?.field || '';
-    ownerKey = target ? `encounter:${target.value}` : playerKey;
-    ownerKeys = uniqueSorted([playerKey, target ? ownerKey : '']);
+    targetId = target?.value || '';
+    lookupPerformed = Boolean(target?.lookupPerformed);
+    ownerKey = targetId ? `encounter:${targetId}` : playerKey;
+    ownerKeys = uniqueSorted([playerKey, targetId ? ownerKey : '']);
+  } else if (rule.kind === 'player-with-encounters') {
+    ownerKey = requirePlayerId(envelope, type);
+    const encounterIds = Array.isArray(payload.encounterIds)
+      ? payload.encounterIds.map(cleanOwnerPart).filter(Boolean)
+      : [];
+    ownerKeys = uniqueSorted([
+      ownerKey,
+      ...encounterIds.map((encounterId) => `encounter:${encounterId}`),
+    ]);
+  } else if (rule.kind === 'world-social-batch') {
+    const playerIds = Array.isArray(payload.playerIds)
+      ? payload.playerIds.map(cleanOwnerPart).filter(Boolean)
+      : [];
+    const personIds = Array.isArray(payload.personIds)
+      ? payload.personIds.map(cleanOwnerPart).filter(Boolean)
+      : [];
+    if (!playerIds.length && !personIds.length) {
+      missing(rule.missingTargetError, type, [...rule.playerFields, ...rule.personFields]);
+    }
+    ownerKey = rule.ownerKey;
+    ownerKeys = uniqueSorted([
+      ownerKey,
+      ...playerIds.map((playerId) => `player:${playerId}`),
+      ...personIds.map((personId) => `person:${personId}`),
+    ]);
   } else if (rule.kind === 'diagnostic-player') {
     const playerId = cleanOwnerPart(envelope.playerId);
     if (!playerId) missing('OWNER_PLAYER_ID_MISSING', type, ['playerId']);
@@ -183,13 +274,14 @@ function resolveCommandOwners(envelope = {}) {
     ownerKey,
     ownerKeys,
     targetField,
+    ...(rule.kind === 'player-encounter-handoff' ? { targetId, lookupPerformed } : {}),
     ruleKind: rule.kind,
   };
 }
 
-function inspectCommandOwners(envelope = {}) {
+function inspectCommandOwners(envelope = {}, resolver = resolveCommandOwners) {
   try {
-    return resolveCommandOwners(envelope);
+    return resolver(envelope);
   } catch (error) {
     if (!(error instanceof CommandOwnerResolutionError)) throw error;
     return {
@@ -205,6 +297,22 @@ function inspectCommandOwners(envelope = {}) {
   }
 }
 
+function createRepositoryOwnerResolver(repository = {}) {
+  return (envelope = {}) => resolveCommandOwners(envelope, {
+    lookupTerritoryOwner: (territoryId) => (
+      repository.getSharedWorldTerritory?.(territoryId)?.ownerPlayerId || ''
+    ),
+    lookupEncounterByCoordinate: (coord) => (
+      repository.getProjectedActiveWorldEncounterAt?.(coord)
+      || repository.worldEncounterRepo?.getActiveEncounterAt?.(coord, {
+        refreshRespawns: false,
+        projectRespawns: true,
+      })
+      || null
+    ),
+  });
+}
+
 function listDeclaredCommandTypes() {
   return Object.keys(COMMAND_OWNER_RULES).sort();
 }
@@ -213,6 +321,7 @@ module.exports = {
   COMMAND_OWNER_RULES,
   CommandOwnerResolutionError,
   PLAYER_COMMAND_TYPES,
+  createRepositoryOwnerResolver,
   inspectCommandOwners,
   listDeclaredCommandTypes,
   resolveCommandOwners,

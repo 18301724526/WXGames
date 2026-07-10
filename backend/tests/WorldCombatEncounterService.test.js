@@ -162,7 +162,10 @@ test('resolveEncounterBattle writes world status to the shared repository and re
       mission,
       camp,
       now,
-      { worldEncounterRepo: repo },
+      {
+        worldEncounterRepo: repo,
+        stageEncounter: (encounter, mutationNow) => repo.upsertEncounter(encounter, mutationNow),
+      },
     );
 
     assert.equal(result.winner, 'attacker');
@@ -178,7 +181,7 @@ test('resolveEncounterBattle writes world status to the shared repository and re
   }
 });
 
-test('WorldEncounterRepository respawns resolved camps as shared world state', () => {
+test('WorldEncounterRepository reads are pure and rejects side-effecting refresh options', () => {
   const db = new Database(':memory:');
   try {
     const repo = new WorldEncounterRepository(db, { worldSeed: CAMP_SEED });
@@ -191,18 +194,94 @@ test('WorldEncounterRepository respawns resolved camps as shared world state', (
       respawnAt: new Date(now.getTime() - 1000).toISOString(),
     }, now);
     repo.upsertEncounter(camp, now);
+    const readAt = new Date(now.getTime() + 1000);
 
-    const refreshed = repo.getEncounter(camp.id, { now: new Date(now.getTime() + 1000) });
+    const raw = repo.getEncounter(camp.id, { now: readAt });
+    assert.equal(raw.status, 'resolved');
+    assert.equal(raw.defender.soldiers, 0);
 
-    assert.equal(refreshed.status, 'active');
-    assert.equal(refreshed.defender.soldiers, 42);
-    assert.equal(refreshed.respawnAt, null);
+    const projected = repo.getEncounter(camp.id, { now: readAt, projectRespawns: true });
+    assert.equal(projected.status, 'active');
+    assert.equal(projected.defender.soldiers, 42);
+    assert.equal(projected.respawnAt, null);
+    assert.equal(repo.getEncounter(camp.id).status, 'resolved');
+
+    assert.throws(
+      () => repo.getEncounter(camp.id, { now: readAt, refreshRespawns: true }),
+      { code: 'WORLD_ENCOUNTER_WRITE_REQUIRES_COMMAND_PIPELINE' },
+    );
+    assert.equal(repo.getEncounter(camp.id).status, 'resolved');
   } finally {
     db.close();
   }
 });
 
-test('GameStateRepository projects the same shared encounters to two players and never saves them privately', () => {
+test('reading target encounter does not materialize an unrelated due respawn', () => {
+  const db = new Database(':memory:');
+  try {
+    const repo = new WorldEncounterRepository(db, { worldSeed: CAMP_SEED });
+    repo.init();
+    const now = new Date('2026-07-05T00:00:00.000Z');
+    const target = repo.upsertEncounter(createSharedCamp({ id: 'target-active' }, now), now);
+    const unrelated = createSharedCamp({
+      id: 'unrelated-due',
+      q: target.q + 1,
+      r: target.r,
+      tileId: WorldMapService.getTileId(target.q + 1, target.r),
+      status: 'resolved',
+      defender: { soldiers: 0, baseSoldiers: 37 },
+      resolvedAt: now.toISOString(),
+      respawnAt: new Date(now.getTime() - 1000).toISOString(),
+    }, now);
+    repo.upsertEncounter(unrelated, now);
+
+    const active = WorldCombatEncounterService.getActiveEncounter(
+      createPlayerState(),
+      target.id,
+      now,
+      { worldEncounterRepo: repo },
+    );
+
+    assert.equal(active.id, target.id);
+    const storedUnrelated = repo.getEncounter(unrelated.id);
+    assert.equal(storedUnrelated.status, 'resolved');
+    assert.equal(storedUnrelated.defender.soldiers, 0);
+  } finally {
+    db.close();
+  }
+});
+
+test('active encounter lookup falls back to projected shared encounters on repository miss', () => {
+  const db = new Database(':memory:');
+  try {
+    const repo = new WorldEncounterRepository(db, { worldSeed: CAMP_SEED });
+    repo.init();
+    const now = new Date('2026-07-05T00:00:00.000Z');
+    const due = createSharedCamp({
+      id: 'fallback-due',
+      status: 'resolved',
+      defender: { soldiers: 0, baseSoldiers: 29 },
+      resolvedAt: now.toISOString(),
+      respawnAt: new Date(now.getTime() - 1000).toISOString(),
+    }, now);
+
+    const active = WorldCombatEncounterService.getActiveEncounter(
+      createPlayerState(),
+      due.id,
+      now,
+      { worldEncounterRepo: repo, sharedWorldEncounters: [due] },
+    );
+
+    assert.equal(active.status, 'active');
+    assert.equal(active.defender.soldiers, 29);
+    assert.equal(due.status, 'resolved');
+    assert.equal(repo.getEncounter(due.id), null);
+  } finally {
+    db.close();
+  }
+});
+
+test('GameStateRepository purely projects the same shared encounters to two players', () => {
   const db = new Database(':memory:');
   try {
     const repository = new GameStateRepository(db);
@@ -221,7 +300,7 @@ test('GameStateRepository projects the same shared encounters to two players and
     assert.ok(idsA.length > 0);
     assert.deepEqual(idsA, idsB);
     assert.equal(Boolean(savedA.worldCombat.encounters), false);
-    assert.equal(idsA.length, repository.worldEncounterRepo.getAllEncounters().length);
+    assert.equal(repository.worldEncounterRepo.getAllEncounters().length, 0);
   } finally {
     db.close();
   }
@@ -288,6 +367,7 @@ test('resolveEngagedTimeouts settles an arrived mission through the shared repos
 
     const settled = WorldCombatEncounterService.resolveEngagedTimeouts(gameState, timeoutAt, {
       worldEncounterRepo: repo,
+      stageEncounter: (encounter, mutationNow) => repo.upsertEncounter(encounter, mutationNow),
     });
 
     assert.equal(settled, 1);

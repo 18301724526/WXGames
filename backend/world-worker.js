@@ -17,12 +17,21 @@ const {
   createWorldPeopleRegistryService,
 } = require('./services/person/WorldPeopleRegistryService');
 const { createWorldSocialTickService } = require('./services/person/WorldSocialTickService');
+const { CommandIdempotencyStore } = require('./application/commands/CommandIdempotencyStore');
+const { CommandExecutionPipeline } = require('./application/commands/CommandExecutionPipeline');
+const { createRepositoryOwnerResolver } = require('./application/commands/CommandOwnerResolver');
 const personalityCore = require('../shared/person/personalityCore');
 
 const dbPath = process.env.DB_PATH || path.join(__dirname, 'civilization.db');
 const { db } = openDatabase(Database, dbPath);
 const repository = new GameStateRepository(db);
 repository.init();
+const commandIdempotencyStore = new CommandIdempotencyStore(db);
+const commandExecutionPipeline = new CommandExecutionPipeline({
+  repository,
+  idempotencyStore: commandIdempotencyStore,
+  ownerResolver: createRepositoryOwnerResolver(repository),
+});
 
 function tuningMap(table) {
   return Object.fromEntries(ConfigTables.getRows(table).map((row) => [row.paramKey, row.value]));
@@ -80,6 +89,8 @@ const worker = new WorldWorkerService({
   worldSocialTickService,
   factionRegistryService,
   worldDiplomacyTickService,
+  factionDiplomacyService,
+  commandExecutionPipeline,
   getSocialTickOptions: (now) => ({
     meetPairs: tuningValue('relationship_tuning', 'meetPairsPerTick', 3),
     natures: ConfigTables.getRows('personality_natures'),

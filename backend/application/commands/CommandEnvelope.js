@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 
 const COMMAND_SCHEMA = 'game-command-v1';
 const CLIENT_IDEMPOTENT = 'client-idempotent';
+const INTERNAL_IDEMPOTENT = 'internal-idempotent';
 const SERVER_FALLBACK_ID = 'server-fallback-id';
 const ENVELOPE_FIELDS = new Set([
   'clientCommand',
@@ -181,7 +182,7 @@ function normalizeCommandEnvelope(req = {}, options = {}) {
     );
   }
   const idempotencyClassification = missingClientFields.length === 0
-    ? CLIENT_IDEMPOTENT
+    ? (options.internalCommand === true ? INTERNAL_IDEMPOTENT : CLIENT_IDEMPOTENT)
     : SERVER_FALLBACK_ID;
 
   return {
@@ -216,6 +217,7 @@ function normalizeCommandEnvelope(req = {}, options = {}) {
     },
     compatibility: {
       clientEnvelopePresent: Boolean(body.clientCommand),
+      internalCommand: options.internalCommand === true,
       idempotencyClassification,
       serverFallbackId: idempotencyClassification === SERVER_FALLBACK_ID,
       missingClientFields,
@@ -223,6 +225,42 @@ function normalizeCommandEnvelope(req = {}, options = {}) {
       clientPayloadMatches,
     },
   };
+}
+
+function createInternalCommandEnvelope(options = {}) {
+  const type = normalizeCommandType(options.type);
+  const commandId = cleanText(options.commandId, '');
+  const idempotencyKey = cleanText(options.idempotencyKey, '');
+  if (!type || !commandId || !idempotencyKey) {
+    throw new CommandEnvelopeError(
+      'INTERNAL_COMMAND_ENVELOPE_INVALID',
+      'Internal command type, commandId, and idempotencyKey are required',
+    );
+  }
+  return normalizeCommandEnvelope({
+    playerId: options.playerId,
+    method: options.method || 'BACKGROUND',
+    path: options.route || 'backend/world-worker.js',
+    headers: { 'x-client-request-id': options.requestId || commandId },
+    get(name) {
+      return this.headers[String(name).toLowerCase()] || '';
+    },
+    body: {
+      action: type,
+      commandId,
+      idempotencyKey,
+    },
+  }, {
+    type,
+    action: type,
+    playerId: options.playerId,
+    route: options.route || 'backend/world-worker.js',
+    method: options.method || 'BACKGROUND',
+    inventoryId: options.inventoryId || 'worker:world-worker-runtime-writes',
+    payload: options.payload || {},
+    requireClientIds: true,
+    internalCommand: true,
+  });
 }
 
 function createBuildBuildingCommand(req = {}, options = {}) {
@@ -286,11 +324,13 @@ module.exports = {
   CLIENT_IDEMPOTENT,
   COMMAND_SCHEMA,
   CommandEnvelopeError,
+  INTERNAL_IDEMPOTENT,
   SERVER_FALLBACK_ID,
   buildCommandEnvelopeErrorPayload,
   buildCommandPayload,
   cleanText,
   createBuildBuildingCommand,
+  createInternalCommandEnvelope,
   digestPayload,
   isCommandEnvelopeError,
   normalizeCommandEnvelope,

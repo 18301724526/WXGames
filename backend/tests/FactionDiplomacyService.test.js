@@ -65,6 +65,58 @@ test('advanceEdge: favorability drifts and can flip the symmetric state', () => 
   assert.equal(svc.state('ai_wei', 'ai_wu'), 'friendly'); // mutualFav >= 40 -> friendly
 });
 
+test('planAdvanceEdge plus committer writes is behaviorally equivalent to advanceEdge', () => {
+  const scenarios = [
+    {
+      forward: { favorability: 45, state: 'neutral', nemesisStreak: 0, since: null },
+      reverse: { favorability: 45, state: 'neutral', nemesisStreak: 0, since: null },
+      context: { sharedEnemies: 2, bordering: true, rulerCompat: 30 },
+      now: '2026-07-10T01:02:03.000Z',
+    },
+    {
+      forward: { favorability: -100, state: 'hostile', nemesisStreak: CFG.nemesisTicks - 1, since: 'old' },
+      reverse: { favorability: -100, state: 'hostile', nemesisStreak: CFG.nemesisTicks - 1, since: 'old' },
+      context: {},
+      now: null,
+    },
+  ];
+
+  for (const scenario of scenarios) {
+    const planned = setup();
+    const legacy = setup();
+    for (const fixture of [planned, legacy]) {
+      fixture.repo.upsertEdge('ai_a', 'ai_b', {
+        ...fixture.repo.getEdge('ai_a', 'ai_b'),
+        ...scenario.forward,
+      }, 'seed');
+      fixture.repo.upsertEdge('ai_b', 'ai_a', {
+        ...fixture.repo.getEdge('ai_b', 'ai_a'),
+        ...scenario.reverse,
+      }, 'seed');
+    }
+
+    const plan = planned.svc.planAdvanceEdge(
+      'ai_a',
+      'ai_b',
+      scenario.context,
+      scenario.context,
+      scenario.now,
+    );
+    planned.repo.upsertEdge('ai_a', 'ai_b', plan.forward.edge, plan.forward.now);
+    planned.repo.upsertEdge('ai_b', 'ai_a', plan.reverse.edge, plan.reverse.now);
+    legacy.svc.advanceEdge(
+      'ai_a',
+      'ai_b',
+      scenario.context,
+      scenario.context,
+      scenario.now,
+    );
+
+    assert.deepEqual(planned.repo.getEdge('ai_a', 'ai_b'), legacy.repo.getEdge('ai_a', 'ai_b'));
+    assert.deepEqual(planned.repo.getEdge('ai_b', 'ai_a'), legacy.repo.getEdge('ai_b', 'ai_a'));
+  }
+});
+
 // Regression C1: fractional per-tick drift must ACCUMULATE (no per-tick rounding). Before the fix,
 // clampFavorability rounded every write so any |drift| < 0.5/tick was silently discarded and favorability
 // stayed frozen — the passive-drift subsystem was inert.

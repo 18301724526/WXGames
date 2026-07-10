@@ -848,6 +848,7 @@
     }
     startWorldCombat(options = {}) {
       const payload = {
+        encounterId: options.encounterId || options.combatEncounterId || '',
         missionId: options.missionId || '',
         formationSlot: options.formationSlot ?? options.slot ?? 1,
         cityId: options.cityId || 'capital',
@@ -860,8 +861,8 @@
         requestBody: { action: 'startWorldCombat', ...payload },
       });
     }
-    resolveWorldCombat(battleId, inputStream = [], commandOptions = {}) {
-      const payload = { battleId, inputStream };
+    resolveWorldCombat(battleId, inputStream = [], encounterId = '', commandOptions = {}) {
+      const payload = { battleId, encounterId, inputStream };
       return this.submitCommand('resolveWorldCombat', payload, {
         ...commandOptions,
         path: '/game/action',

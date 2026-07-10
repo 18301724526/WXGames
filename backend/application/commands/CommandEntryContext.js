@@ -18,7 +18,7 @@ function appendReport(req, report) {
 function prepareCommandEntry(req = {}, options = {}) {
   try {
     const envelope = normalizeCommandEnvelope(req, options);
-    const ownerResolution = inspectCommandOwners(envelope);
+    const ownerResolution = inspectCommandOwners(envelope, options.ownerResolver);
     const report = {
       schema: 'command-entry-report-v1',
       mode: options.mode || 'report-only',

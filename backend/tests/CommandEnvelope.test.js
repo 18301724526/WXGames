@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const {
   buildCommandPayload,
   createBuildBuildingCommand,
+  createInternalCommandEnvelope,
   normalizeCommandEnvelope,
 } = require('../application/commands/CommandEnvelope');
 const { prepareCommandEntry } = require('../application/commands/CommandEntryContext');
@@ -49,6 +50,24 @@ test('CommandEnvelope normalizes an explicit client command envelope', () => {
   assert.equal(envelope.compatibility.idempotencyClassification, 'client-idempotent');
   assert.equal(envelope.compatibility.serverFallbackId, false);
   assert.equal(envelope.compatibility.clientPayloadMatches, true);
+});
+
+test('CommandEnvelope creates explicit internal-idempotent worker envelopes', () => {
+  const envelope = createInternalCommandEnvelope({
+    type: 'worldWorkerPersonUpdate',
+    playerId: 'system:world-worker',
+    commandId: 'cmd-world-worker-person-1',
+    idempotencyKey: 'idem-world-worker-person-1',
+    requestId: 'worker-tick-1',
+    payload: { personId: 'person-1', person: { id: 'person-1' } },
+  });
+
+  assert.equal(envelope.type, 'worldWorkerPersonUpdate');
+  assert.equal(envelope.playerId, 'system:world-worker');
+  assert.equal(envelope.compatibility.idempotencyClassification, 'internal-idempotent');
+  assert.equal(envelope.compatibility.internalCommand, true);
+  assert.equal(envelope.compatibility.clientEnvelopePresent, false);
+  assert.deepEqual(envelope.payload, { person: { id: 'person-1' }, personId: 'person-1' });
 });
 
 test('CommandEnvelope preserves missing client ids only as server fallback compatibility metadata', () => {
@@ -163,7 +182,11 @@ test('CommandEntryContext records envelope and owner resolution without claiming
   assert.equal(entry.ok, true);
   assert.equal(entry.report.mode, 'report-only');
   assert.equal(entry.ownerResolution.ownerKey, 'territory:territory-1');
-  assert.deepEqual(entry.ownerResolution.ownerKeys, ['player:player-1', 'territory:territory-1']);
+  assert.deepEqual(entry.ownerResolution.ownerKeys, [
+    'player:player-1',
+    'territory-owner:player-1',
+    'territory:territory-1',
+  ]);
   assert.equal(req.commandReports.length, 1);
   assert.equal(reports.length, 1);
 });

@@ -178,6 +178,8 @@ function advanceRuntimeState(gameState, now = new Date(), options = {}) {
     worldEncounterRepo: options.worldEncounterRepo,
     sharedWorldEncounters: options.sharedWorldEncounters || options.planningContext?.sharedWorldEncounters,
     marchVerification: options.marchVerification,
+    resolveEngagedTimeouts: options.resolveEngagedTimeouts,
+    stageEncounter: options.stageEncounter,
   });
   WorldCombatEncounterService.normalizeCombatState(state, now);
   if (options.advanceWorldAi === true) {

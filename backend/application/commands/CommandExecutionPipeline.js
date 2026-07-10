@@ -194,6 +194,7 @@ class CommandExecutionPipeline {
               execution: null,
               commit: null,
               projection: null,
+              sharedMutations: {},
             };
 
             trace.mark('state_loading');

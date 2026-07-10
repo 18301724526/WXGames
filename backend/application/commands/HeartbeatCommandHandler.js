@@ -40,6 +40,7 @@ class HeartbeatCommandHandler {
         planningContext: context.application.projection,
         worldEncounterRepo: context.application.worldEncounterRepo,
         sharedWorldEncounters: context.application.projection?.sharedWorldEncounters,
+        resolveEngagedTimeouts: false,
       });
       changed = true;
     }
