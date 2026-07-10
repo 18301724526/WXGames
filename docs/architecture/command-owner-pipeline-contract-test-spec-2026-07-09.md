@@ -12,7 +12,8 @@ Changelog:
   `withOwnerLocks(ownerKeys[], ...)` entry (canonical lexicographic multi-lock order,
   all-or-nothing acquisition, TTL lease reclaim). `withPlayerStateLock` becomes a thin
   delegate; no parallel lock systems remain. Cross-process acceptance tests required.
-  Full design contract in `step3-phase2-7-overnight-order-2026-07-10.md`.
+  Implementation evidence and final validation are recorded in
+  `step3-phase2-7-verification-2026-07-10.md`.
 - v0.6 (2026-07-09): added the second-writer / multi-process clause to §4.4 after a
   feasibility review found the §8 acceptance tests are single-process only while march
   settlement runs in a separate worker process. Records an owner-ratification-required

@@ -260,9 +260,9 @@ The following areas are stopped and are not claimed as migrated:
 - `worldWorkerRuntimeTick`: one batch mutates shared state and multiple players, so it reports
   `OWNER_WORKER_COMMAND_SPLIT_REQUIRED` instead of inventing one owner.
 
-Full source evidence, stopped scope, and retirement conditions are recorded in
-`EXECUTION-BLOCKER-REPORT-step3-phase3-owner-resolution-2026-07-10.md`. These blockers must be
-resolved in Phase 6 before the affected writes can claim live shared-owner migration.
+These were historical stopped-scope blockers for Phase 3 only. Phase 6 retires them with
+shared owner lookup, coordinate handoff, command splitting, and the real server/worker
+evidence recorded below before the affected writes claim live shared-owner migration.
 
 ### Blocking Guard And FIRE Probe
 
