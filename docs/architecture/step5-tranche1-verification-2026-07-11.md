@@ -305,3 +305,31 @@ git ls-remote private refs/heads/main
 ## 10. 停止点
 
 Tranche 1 已完成到 owner 授权边界。下一步必须等待审查和 Tranche 2 授权；不得继续 Phase 3/5/6/7，也不得继续 Phase 4 其他 action family。
+
+## 11. R-D4 漏报更正(A1)
+
+更正:原 Tranche 1 验证文档漏报 R-D4 未完成项。实际未完成项为 `step5-runtime-decoupling-and-bug-traceability-spec-2026-07-10.md` 仍保留"明显下降"式模糊判据，且当时未在验证结论中申报。
+
+A1 已将 R-D4 判据改为数字目标和复跑命令:
+
+- mode ownership: `activeTab` 42 -> 33、`militaryView` 67 -> 65、`armyFormationEditor` 23 -> 11；测量命令为 `node scripts/report-frontend-ecs-mode-ownership.js --summary`。
+- renderer authority: `authority-write` baseline 2，退出目标为 0 或逐项源码级退休证据；测量命令为 `node scripts/report-frontend-ecs-renderer-authority.js --summary`。
+- domain-business: baseline 544 total / 17 high / 24 medium；测量命令为 `node scripts/report-domain-business-candidates.js --summary`。
+- input branch: `command-handler` 137 -> 135；测量命令为 `node scripts/report-frontend-ecs-input-branch.js --summary`。
+- literal duplicate: baseline 12552 total，`action-string` 441 -> 439；测量命令为 `node scripts/report-frontend-ecs-literal-duplicate.js --summary`。
+
+自验命令:
+
+```text
+Select-String -Path docs/architecture/step5-runtime-decoupling-and-bug-traceability-spec-2026-07-10.md -Pattern '明显下降' -SimpleMatch
+```
+
+结果:matches 0。
+
+```text
+rg -n "42 -> 33|67 -> 65|23 -> 11|137 收敛到 135|12552|441 收敛到 439|authority-write.*2.*0|544.*17 high / 24 medium|node scripts/report-frontend-ecs-mode-ownership.js --summary|node scripts/report-frontend-ecs-input-branch.js --summary|node scripts/report-frontend-ecs-literal-duplicate.js --summary|node scripts/report-frontend-ecs-renderer-authority.js --summary|node scripts/report-domain-business-candidates.js --summary" docs/architecture/step5-runtime-decoupling-and-bug-traceability-spec-2026-07-10.md
+```
+
+结果:命中 spec 第 264/417/418/419/485/486/575/576/577/578/579 行及既有 baseline 命令区。
+
+未做/未达标:无。

@@ -261,7 +261,7 @@ physical input -> input intent -> action descriptor -> ui effect 或 command sub
 目标:
 - 建立 server snapshot 与 UI runtime state 的明确边界。
 - 退休 `GameStateManager` / `CanvasGameApp` / `canvasShell` 中最危险的状态镜像。
-- 让 mode ownership 报告中的核心符号数量明显下降。
+- 让 mode ownership 报告中的核心符号达到已裁定数字目标:`activeTab` 42 -> 33、`militaryView` 67 -> 65、`armyFormationEditor` 23 -> 11；测量命令为 `node scripts/report-frontend-ecs-mode-ownership.js --summary`。
 
 目标符号:
 - `activeTab`
@@ -414,9 +414,9 @@ npm run test:architecture
 
 目标指标:
 - `report-frontend-ecs-mode-ownership.js --summary` 中:
-  - `activeTab` findings 明显下降。
-  - `militaryView` findings 明显下降。
-  - `armyFormationEditor` write/mirror findings 归零或进入明确 owner。
+  - `activeTab` findings 从 Phase 0 baseline 42 收敛到 33；测量命令为 `node scripts/report-frontend-ecs-mode-ownership.js --summary`。
+  - `militaryView` findings 从 Phase 0 baseline 67 收敛到 65；测量命令为 `node scripts/report-frontend-ecs-mode-ownership.js --summary`。
+  - `armyFormationEditor` findings 从 Phase 0 baseline 23 收敛到 11，write/mirror findings 归零或进入明确 owner；测量命令为 `node scripts/report-frontend-ecs-mode-ownership.js --summary`。
 
 反规避:
 - 不允许新增 `syncUiStateToGame()` 这类全量镜像函数。
@@ -482,8 +482,8 @@ descriptor 必须声明:
 - visualDisabled 不阻断 command-submit。
 
 目标指标:
-- `report-frontend-ecs-input-branch.js --summary` 中 `command-handler` 发现明显下降。
-- `report-frontend-ecs-literal-duplicate.js --summary` 中 `action-string` 对迁移子集下降或被 registry-owned 分类。
+- `report-frontend-ecs-input-branch.js --summary` 中 `command-handler` 从 Phase 0 baseline 137 收敛到 135；测量命令为 `node scripts/report-frontend-ecs-input-branch.js --summary`。
+- `report-frontend-ecs-literal-duplicate.js --summary` 中 literal duplicate 以 Phase 0 baseline 12552 为全量基准，不要求全量清零；`action-string` 从 441 收敛到 439，或迁移子集被 registry-owned 分类；测量命令为 `node scripts/report-frontend-ecs-literal-duplicate.js --summary`。
 
 ### Phase 5: Server snapshot / view model 边界
 
@@ -572,11 +572,11 @@ Step5 只有在以下条件全部满足时才算完成:
 
 1. `clientActionTraceId` 或等价 trace id 能贯通前端 action 与后端 `CommandTrace`。
 2. UI runtime state 至少完成 `activeTab`、`militaryView`、`armyFormationEditor` 三个高价值符号的 owner 收敛。
-3. `report-frontend-ecs-mode-ownership.js --summary` 对上述三个符号的 write/mirror findings 明显下降，并有逐项解释。
-4. renderer authority 的 `authority-write` 为 0，或每一项都有源码级退休证据。
-5. domain-business high findings 中 frontend renderer/platform/state 的真实债务已退休或具有机械证明的误报分类。
-6. 至少一个完整 command 垂直切片通过 action descriptor registry，覆盖 building/tech/territory/world-march 中至少一类。
-7. `CanvasActionController` 对该垂直切片不再拥有命令业务分支。
+3. `report-frontend-ecs-mode-ownership.js --summary` 对上述三个符号达到 `activeTab` 33、`militaryView` 65、`armyFormationEditor` 11 的目标值，基线为 42/67/23，并有逐项解释；测量命令为 `node scripts/report-frontend-ecs-mode-ownership.js --summary`。
+4. renderer authority 的 `authority-write` 从 Phase 0 baseline 2 收敛到 0，或每一项都有源码级退休证据；测量命令为 `node scripts/report-frontend-ecs-renderer-authority.js --summary`。
+5. domain-business findings 以 Phase 0 baseline 544 为总量基准、17 high / 24 medium 为裁定基准；frontend renderer/platform/state 的真实 high 债务已退休或具有机械证明的误报分类；测量命令为 `node scripts/report-domain-business-candidates.js --summary`。
+6. 至少一个完整 command 垂直切片通过 action descriptor registry，覆盖 building/tech/territory/world-march 中至少一类；Tranche 1 building 切片的 `command-handler` 从 Phase 0 baseline 137 收敛到 135，测量命令为 `node scripts/report-frontend-ecs-input-branch.js --summary`。
+7. `CanvasActionController` 对该垂直切片不再拥有命令业务分支；Tranche 1 building 切片同时要求 `action-string` 从 Phase 0 baseline 441 收敛到 439，测量命令为 `node scripts/report-frontend-ecs-literal-duplicate.js --summary`。
 8. `GameStateManager` 不再对 API payload 做未隔离的玩法事实 mutation；若保留 compatibility adapter，必须有明确退休条件。
 9. 新增 focused blocking gates，并具有 FIRE 测试。
 10. 所有 Step1-Step4 既有门禁仍通过。
