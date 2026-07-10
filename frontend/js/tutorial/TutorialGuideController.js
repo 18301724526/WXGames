@@ -89,6 +89,10 @@
     return global.LocaleText ? global.LocaleText.t(key, params) : key;
   }
 
+  function getCurrentRenderTab(game = null) {
+    return CanvasModeOwnershipRuntime?.getCurrentTab?.(game) || game?.state?.currentTab || 'resources';
+  }
+
   function isVisuallyDisabled(action = {}) {
     return ClientCommandSemantics?.isVisuallyDisabled?.(action)
       ?? Boolean(action?.visualDisabled ?? action?.disabled);
@@ -624,7 +628,7 @@
           game.canvasShell.tutorialAdvisorDialogue = dialogue;
         }
         if (target !== 'tech-tree') this.clearBlockingCommandPanels();
-        game.renderCanvasSurface?.(game.state?.currentTab || game.activeTab);
+        game.renderCanvasSurface?.(getCurrentRenderTab(game));
         return true;
       }
 
@@ -671,7 +675,7 @@
           changed = actionController.centerWorldMapOnSite(siteId) !== false;
         }
         if (!changed) return false;
-        this.game?.renderCanvasSurface?.(this.game?.state?.currentTab || this.game?.activeTab);
+        this.game?.renderCanvasSurface?.(getCurrentRenderTab(this.game));
         shell?.renderActive?.();
         if (this.showFirstCitySiteOpenHighlight(siteId)) {
           this.focusedFirstCitySiteId = siteId;
@@ -718,7 +722,7 @@
         }
         if (changed) {
           shell?.hideTutorialHighlight?.();
-          game.renderCanvasSurface?.(game.state?.currentTab || game.activeTab);
+          game.renderCanvasSurface?.(getCurrentRenderTab(game));
         }
         return changed;
       }

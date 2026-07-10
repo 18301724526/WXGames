@@ -107,6 +107,10 @@
   if (typeof module !== 'undefined' && module.exports && !StateWriter) {
     StateWriter = require('../state/StateWriter');
   }
+  var UiRuntimeStateStore = global.UiRuntimeStateStore;
+  if (typeof module !== 'undefined' && module.exports && !UiRuntimeStateStore) {
+    UiRuntimeStateStore = require('../state/UiRuntimeStateStore');
+  }
   var TerritoryUiStateStore = global.TerritoryUiStateStore;
   if (typeof module !== 'undefined' && module.exports && !TerritoryUiStateStore) {
     TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
@@ -343,6 +347,10 @@
             currentEra: 0,
             softGuide: null,
           }, { source: 'CanvasGameApp:constructor:init' });
+          UiRuntimeStateStore?.ensure?.(this, {
+            activeTab: options.activeTab || this.state.currentTab || 'resources',
+            militaryView: options.militaryView || this.state.militaryView || 'army',
+          });
           this.mapHomeActive = false;
           const initialHome = this.resolveMapHomeViewState({
             ...this.state,
@@ -354,6 +362,7 @@
           });
           this.activeTab = initialHome.activeTab;
           this.militaryView = initialHome.militaryView;
+          UiRuntimeStateStore?.setNavigation?.(this, initialHome);
           this.mapHomeActive = initialHome.isMapHome;
           StateWriter.commit(this, (prev) => ({
             ...prev,

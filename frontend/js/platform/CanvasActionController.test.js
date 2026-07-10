@@ -49,7 +49,7 @@ test('CanvasActionController closePanels closes blocking panels through the snap
   ]);
   assert.equal(host.isBlockingPanelSnapshotOpen('showSettings'), false);
   assert.equal(host.getCommandPanelValue(), '');
-  assert.equal(host.armyFormationEditor, false);
+  assert.equal(host.armyFormationEditor.open, false);
   assert.equal(host.isEventSnapshotOpen(), false);
 });
 
@@ -74,7 +74,8 @@ test('CanvasActionController closePanels honours the keep-set and skips the even
   // event modal open; showSettings is swept.
   assert.equal(host.isBlockingPanelSnapshotOpen('showSettings'), false);
   assert.equal(host.isBlockingPanelSnapshotOpen('showTaskCenter'), true);
-  assert.deepEqual(host.armyFormationEditor, { open: true, slot: 1 });
+  assert.equal(host.armyFormationEditor.open, true);
+  assert.equal(host.armyFormationEditor.slot, 1);
   assert.equal(host.isEventSnapshotOpen(), true);
 });
 

@@ -3,6 +3,17 @@
   if (typeof module !== 'undefined' && module.exports && !WorldMapRuntimeBase) {
     WorldMapRuntimeBase = require('./WorldMapRuntime');
   }
+  const UiRuntimeStateStore = (() => {
+    if (global.UiRuntimeStateStore) return global.UiRuntimeStateStore;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../state/UiRuntimeStateStore');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   class WorldMapRuntimeCoordinator {
     constructor(options = {}) {
@@ -30,10 +41,13 @@
           : 84
       ));
       this.getRequestedTab = options.getRequestedTab || ((state = this.getState()) => (
-        this.host?.getActiveTab?.() || state?.currentTab || this.host?.activeTab || 'resources'
+        UiRuntimeStateStore?.getNavigation?.(this.host)?.activeTab
+          || this.host?.getActiveTab?.()
+          || state?.currentTab
+          || 'resources'
       ));
       this.getMilitaryView = options.getMilitaryView || ((state = this.getState()) => (
-        state?.militaryView || this.host?.militaryView
+        UiRuntimeStateStore?.getNavigation?.(this.host)?.militaryView || state?.militaryView
       ));
       this.getForceMapHome = options.getForceMapHome || (() => Boolean(this.host?.mapHomeActive));
       this.canRouteTap = options.canRouteTap || (() => true);

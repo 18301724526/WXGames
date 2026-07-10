@@ -22,6 +22,8 @@
     expeditionSoldiers: '',
   });
 
+  const OWNED_UI_RUNTIME_FIELDS = Object.freeze(Object.keys(DEFAULT_TERRITORY_UI_STATE));
+
   function isObject(value) {
     return Boolean(value && typeof value === 'object');
   }
@@ -102,6 +104,7 @@
   }
 
   const api = Object.freeze({
+    OWNED_UI_RUNTIME_FIELDS,
     DEFAULT_TERRITORY_UI_STATE,
     createInitialState,
     normalizeState,

@@ -43,6 +43,22 @@
     return global.BattleStore || BattleStoreModule || null;
   }
 
+  const UiRuntimeStateStoreModule = (() => {
+    if (global.UiRuntimeStateStore) return global.UiRuntimeStateStore;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../state/UiRuntimeStateStore');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
+  function getUiRuntimeStateStore() {
+    return global.UiRuntimeStateStore || UiRuntimeStateStoreModule || null;
+  }
+
   function isTruthy(value) {
     return Boolean(value);
   }
@@ -65,19 +81,17 @@
   }
 
   function resolveBaseModeKey(host) {
-    const game = getStateHost(host);
+    const uiRuntime = getUiRuntimeStateStore()?.ensure?.(host) || null;
     const battleSnapshot = readBattleSnapshot();
     const activeTab =
-      game?.state?.currentTab ||
-      game?.activeTab ||
+      uiRuntime?.activeTab ||
+      getStateHost(host)?.state?.currentTab ||
       host?.state?.currentTab ||
-      host?.activeTab ||
       'resources';
     const militaryView =
-      game?.state?.militaryView ||
-      game?.militaryView ||
+      uiRuntime?.militaryView ||
+      getStateHost(host)?.state?.militaryView ||
       host?.state?.militaryView ||
-      host?.militaryView ||
       'army';
     if (
       (activeTab === 'military' || activeTab === 'territory' || activeTab === 'resources') &&
@@ -85,7 +99,7 @@
     )
       return 'worldMap';
     if (activeTab === 'tech') return 'techTree';
-    if (isTruthy(host?.armyFormationEditor?.open) || isTruthy(game?.armyFormationEditor?.open))
+    if (isTruthy(uiRuntime?.armyFormationEditor?.open))
       return 'formationEditor';
     if (isTruthy(battleSnapshot?.battleScene?.visible)) return 'battle';
     if (
@@ -128,6 +142,7 @@
   function hasBlockingOverlayExceptTechTree(host) {
     const game = getStateHost(host);
     const battleSnapshot = readBattleSnapshot();
+    const formationEditor = getUiRuntimeStateStore()?.getFormationEditor?.(host) || null;
     // commandPanel blocks tech-tree routing only when it is NOT the tech panel (the
     // 'tech' value IS tech-tree base access, not an overlay). techDetail still blocks
     // (it is a popup layered above the tech tree). This preserves the exact prior
@@ -146,8 +161,7 @@
       isAnyModalOpen(host, 'modal:taskCenter') ||
       isAnyModalOpen(host, 'modal:guidebook') ||
       isAnyModalOpen(host, 'modal:famousPersons') ||
-      isTruthy(host?.armyFormationEditor?.open) ||
-      isTruthy(game?.armyFormationEditor?.open) ||
+      isTruthy(formationEditor?.open) ||
       isAnyModalOpen(host, 'modal:confirmDialog') ||
       (Boolean(commandValue) && commandValue !== 'tech') ||
       isAnyModalOpen(host, 'modal:techDetail') ||
@@ -165,6 +179,7 @@
     // entityBattleActive (blocking logic, ModeState) sources from BattleStore -- the
     // single source of truth for the live battle session -- not host/game mirrors.
     const entityBattle = readBattleSnapshot()?.entityBattle || null;
+    const formationEditor = getUiRuntimeStateStore()?.getFormationEditor?.(host) || null;
     const tutorialIntro = game?.tutorialIntro || host?.tutorialIntro || null;
     const tutorialHighlight = host?.tutorialHighlight || game?.tutorialHighlight || null;
     const baseModeKey = resolveBaseModeKey(host);
@@ -182,8 +197,7 @@
         isTruthy(entityBattle?.visible) ||
         isTruthy(host?.tutorialAdvisorDialogue) ||
         isTruthy(game?.tutorialAdvisorDialogue) ||
-        isTruthy(host?.armyFormationEditor?.open) ||
-        isTruthy(game?.armyFormationEditor?.open),
+        isTruthy(formationEditor?.open),
       techTreeBlockingOverlayActive: hasBlockingOverlayExceptTechTree(host),
       entityBattleActive: isTruthy(entityBattle?.visible),
       worldMapHomeActive:
@@ -194,7 +208,7 @@
         baseModeKey === 'techTree' ||
         getAnyModalPayload(host, 'modal:commandPanel')?.value === 'tech',
       formationEditorActive:
-        isTruthy(host?.armyFormationEditor?.open) || isTruthy(game?.armyFormationEditor?.open),
+        isTruthy(formationEditor?.open),
     };
   }
 
@@ -222,14 +236,8 @@
   }
 
   function getCurrentTab(host) {
-    const game = getStateHost(host);
-    return String(
-      game?.state?.currentTab ||
-        game?.activeTab ||
-        host?.state?.currentTab ||
-        host?.activeTab ||
-        '',
-    );
+    const uiRuntime = getUiRuntimeStateStore()?.ensure?.(host) || null;
+    return String(uiRuntime?.activeTab || getStateHost(host)?.state?.currentTab || host?.state?.currentTab || '');
   }
 
   function isCurrentTab(host, tabId = '') {
@@ -239,52 +247,20 @@
 
   function setMilitaryView(host, view = 'army') {
     const normalized = ['army', 'scout', 'world', 'veteranCamp'].includes(view) ? view : 'army';
+    getUiRuntimeStateStore()?.setField?.(host, 'militaryView', normalized);
     const game = getStateHost(host);
-    if (game && typeof game === 'object') {
-      game.militaryView = normalized;
-      if (game.state && typeof game.state === 'object') {
-        game.state.militaryView = normalized;
-      }
-    }
-    if (host && host !== game && typeof host === 'object') {
-      host.militaryView = normalized;
-      if (host.state && typeof host.state === 'object') {
-        host.state.militaryView = normalized;
-      }
-    }
     refreshModeSnapshot(host);
     if (game && game !== host) refreshModeSnapshot(game);
     return normalized;
   }
 
   function getFormationEditor(host) {
-    const game = getStateHost(host);
-    const gameEditor = game?.armyFormationEditor || null;
-    const shellEditor = game?.canvasShell?.armyFormationEditor || null;
-    const hostEditor = host?.armyFormationEditor || null;
-    if (shellEditor?.open) return shellEditor;
-    if (gameEditor?.open) return gameEditor;
-    if (hostEditor?.open) return hostEditor;
-    return gameEditor || shellEditor || hostEditor || {};
+    return getUiRuntimeStateStore()?.getFormationEditor?.(host) || {};
   }
 
   function closeFormationEditor(host) {
-    const closed = {
-      open: false,
-      cityId: '',
-      slot: 1,
-      memberIds: [],
-      soldierAssignments: {},
-      soldierDraftAssignments: {},
-      page: 0,
-      saving: false,
-    };
     const game = getStateHost(host);
-    if (game && typeof game === 'object') game.armyFormationEditor = { ...closed };
-    if (game?.canvasShell && typeof game.canvasShell === 'object') {
-      game.canvasShell.armyFormationEditor = { ...closed };
-    }
-    if (host && host !== game && typeof host === 'object') host.armyFormationEditor = { ...closed };
+    const closed = getUiRuntimeStateStore()?.closeFormationEditor?.(host) || {};
     refreshModeSnapshot(host);
     if (game && game !== host) refreshModeSnapshot(game);
     if (game?.canvasShell && game.canvasShell !== host) refreshModeSnapshot(game.canvasShell);

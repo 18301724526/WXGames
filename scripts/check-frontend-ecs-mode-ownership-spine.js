@@ -10,6 +10,9 @@ const APPROVED_MODE_OWNER_PATHS = Object.freeze([
   'frontend/js/ecs/runtime/EcsModeRuntimeBundle.js',
   // Battle overlay truth moved out of the retired ecs/owner shell into a plain store.
   'frontend/js/state/BattleStore.js',
+  // UI runtime navigation/editor truth is approved in the frontend state-store family;
+  // bitecs ECS simulation facts remain outside this store.
+  'frontend/js/state/UiRuntimeStateStore.js',
 ]);
 const APPROVED_MODE_RUNTIME_PATHS = Object.freeze([
   'frontend/js/platform/CanvasModeOwnershipRuntime.js',

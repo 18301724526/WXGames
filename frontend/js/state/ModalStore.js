@@ -21,6 +21,26 @@
     tokenSeq: 0,
   };
 
+  const OWNED_UI_RUNTIME_FIELDS = Object.freeze([
+    'activeCommandPanel',
+    'activeEventId',
+    'confirmDialog',
+    'naming',
+    'rewardReveal',
+    'showAdvisor',
+    'showCityManagement',
+    'showCitySwitcher',
+    'showFamousPersons',
+    'showGuidebook',
+    'showLogs',
+    'showResourceDetails',
+    'showSettings',
+    'showSubcityList',
+    'showTaskCenter',
+    'targetPicker',
+    'techDetailOpen',
+  ]);
+
   function normalizeSubtype(subtype) {
     return String(subtype || '');
   }
@@ -117,6 +137,7 @@
   }
 
   const api = Object.freeze({
+    OWNED_UI_RUNTIME_FIELDS,
     openModal,
     updateModalPayload,
     closeModal,

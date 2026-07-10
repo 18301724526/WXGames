@@ -16,6 +16,7 @@ const REQUIRED_SCRIPTS = [
   'js/ui/H5ShellAdapter.js',
   'js/state/UIStatePresenterDelegates.js',
   'js/state/UIStatePresenter.js',
+  'js/state/UiRuntimeStateStore.js',
   'shared/formationDeploymentEligibility.js',
   'shared/tutorialFlowConfig.js',
   'js/shared/FormationDeploymentEligibilityAdapter.js',
@@ -35,6 +36,9 @@ const REQUIRED_ORDER_PAIRS = [
   // StateWriter is the single state-write entry point; optimistic/index.js eagerly binds it
   // at module-eval (window global), so StateWriter must load first in the browser.
   ['js/state/StateWriter.js', 'js/state/optimistic/index.js'],
+  ['js/state/StateWriter.js', 'js/state/UiRuntimeStateStore.js'],
+  ['js/state/UiRuntimeStateStore.js', 'js/platform/CanvasModeOwnershipRuntime.js'],
+  ['js/state/UiRuntimeStateStore.js', 'js/platform/CanvasGameShell.js'],
   ['js/state/TerritoryUiStateStore.js', 'js/platform/CanvasActionController.js'],
   ['js/state/TerritoryUiStateStore.js', 'js/platform/CanvasGameShell.js'],
   ['js/state/UIStatePresenterDelegates.js', 'js/state/UIStatePresenter.js'],

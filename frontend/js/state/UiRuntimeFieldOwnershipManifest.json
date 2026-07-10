@@ -1,0 +1,91 @@
+{
+  "schema": "ui-runtime-field-ownership-v1",
+  "boundary": {
+    "ecsAxiom": "ECS world/fog/frame/mode simulation state is REAL bitecs only.",
+    "uiRuntime": "UI runtime fields belong to frontend/js/state store-family members.",
+    "uiStoreRestriction": "UiRuntimeStateStore must not own ECS simulation fields."
+  },
+  "stores": [
+    {
+      "store": "UiRuntimeStateStore",
+      "path": "frontend/js/state/UiRuntimeStateStore.js",
+      "fields": [
+        "activeTab",
+        "militaryView",
+        "armyFormationEditor"
+      ],
+      "approvedCompatibilityFiles": [
+        "frontend/js/platform/CanvasGameApp.js",
+        "frontend/js/platform/CanvasGameShell.js",
+        "frontend/js/platform/CanvasModeOwnershipRuntime.js",
+        "frontend/js/platform/CanvasActionController.js"
+      ]
+    },
+    {
+      "store": "ModalStore",
+      "path": "frontend/js/state/ModalStore.js",
+      "fields": [
+        "activeCommandPanel",
+        "activeEventId",
+        "confirmDialog",
+        "naming",
+        "rewardReveal",
+        "showAdvisor",
+        "showCityManagement",
+        "showCitySwitcher",
+        "showFamousPersons",
+        "showGuidebook",
+        "showLogs",
+        "showResourceDetails",
+        "showSettings",
+        "showSubcityList",
+        "showTaskCenter",
+        "targetPicker",
+        "techDetailOpen"
+      ],
+      "approvedCompatibilityFiles": [
+        "frontend/js/platform/CanvasModalSnapshotAdapter.js",
+        "frontend/js/platform/CanvasModeOwnershipRuntime.js",
+        "frontend/js/platform/CanvasActionController.js",
+        "frontend/js/platform/CanvasGameApp.js",
+        "frontend/js/platform/CanvasGameShell.js"
+      ]
+    },
+    {
+      "store": "BattleStore",
+      "path": "frontend/js/state/BattleStore.js",
+      "fields": [
+        "battleScene",
+        "entityBattle"
+      ],
+      "approvedCompatibilityFiles": [
+        "frontend/js/platform/CanvasModeOwnershipRuntime.js",
+        "frontend/js/platform/CanvasGameApp.js",
+        "frontend/js/platform/CanvasGameShell.js",
+        "frontend/js/platform/EntityBattleController.js"
+      ]
+    },
+    {
+      "store": "TerritoryUiStateStore",
+      "path": "frontend/js/state/TerritoryUiStateStore.js",
+      "fields": [
+        "selectedSiteId",
+        "worldMarchTarget",
+        "selectedWorldActorId",
+        "selectedWorldMissionId",
+        "worldPanX",
+        "worldPanY",
+        "expeditionConfigSiteId",
+        "expeditionTroopType",
+        "expeditionLeader",
+        "expeditionSoldiers"
+      ],
+      "approvedCompatibilityFiles": [
+        "frontend/js/platform/WorldMapRuntimeCoordinator.js",
+        "frontend/js/platform/CanvasGameApp.js",
+        "frontend/js/platform/CanvasGameShell.js",
+        "frontend/js/platform/CanvasActionController.js"
+      ]
+    }
+  ]
+}

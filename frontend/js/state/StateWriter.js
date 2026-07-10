@@ -21,6 +21,18 @@
       : host;
   }
 
+  function getUiRuntimeStateStore() {
+    if (global.UiRuntimeStateStore) return global.UiRuntimeStateStore;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./UiRuntimeStateStore');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  }
+
   // commit(host, patcher[, meta])
   //   - object patcher  => wholesale replace: owner.state = patcher
   //   - function patcher => derive-from-prev: owner.state = patcher(owner.state || {})
@@ -32,6 +44,7 @@
     if (!owner || typeof owner !== 'object') return undefined;
     const next = typeof patcher === 'function' ? patcher(owner.state || {}) : patcher;
     owner.state = next;
+    getUiRuntimeStateStore()?.syncFromState?.(owner, next);
     return next;
   }
 

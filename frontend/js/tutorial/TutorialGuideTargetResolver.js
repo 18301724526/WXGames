@@ -10,6 +10,17 @@
     }
     return null;
   })();
+  const UiRuntimeStateStore = (() => {
+    if (global.UiRuntimeStateStore) return global.UiRuntimeStateStore;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../state/UiRuntimeStateStore');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
 
   function isVisuallyDisabled(action = {}) {
     return ClientCommandSemantics?.isVisuallyDisabled?.(action)
@@ -43,7 +54,7 @@
 
     getActiveRenderTab() {
       const game = this.getGame();
-      return game?.state?.currentTab || game?.activeTab || 'resources';
+      return UiRuntimeStateStore?.getNavigation?.(game)?.activeTab || game?.state?.currentTab || 'resources';
     }
 
     getCanvasTarget(type, predicate = null) {

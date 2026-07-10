@@ -16,6 +16,8 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/ecs/mode/ModeWorld.test.js',
   'frontend/js/state/StateWriter.js',
   'frontend/js/state/StateWriter.test.js',
+  'frontend/js/state/UiRuntimeStateStore.js',
+  'frontend/js/state/UiRuntimeStateStore.test.js',
   'frontend/js/state/TerritoryUiStateStore.js',
   'frontend/js/state/TerritoryUiStateStore.test.js',
   'frontend/js/state/BattleStore.js',
@@ -86,6 +88,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-step4-blocking-map.test.js',
   'scripts/check-step4-final-audit.js',
   'scripts/check-step4-final-audit.test.js',
+  'scripts/check-ui-runtime-field-ownership.js',
+  'scripts/check-ui-runtime-field-ownership.test.js',
   'scripts/verify-step4-phase3-real-server.js',
   'scripts/verify-step4-phase3-real-server.test.js',
   'frontend/js/ui/H5AuthStorageAdapter.js',
@@ -713,6 +717,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-projection-write-boundary.test.js',
   'scripts/check-step4-blocking-map.test.js',
   'scripts/check-step4-final-audit.test.js',
+  'scripts/check-ui-runtime-field-ownership.test.js',
   'scripts/verify-step4-phase3-real-server.test.js',
 ]);
 
@@ -842,6 +847,9 @@ function main() {
   ]);
   run('Step4 final self-audit blocking guard', process.execPath, [
     'scripts/check-step4-final-audit.js',
+  ]);
+  run('ui runtime field ownership blocking guard', process.execPath, [
+    'scripts/check-ui-runtime-field-ownership.js',
   ]);
   run('repository hygiene guard', process.execPath, ['scripts/check-repository-hygiene.js']);
   run('retired legacy code guard', process.execPath, ['scripts/check-retired-legacy-code.js']);

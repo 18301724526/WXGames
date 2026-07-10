@@ -127,6 +127,10 @@
   if (typeof module !== 'undefined' && module.exports && !StateWriter) {
     StateWriter = require('../state/StateWriter');
   }
+  var UiRuntimeStateStore = global.UiRuntimeStateStore;
+  if (typeof module !== 'undefined' && module.exports && !UiRuntimeStateStore) {
+    UiRuntimeStateStore = require('../state/UiRuntimeStateStore');
+  }
   var SharedWorldClock = global.WorldClock;
   if (typeof module !== 'undefined' && module.exports && !SharedWorldClock) {
     try {
@@ -448,6 +452,7 @@ constructor(options = {}) {
       this.tileMapWaterTimer = null;
       this.networkOverlayTimer = null;
       TerritoryUiStateStore.ensure(this);
+      UiRuntimeStateStore?.ensure?.(this);
       this.auth = {
         view: {
           loginPanelVisible: false,
@@ -847,6 +852,8 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           this.createRenderer(hudTarget);
           this.mounted = true;
           this.lastGame = game || null;
+          UiRuntimeStateStore?.ensure?.(this);
+          if (game && typeof game === 'object') UiRuntimeStateStore?.ensure?.(game);
           const shouldHoldInitialLoading = Boolean(game?.token && !game?.hasServerState);
           if (shouldHoldInitialLoading) {
             this.loading = {

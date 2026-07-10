@@ -18,6 +18,11 @@
     entityBattle: null,
   };
 
+  const OWNED_UI_RUNTIME_FIELDS = Object.freeze([
+    'battleScene',
+    'entityBattle',
+  ]);
+
   // Pure: given the two visibility flags, which overlay is on top.
   function deriveActiveOverlay(battleSceneVisible, entityBattleVisible) {
     if (entityBattleVisible) return 'entityBattle';
@@ -100,6 +105,7 @@
   }
 
   const api = Object.freeze({
+    OWNED_UI_RUNTIME_FIELDS,
     deriveActiveOverlay,
     openBattleScene,
     updateBattleScene,
