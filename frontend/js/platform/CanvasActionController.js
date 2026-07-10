@@ -472,8 +472,6 @@
         case 'jumpToSubcity': return this.handle_jumpToSubcity;
         case 'enterCity': return this.handle_enterCity;
         case 'assignJob': return this.handle_assignJob;
-        case 'buildBuilding': return this.handle_buildBuilding;
-        case 'upgradeBuilding': return this.handle_upgradeBuilding;
         case 'advanceEra': return this.handle_advanceEra;
         case 'research': return this.handle_research;
         case 'selectTechNode': return this.handle_selectTechNode;
@@ -1286,59 +1284,6 @@
               game?.tutorialController?.onManualTalentAssigned?.(result || {});
               return result;
             }));
-          }
-
-    handle_buildBuilding(action) {
-            return this.finalize(this.handleBuilding(action, 'build'));
-          }
-
-    handle_upgradeBuilding(action) {
-            return this.finalize(this.handleBuilding(action, 'upgrade'));
-          }
-
-    async handleBuilding(action, buildingAction) {
-            const forwarded = this.forward(action);
-            if (forwarded !== undefined) return this.finalizeForwarded(forwarded);
-            const game = this.getGameHost();
-            if (game?.tutorialController?.onBuildingAction?.(action.buildingId, buildingAction) === false) {
-              game.showFloatingText?.(t('guide.buildFirstHouseFirst'));
-              game.tutorialController?.refreshCurrentHighlight?.();
-            }
-            if (buildingAction === 'upgrade' && typeof game?.upgradeBuilding === 'function') {
-              return game.upgradeBuilding(action.buildingId);
-            }
-            if (buildingAction !== 'upgrade' && typeof game?.buildBuilding === 'function') {
-              return game.buildBuilding(action.buildingId);
-            }
-            const setPending = (pending, options = {}) => {
-              if (typeof this.host?.setPendingBuildingAction === 'function') {
-                this.host.setPendingBuildingAction(pending, options);
-              }
-              if (game && game !== this.host && typeof game?.setPendingBuildingAction === 'function') {
-                game.setPendingBuildingAction(pending, { ...options, render: false });
-              }
-            };
-            if (this.host?.pendingBuildingAction?.buildingId || game?.pendingBuildingAction?.buildingId) return false;
-            const controller = this.getBuildingController();
-            setPending({ buildingId: action.buildingId, action: buildingAction });
-            if (controller?.handleAction) {
-              try {
-                await controller.handleAction({ buildingId: action.buildingId, action: buildingAction });
-                return true;
-              } finally {
-                setPending(null);
-              }
-            }
-            try {
-              await this.runAction(() => (
-                buildingAction === 'upgrade'
-                  ? this.host.api.upgrade(action.buildingId)
-                  : this.host.api.build(action.buildingId)
-              ));
-              return true;
-            } finally {
-              setPending(null);
-            }
           }
 
     handle_advanceEra(action) {

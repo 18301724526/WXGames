@@ -56,6 +56,7 @@ require('../js/platform/CanvasRuntimeContract');
 require('../js/platform/PlatformRuntime');
 require('../js/platform/CanvasLayerRegistry');
 require('../js/platform/DebugOverlayRegistry');
+require('../js/platform/CanvasActionDescriptorRegistry');
 require('../js/platform/CanvasActionDispatchRegistry');
 require('../js/platform/CanvasActionDispatcher');
 require('../js/platform/WorldMapRuntimeBakePolicy');

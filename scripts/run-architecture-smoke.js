@@ -90,6 +90,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-step4-final-audit.test.js',
   'scripts/check-ui-runtime-field-ownership.js',
   'scripts/check-ui-runtime-field-ownership.test.js',
+  'scripts/check-step5-action-descriptor-coverage.js',
+  'scripts/check-step5-action-descriptor-coverage.test.js',
   'scripts/verify-step4-phase3-real-server.js',
   'scripts/verify-step4-phase3-real-server.test.js',
   'frontend/js/ui/H5AuthStorageAdapter.js',
@@ -124,6 +126,10 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/platform/CanvasLayerRegistry.test.js',
   'frontend/js/platform/CanvasRuntimeContract.js',
   'frontend/js/platform/CanvasRuntimeContract.test.js',
+  'frontend/js/platform/CanvasActionDescriptorRegistry.js',
+  'frontend/js/platform/CanvasActionDispatchRegistry.js',
+  'frontend/js/platform/CanvasActionDispatcher.js',
+  'frontend/js/platform/CanvasActionDispatcher.test.js',
   'frontend/js/platform/H5CanvasRuntime.js',
   'frontend/js/platform/H5CanvasRuntime.test.js',
   'frontend/js/platform/CanvasGameShell.js',
@@ -517,6 +523,7 @@ const TEST_FILES = Object.freeze([
   'frontend/js/ecs/input/InputIntentResolver.test.js',
   'frontend/js/platform/CanvasLayerRegistry.test.js',
   'frontend/js/platform/CanvasRuntimeContract.test.js',
+  'frontend/js/platform/CanvasActionDispatcher.test.js',
   'frontend/js/platform/H5CanvasRuntime.test.js',
   'frontend/js/platform/WorldMapRuntimePolicy.test.js',
   'frontend/js/platform/CanvasGameApp.test.js',
@@ -718,6 +725,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-step4-blocking-map.test.js',
   'scripts/check-step4-final-audit.test.js',
   'scripts/check-ui-runtime-field-ownership.test.js',
+  'scripts/check-step5-action-descriptor-coverage.test.js',
   'scripts/verify-step4-phase3-real-server.test.js',
 ]);
 
@@ -850,6 +858,9 @@ function main() {
   ]);
   run('ui runtime field ownership blocking guard', process.execPath, [
     'scripts/check-ui-runtime-field-ownership.js',
+  ]);
+  run('Step5 action descriptor coverage blocking guard', process.execPath, [
+    'scripts/check-step5-action-descriptor-coverage.js',
   ]);
   run('repository hygiene guard', process.execPath, ['scripts/check-repository-hygiene.js']);
   run('retired legacy code guard', process.execPath, ['scripts/check-retired-legacy-code.js']);

@@ -1,4 +1,16 @@
 (function (global) {
+  const CanvasActionDescriptorRegistry = (() => {
+    if (global.CanvasActionDescriptorRegistry) return global.CanvasActionDescriptorRegistry;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./CanvasActionDescriptorRegistry');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const CanvasPanelActionRegistry = (() => {
     if (global.CanvasPanelActionRegistry) return global.CanvasPanelActionRegistry;
     if (typeof module !== 'undefined' && module.exports) {
@@ -355,6 +367,7 @@
 
   function getSupportedActions() {
     return Array.from(new Set([
+      ...(CanvasActionDescriptorRegistry?.supportedActions?.() || []),
       ...LEGACY_SUPPORTED_ACTIONS,
       ...(CanvasPanelActionRegistry?.supportedActions?.() || []),
     ]));
@@ -363,6 +376,9 @@
   function canDispatchWithContext(action = {}, context = null) {
     if (!context) return true;
     if (action.type === 'switchTab') return typeof context.switchTab === 'function';
+    if (CanvasActionDescriptorRegistry?.has?.(action)) {
+      return CanvasActionDescriptorRegistry.canDispatch(action, context);
+    }
     if (CanvasPanelActionRegistry?.has?.(action)) return true;
     if (FINISH_ACTIONS[action.type] || RENDER_ACTIONS[action.type]) {
       return typeof context[action.type] === 'function';
@@ -404,9 +420,24 @@
       return runner?.run?.(action, context) === true;
     }
 
+    static resolveDescriptor(action = {}) {
+      return CanvasActionDescriptorRegistry?.resolve?.(action) || null;
+    }
+
+    static dispatchDescriptorAction(action = {}, context = {}, options = {}) {
+      if (!CanvasActionDescriptorRegistry?.has?.(action)) return false;
+      const result = CanvasActionDescriptorRegistry.dispatch(action, context);
+      return typeof options.finishHandled === 'function'
+        ? options.finishHandled(result, context, action)
+        : result !== false;
+    }
+
     static dispatch(action = {}, context = {}, options = {}) {
       if (!this.canHandle(action, context)) return false;
       if (action.type === 'switchTab') return this.dispatchSwitchTab(action, context);
+      if (CanvasActionDescriptorRegistry?.has?.(action)) {
+        return this.dispatchDescriptorAction(action, context, options);
+      }
       if (CanvasPanelActionRegistry?.has?.(action)) return this.dispatchPanelAction(action, context, options);
 
       const finishAction = FINISH_ACTIONS[action.type];

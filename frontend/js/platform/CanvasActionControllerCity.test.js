@@ -4,6 +4,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const CanvasActionController = require('./CanvasActionController');
+const CanvasActionDescriptorRegistry = require('./CanvasActionDescriptorRegistry');
+const CanvasActionDispatcher = require('./CanvasActionDispatcher');
 const { makeModalOwnerHost } = require('../../test-support/CanvasOwnerTestHarness');
 
 const makeModalHost = makeModalOwnerHost;
@@ -12,81 +14,108 @@ const HostController = CanvasActionController;
 
 test('CanvasActionController installs city compatibility methods', () => {
   assert.equal(typeof HostController.prototype.handle_openCityManagement, 'function');
-  assert.equal(typeof HostController.prototype.handle_buildBuilding, 'function');
+  assert.equal(typeof HostController.prototype.handle_buildBuilding, 'undefined');
+  assert.equal(typeof HostController.prototype.handle_upgradeBuilding, 'undefined');
   assert.equal(typeof HostController.prototype.handle_claimEvent, 'function');
   assert.equal(typeof HostController.prototype.handle_selectTechNode, 'function');
 });
 
-test('building action delegates to building controller and always clears pending state', async () => {
-  const calls = [];
-  const game = {
-    pendingBuildingAction: null,
-    setPendingBuildingAction(pending, options = {}) {
-      calls.push(['gamePending', pending, options]);
-      this.pendingBuildingAction = pending;
-    },
-  };
-  const host = {
-    pendingBuildingAction: null,
-    lastGame: game,
-    setPendingBuildingAction(pending, options = {}) {
-      calls.push(['hostPending', pending, options]);
-      this.pendingBuildingAction = pending;
-    },
-    buildingController: {
-      async handleAction(action) {
-        calls.push(['handleAction', action]);
-      },
-    },
-  };
-  const controller = new HostController({ host: host, awaitAsync: true });
+test('building action descriptors declare the command-submit contract', () => {
+  assert.deepEqual(CanvasActionDescriptorRegistry.supportedActions(), [
+    'buildBuilding',
+    'upgradeBuilding',
+  ]);
 
-  assert.equal(
-    await controller.handle_buildBuilding({ type: 'buildBuilding', buildingId: 'hut' }),
-    true,
+  const build = CanvasActionDescriptorRegistry.resolve({ type: 'buildBuilding' });
+  assert.equal(build.id, 'building.build');
+  assert.equal(build.actionType, 'buildBuilding');
+  assert.equal(build.owner, 'player');
+  assert.equal(build.surface, 'city:buildings');
+  assert.equal(build.kind, 'command-submit');
+  assert.equal(build.commandType, 'build');
+  assert.equal(build.payloadBuilder, 'buildingId');
+  assert.deepEqual(build.traceFields, [
+    'buildingId',
+    'clientActionTraceId',
+    'sourceSurface',
+    'hitTargetId',
+  ]);
+  assert.equal(build.visualStateSource, 'BuildingPresenter.buildBuildingViewState');
+  assert.deepEqual(
+    CanvasActionDescriptorRegistry.buildPayload({ type: 'buildBuilding', buildingId: 'house' }),
+    { buildingId: 'house' },
   );
 
-  assert.equal(host.pendingBuildingAction, null);
-  assert.equal(game.pendingBuildingAction, null);
-  assert.deepEqual(calls, [
-    ['hostPending', { buildingId: 'hut', action: 'build' }, {}],
-    ['gamePending', { buildingId: 'hut', action: 'build' }, { render: false }],
-    ['handleAction', { buildingId: 'hut', action: 'build' }],
-    ['hostPending', null, {}],
-    ['gamePending', null, { render: false }],
-  ]);
+  const upgrade = CanvasActionDescriptorRegistry.resolve({ type: 'upgradeBuilding' });
+  assert.equal(upgrade.id, 'building.upgrade');
+  assert.equal(upgrade.commandType, 'upgrade');
+  assert.deepEqual(
+    CanvasActionDescriptorRegistry.buildPayload({ type: 'upgradeBuilding', buildingId: 'farm' }),
+    { buildingId: 'farm' },
+  );
 });
 
-test('building action keeps tutorial hint but still submits the command', async () => {
+test('building descriptor dispatch delegates to the mounted game host', () => {
   const calls = [];
   const game = {
-    tutorialController: {
-      onBuildingAction() {
-        return false;
-      },
-      refreshCurrentHighlight() {
-        calls.push(['refreshCurrentHighlight']);
-      },
-    },
-    showFloatingText(message) {
-      calls.push(['showFloatingText', message]);
-    },
     buildBuilding(buildingId) {
       calls.push(['buildBuilding', buildingId]);
       return true;
     },
+    upgradeBuilding(buildingId) {
+      calls.push(['upgradeBuilding', buildingId]);
+      return true;
+    },
   };
-  const controller = new HostController({ host: { lastGame: game }, awaitAsync: true });
+  const context = {
+    lastGame: game,
+    render(action) {
+      calls.push(['render', action.type, action.actionDescriptorId]);
+    },
+  };
+  const dispatcher = new CanvasActionDispatcher();
 
-  assert.equal(
-    await controller.handle_buildBuilding({ type: 'buildBuilding', buildingId: 'farm' }),
-    true,
-  );
-  assert.equal(calls.some(([name]) => name === 'showFloatingText'), true);
-  assert.deepEqual(calls.filter(([name]) => name === 'refreshCurrentHighlight'), [
-    ['refreshCurrentHighlight'],
+  assert.equal(dispatcher.canHandle({ type: 'buildBuilding', buildingId: 'hut' }, context), true);
+  assert.equal(dispatcher.handle({ type: 'buildBuilding', buildingId: 'hut' }, context), true);
+  assert.equal(dispatcher.handle({ type: 'upgradeBuilding', buildingId: 'farm' }, context), true);
+  assert.deepEqual(calls, [
+    ['buildBuilding', 'hut'],
+    ['render', 'buildBuilding', 'building.build'],
+    ['upgradeBuilding', 'farm'],
+    ['render', 'upgradeBuilding', 'building.upgrade'],
   ]);
-  assert.deepEqual(calls.find(([name]) => name === 'buildBuilding'), ['buildBuilding', 'farm']);
+});
+
+test('building descriptor keeps visualDisabled as trace metadata and still submits', () => {
+  const calls = [];
+  const logs = [];
+  const dispatcher = new CanvasActionDispatcher();
+
+  assert.equal(dispatcher.handle({
+    type: 'buildBuilding',
+    buildingId: 'farm',
+    disabled: true,
+    clientActionTraceId: 'cat-build-farm',
+    sourceSurface: 'building-panel',
+  }, {
+    clientOperationLog: { record(event, detail) { logs.push([event, detail]); } },
+    buildBuilding(buildingId, meta) {
+      calls.push([
+        'buildBuilding',
+        buildingId,
+        meta.descriptor.id,
+        meta.payload,
+        meta.action.clientActionTrace.actionDescriptorId,
+        meta.action.clientActionTrace.visualDisabled,
+      ]);
+      return true;
+    },
+  }), true);
+
+  assert.deepEqual(calls, [
+    ['buildBuilding', 'farm', 'building.build', { buildingId: 'farm' }, 'building.build', true],
+  ]);
+  assert.deepEqual(logs, []);
 });
 
 test('event claim closes event state, syncs tutorial, and exposes reward reveal fallback', async () => {

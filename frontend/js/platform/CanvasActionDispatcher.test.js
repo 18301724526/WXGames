@@ -242,23 +242,29 @@ test('CanvasActionDispatcher passes world march mission identifiers to finish ha
 
 test('index.html loads action registry before dispatcher', () => {
   const html = fs.readFileSync(path.resolve(__dirname, '../../index.html'), 'utf8');
+  const descriptorPosition = html.indexOf('CanvasActionDescriptorRegistry.js');
   const registryPosition = html.indexOf('CanvasActionDispatchRegistry.js');
   const dispatcherPosition = html.indexOf('CanvasActionDispatcher.js');
 
+  assert.notEqual(descriptorPosition, -1);
   assert.notEqual(registryPosition, -1);
   assert.notEqual(dispatcherPosition, -1);
+  assert.equal(descriptorPosition < registryPosition, true);
   assert.equal(registryPosition < dispatcherPosition, true);
 });
 
 test('minigame loads action dispatch registry before dispatcher and app', () => {
   const minigame = fs.readFileSync(path.resolve(__dirname, '../../minigame/game.js'), 'utf8');
+  const descriptorPosition = minigame.indexOf("require('../js/platform/CanvasActionDescriptorRegistry')");
   const registryPosition = minigame.indexOf("require('../js/platform/CanvasActionDispatchRegistry')");
   const dispatcherPosition = minigame.indexOf("require('../js/platform/CanvasActionDispatcher')");
   const appPosition = minigame.indexOf("require('../js/platform/CanvasGameApp')");
 
+  assert.notEqual(descriptorPosition, -1);
   assert.notEqual(registryPosition, -1);
   assert.notEqual(dispatcherPosition, -1);
   assert.notEqual(appPosition, -1);
+  assert.equal(descriptorPosition < registryPosition, true);
   assert.equal(registryPosition < dispatcherPosition, true);
   assert.equal(dispatcherPosition < appPosition, true);
 });

@@ -47,6 +47,7 @@ function makeTempFrontend() {
     'js/ecs/runtime/EcsModeRuntimeBundle.js',
     'js/platform/CanvasRuntimeContract.js',
     'js/platform/CanvasLayerRegistry.js',
+    'js/platform/CanvasActionDescriptorRegistry.js',
     'js/platform/CanvasActionDispatchRegistry.js',
     'js/platform/CanvasActionDispatcher.js',
     'js/platform/CanvasModeOwnershipRuntime.js',
@@ -91,6 +92,7 @@ function writeIndex(root, overrides = {}) {
   <script src="js/ecs/runtime/EcsModeRuntimeBundle.js?v=${version}"></script>
   <script src="js/platform/CanvasRuntimeContract.js?v=${version}"></script>
   <script src="js/platform/CanvasLayerRegistry.js?v=${version}"></script>
+  <script src="js/platform/CanvasActionDescriptorRegistry.js?v=${version}"></script>
   <script src="js/platform/CanvasActionDispatchRegistry.js?v=${version}"></script>
   <script src="js/platform/CanvasActionDispatcher.js?v=${version}"></script>
   <script src="js/platform/CanvasModeOwnershipRuntime.js?v=${version}"></script>
@@ -137,7 +139,7 @@ test('rewriteFrontendIndex and manifest guard require one deploy asset version',
     frontendDir,
     version: 'deploy-0123456789ab',
   });
-  assert.equal(result.updated, 27);
+  assert.equal(result.updated, 28);
 
   const html = fs.readFileSync(path.join(frontendDir, 'index.html'), 'utf8');
   assert.match(html, /style\.css\?v=deploy-0123456789ab/);
@@ -149,7 +151,7 @@ test('rewriteFrontendIndex and manifest guard require one deploy asset version',
     frontendDir,
     requireVersion: 'deploy-0123456789ab',
   });
-  assert.equal(manifest.localScriptCount, 26);
+  assert.equal(manifest.localScriptCount, 27);
   assert.equal(manifest.stylesheetCount, 1);
 });
 
@@ -182,5 +184,5 @@ test('manifest guard resolves deployed shared assets from repo shared directory'
     repoRoot,
     frontendDir,
   });
-  assert.equal(manifest.localScriptCount, 28);
+  assert.equal(manifest.localScriptCount, 29);
 });

@@ -107,7 +107,10 @@
       if (!this.canHandle(action, context)) return false;
       const normalizedAction = ClientCommandSemantics?.normalizeAction?.(action) || action;
       if (normalizedAction.disabled) return true;
-      const tracedAction = normalizedAction;
+      const descriptor = this.registry?.resolveDescriptor?.(normalizedAction, context) || null;
+      const tracedAction = descriptor && !normalizedAction.actionDescriptorId
+        ? { ...normalizedAction, actionDescriptorId: descriptor.id || descriptor.actionType }
+        : normalizedAction;
       tracedAction.clientActionTrace = tracedAction.clientActionTrace || buildClientActionTrace(tracedAction, context);
       const commandBlockReason = ClientCommandSemantics?.getCommandBlockReason?.(normalizedAction) || '';
       if (commandBlockReason) {

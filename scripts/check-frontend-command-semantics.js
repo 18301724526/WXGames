@@ -9,6 +9,7 @@ const FILES = Object.freeze({
   controller: 'frontend/js/platform/CanvasActionController.js',
   shell: 'frontend/js/platform/CanvasGameShell.js',
   app: 'frontend/js/platform/CanvasGameApp.js',
+  commandService: 'frontend/js/platform/GameCommandService.js',
   gameApi: 'frontend/js/api/GameAPI.js',
 });
 
@@ -44,7 +45,7 @@ const REQUIRED_COMMAND_ACTION_TYPES = Object.freeze([
 
 const COMMAND_CLICK_TARGET_METHODS = Object.freeze([
   { file: FILES.controller, method: 'handle_research', label: 'tech research command target' },
-  { file: FILES.controller, method: 'handleBuilding', label: 'building command target' },
+  { file: FILES.commandService, method: 'handleBuildingAction', label: 'building command target' },
   { file: FILES.controller, method: 'handle_acceptFamousPerson', label: 'famous accept command target' },
   { file: FILES.controller, method: 'handle_dismissFamousPersonCandidate', label: 'famous dismiss command target' },
   { file: FILES.controller, method: 'handle_claimConquest', label: 'territory claim command target' },
@@ -258,6 +259,7 @@ function inspectFrontendCommandSemantics({
   const controller = readSource(repoRoot, sources, FILES.controller);
   const shell = readSource(repoRoot, sources, FILES.shell);
   const app = readSource(repoRoot, sources, FILES.app);
+  const commandService = readSource(repoRoot, sources, FILES.commandService);
   const gameApi = readSource(repoRoot, sources, FILES.gameApi);
 
   inspectCommandActionTypes(violations, semantics);
@@ -265,7 +267,11 @@ function inspectFrontendCommandSemantics({
   inspectNormalizeBeforeDisabled(violations, FILES.controller, extractMethodSource(controller, 'handle'), 'CanvasActionController.handle');
   inspectAdvanceEra(violations, app);
   COMMAND_CLICK_TARGET_METHODS.forEach((target) => {
-    const source = target.file === FILES.shell ? shell : controller;
+    const source = target.file === FILES.shell
+      ? shell
+      : target.file === FILES.commandService
+        ? commandService
+        : controller;
     inspectDomainBlocksInMethod(violations, source, target.file, target.method, target.label);
   });
   inspectGameApiHelpers(violations, gameApi);
