@@ -16,12 +16,31 @@ class CommandCommitter {
     const revisionBefore = context.trace?.revisionBefore ?? context.state?.revision ?? null;
     const persistence = definition.persistence || {};
     const strategy = persistence.strategy || 'save';
+    const sharedMutations = context.sharedMutations || {};
+    const hasSharedMutations = ['encounters', 'people', 'diplomacyEdges']
+      .some((key) => Array.isArray(sharedMutations[key]) && sharedMutations[key].length > 0);
     let savedState = context.state;
-    if (strategy === 'save') {
-      savedState = this.repository.save(context.state);
-    } else if (strategy === 'save-if-changed') {
-      if (context.execution?.changed) savedState = this.repository.save(context.state);
+    let sharedCommit = null;
+    if (strategy === 'save' || strategy === 'save-if-changed' || strategy === 'shared-only') {
+      const persistState = strategy === 'save'
+        || (strategy === 'save-if-changed' && context.execution?.changed);
+      if (hasSharedMutations) {
+        const committed = this.repository.commitCommandState(
+          context.state,
+          sharedMutations,
+          { persistState },
+        );
+        savedState = committed.savedState || context.state;
+        sharedCommit = committed.shared;
+      } else if (persistState) {
+        savedState = this.repository.save(context.state);
+      }
     } else if (strategy === 'reset-player-state') {
+      if (hasSharedMutations) {
+        const error = new Error('Player reset cannot carry shared command mutations');
+        error.code = 'COMMAND_SHARED_MUTATION_STRATEGY_INVALID';
+        throw error;
+      }
       savedState = this.repository.resetPlayerState(
         context.envelope.playerId,
         context.state,
@@ -39,6 +58,7 @@ class CommandCommitter {
       state: authoritativeState,
       revisionBefore,
       revisionAfter: authoritativeState?.revision ?? context.state?.revision ?? null,
+      shared: sharedCommit,
     };
   }
 

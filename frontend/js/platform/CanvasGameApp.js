@@ -2489,6 +2489,7 @@
                 let opened = null;
                 try {
                   opened = await api.startWorldCombat({
+                    encounterId: options.encounterId || options.engagement?.encounterId || '',
                     missionId: options.missionId || '',
                     formationSlot: options.formationSlot ?? options.slot ?? 1,
                     cityId: options.cityId || this.state?.activeCityId || 'capital',
@@ -2506,6 +2507,11 @@
                 }
                 this.applyApiState?.(opened);
                 const battleId = opened.battleId;
+                const encounterId = opened.session?.encounterId
+                  || opened.encounter?.id
+                  || options.encounterId
+                  || options.engagement?.encounterId
+                  || '';
                 const shown = this.openEntityBattle({
                   mode: 'interactive',
                   battleId,
@@ -2514,7 +2520,11 @@
                   battleTarget: opened.battleTarget,
                   onResolve: async ({ inputStream }) => {
                     try {
-                      const resolved = await api.resolveWorldCombat(battleId, inputStream);
+                      const resolved = await api.resolveWorldCombat(
+                        battleId,
+                        inputStream,
+                        encounterId,
+                      );
                       // The interactive scene already played this battle live. The
                       // authoritative re-sim pushes its report into recentReports, so
                       // mark it seen BEFORE applyApiState 鈥?otherwise the passive

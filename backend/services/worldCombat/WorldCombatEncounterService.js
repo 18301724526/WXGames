@@ -342,10 +342,7 @@ function getSharedEncounters(gameState = {}, now = new Date(), options = {}) {
 }
 
 function persistSharedEncounter(encounter = {}, options = {}, now = new Date()) {
-  const repo = options.worldEncounterRepo || null;
-  if (repo && typeof repo.upsertEncounter === 'function' && encounter?.id) {
-    repo.upsertEncounter(encounter, now);
-  }
+  if (encounter?.id) options.stageEncounter?.(encounter, now);
   return encounter;
 }
 
@@ -392,6 +389,9 @@ function resolveMarchTarget(gameState = {}, options = {}, now = new Date(), cont
       };
     }
   } else {
+    if (options.ownerEncounterLookupPerformed === true) {
+      return { success: true, encounter: null, target: null };
+    }
     // No explicit encounter id: marching onto a tile occupied by an active
     // hostile force is an attack on that force. The client does not always tag
     // it (e.g. when the formation is already parked on the encounter tile, or

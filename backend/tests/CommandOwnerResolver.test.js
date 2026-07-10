@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const GameActionRegistry = require('../actions/GameActionRegistry');
 const {
   COMMAND_OWNER_RULES,
+  createRepositoryOwnerResolver,
   inspectCommandOwners,
   listDeclaredCommandTypes,
   resolveCommandOwners,
@@ -126,6 +127,56 @@ test('CommandOwnerResolver makes march to encounter handoff explicit when the id
   }));
   assert.equal(encounterMarch.ownerKey, 'encounter:encounter-1');
   assert.deepEqual(encounterMarch.ownerKeys, ['encounter:encounter-1', 'player:player-1']);
+});
+
+test('CommandOwnerResolver resolves march encounter ids from a read-only repository lookup', () => {
+  const calls = [];
+  const resolver = createRepositoryOwnerResolver({
+    worldEncounterRepo: {
+      getActiveEncounterAt(coord, options) {
+        calls.push({ coord, options });
+        return { id: 'encounter-by-tile' };
+      },
+    },
+  });
+  const result = resolver(envelope('startWorldMarch', { targetQ: 4.8, targetR: -1.2 }));
+
+  assert.equal(result.ownerKey, 'encounter:encounter-by-tile');
+  assert.deepEqual(result.ownerKeys, ['encounter:encounter-by-tile', 'player:player-1']);
+  assert.equal(result.targetId, 'encounter-by-tile');
+  assert.equal(result.lookupPerformed, true);
+  assert.deepEqual(calls, [{
+    coord: { q: 4, r: -2 },
+    options: { refreshRespawns: false },
+  }]);
+});
+
+test('CommandOwnerResolver resolves split worker commands to explicit owners', () => {
+  const player = resolveCommandOwners(envelope('worldWorkerPlayerTick', {
+    encounterIds: ['encounter-b', 'encounter-a', 'encounter-b'],
+  }));
+  assert.equal(player.ownerKey, 'player:player-1');
+  assert.deepEqual(player.ownerKeys, [
+    'encounter:encounter-a',
+    'encounter:encounter-b',
+    'player:player-1',
+  ]);
+
+  const person = resolveCommandOwners(envelope(
+    'worldWorkerPersonUpdate',
+    { personId: 'person-1' },
+    'system:world-worker',
+  ));
+  assert.equal(person.ownerKey, 'person:person-1');
+  assert.deepEqual(person.ownerKeys, ['person:person-1']);
+
+  const diplomacy = resolveCommandOwners(envelope(
+    'worldWorkerDiplomacyTick',
+    { pairId: 'faction-a__faction-b' },
+    'system:world-worker',
+  ));
+  assert.equal(diplomacy.ownerKey, 'diplomacy:faction-a__faction-b');
+  assert.deepEqual(diplomacy.ownerKeys, ['diplomacy:faction-a__faction-b']);
 });
 
 test('CommandOwnerResolver reports the unsplit worker writer as an honest blocker', () => {

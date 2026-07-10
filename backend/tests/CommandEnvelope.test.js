@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const {
   buildCommandPayload,
   createBuildBuildingCommand,
+  createInternalCommandEnvelope,
   normalizeCommandEnvelope,
 } = require('../application/commands/CommandEnvelope');
 const { prepareCommandEntry } = require('../application/commands/CommandEntryContext');
@@ -49,6 +50,24 @@ test('CommandEnvelope normalizes an explicit client command envelope', () => {
   assert.equal(envelope.compatibility.idempotencyClassification, 'client-idempotent');
   assert.equal(envelope.compatibility.serverFallbackId, false);
   assert.equal(envelope.compatibility.clientPayloadMatches, true);
+});
+
+test('CommandEnvelope creates explicit internal-idempotent worker envelopes', () => {
+  const envelope = createInternalCommandEnvelope({
+    type: 'worldWorkerPersonUpdate',
+    playerId: 'system:world-worker',
+    commandId: 'cmd-world-worker-person-1',
+    idempotencyKey: 'idem-world-worker-person-1',
+    requestId: 'worker-tick-1',
+    payload: { personId: 'person-1', person: { id: 'person-1' } },
+  });
+
+  assert.equal(envelope.type, 'worldWorkerPersonUpdate');
+  assert.equal(envelope.playerId, 'system:world-worker');
+  assert.equal(envelope.compatibility.idempotencyClassification, 'internal-idempotent');
+  assert.equal(envelope.compatibility.internalCommand, true);
+  assert.equal(envelope.compatibility.clientEnvelopePresent, false);
+  assert.deepEqual(envelope.payload, { person: { id: 'person-1' }, personId: 'person-1' });
 });
 
 test('CommandEnvelope preserves missing client ids only as server fallback compatibility metadata', () => {

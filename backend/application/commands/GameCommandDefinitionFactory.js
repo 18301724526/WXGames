@@ -6,6 +6,7 @@ const { GameActionCommandHandler } = require('./GameActionCommandHandler');
 const { HeartbeatCommandHandler } = require('./HeartbeatCommandHandler');
 const { PlayerResetCommandHandler } = require('./PlayerResetCommandHandler');
 const { TaskClaimCommandHandler } = require('./TaskClaimCommandHandler');
+const { WorldCombatCommandHandler } = require('./WorldCombatCommandHandler');
 const {
   buildGameView,
   loadProgressedGameState,
@@ -26,11 +27,16 @@ class GameCommandDefinitionFactory {
     });
     this.gameActionHandler = new GameActionCommandHandler({
       gameStateService: this.gameStateService,
+      repository: this.repository,
     });
     this.taskClaimHandler = new TaskClaimCommandHandler({
       gameStateService: this.gameStateService,
     });
     this.heartbeatHandler = new HeartbeatCommandHandler({
+      gameStateService: this.gameStateService,
+      now: this.now,
+    });
+    this.worldCombatHandler = new WorldCombatCommandHandler({
       gameStateService: this.gameStateService,
       now: this.now,
     });
@@ -53,6 +59,7 @@ class GameCommandDefinitionFactory {
       this.gameStateService,
       context.envelope.playerId,
       application.projection,
+      { resolveEngagedTimeouts: false },
     );
   }
 
@@ -99,6 +106,13 @@ class GameCommandDefinitionFactory {
 
   createTaskClaimDefinition(options = {}) {
     return this._createProjectedDefinition(this.taskClaimHandler, {
+      ...options,
+      commitRejected: true,
+    });
+  }
+
+  createWorldCombatDefinition(options = {}) {
+    return this._createProjectedDefinition(this.worldCombatHandler, {
       ...options,
       commitRejected: true,
     });

@@ -639,6 +639,52 @@ class GameStateRepository {
     return this.saveAtomic(gameState, options);
   }
 
+  applySharedMutationsWithinTransaction(mutations = {}) {
+    const encounters = Array.isArray(mutations.encounters) ? mutations.encounters : [];
+    const people = Array.isArray(mutations.people) ? mutations.people : [];
+    const diplomacyEdges = Array.isArray(mutations.diplomacyEdges)
+      ? mutations.diplomacyEdges
+      : [];
+    encounters.forEach((mutation) => {
+      const encounter = mutation?.encounter || mutation;
+      this.worldEncounterRepo.upsertEncounter(encounter, mutation?.now || null);
+    });
+    people.forEach((mutation) => {
+      const person = mutation?.person || mutation;
+      this.worldPeopleRepo.upsertPerson(person, mutation?.now || null);
+    });
+    diplomacyEdges.forEach((mutation) => {
+      this.factionDiplomacyRepo.upsertEdge(
+        mutation.fromFactionId,
+        mutation.toFactionId,
+        mutation.edge,
+        mutation.now || null,
+      );
+    });
+    return {
+      encounterCount: encounters.length,
+      peopleCount: people.length,
+      diplomacyEdgeCount: diplomacyEdges.length,
+    };
+  }
+
+  commitCommandState(gameState, mutations = {}, options = {}) {
+    const persistState = options.persistState !== false;
+    const transaction = this.db.transaction((state, sharedMutations, commitOptions) => {
+      const savedState = persistState
+        ? this.saveWithinTransaction(state, commitOptions)
+        : state;
+      const shared = this.applySharedMutationsWithinTransaction(sharedMutations);
+      return { savedState, shared };
+    });
+    const result = transaction(gameState, mutations, options);
+    if (persistState && gameState && typeof gameState === 'object') {
+      gameState.revision = result.savedState.revision;
+      gameState.updatedAt = result.savedState.updatedAt;
+    }
+    return result;
+  }
+
   resetPlayerState(playerId, gameState) {
     const transaction = this.db.transaction((id, state) => {
       this.db.prepare('DELETE FROM game_states WHERE playerId = ?').run(id);
@@ -675,6 +721,25 @@ class GameStateRepository {
         && typeof territory === 'object'
         && (!excludePlayerId || territory.ownerPlayerId !== excludePlayerId)
       ));
+  }
+
+  getSharedWorldTerritory(territoryId) {
+    const id = String(territoryId || '');
+    if (!id) return null;
+    const row = this.db.prepare(`
+      SELECT territory, ownerPlayerId
+      FROM shared_world_territories
+      WHERE id = ?
+    `).get(id);
+    if (!row) return null;
+    try {
+      const territory = JSON.parse(row.territory || 'null');
+      return territory && typeof territory === 'object'
+        ? { ...territory, ownerPlayerId: territory.ownerPlayerId || row.ownerPlayerId || '' }
+        : null;
+    } catch (_) {
+      return null;
+    }
   }
 
   getSharedTerritoryOwner(gameState, territory) {

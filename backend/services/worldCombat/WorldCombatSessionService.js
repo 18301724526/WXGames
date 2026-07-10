@@ -78,7 +78,15 @@ function getSessionFormation(mission = {}, fallback = {}) {
 // Open an interactive battle session. Authoritative: builds seed + setup here.
 function openSession(
   gameState = {},
-  { missionId = '', formationSlot, cityId = 'capital', targetQ, targetR } = {},
+  {
+    encounterId = '',
+    combatEncounterId = '',
+    missionId = '',
+    formationSlot,
+    cityId = 'capital',
+    targetQ,
+    targetR,
+  } = {},
   now = new Date(),
   options = {},
 ) {
@@ -89,12 +97,25 @@ function openSession(
     return failure('WORLD_COMBAT_SESSION_BUSY', '已有战斗正在进行中。');
   }
 
-  const encounter = WorldCombatEncounterService.getActiveEncounterAt(gameState, {
-    q: targetQ,
-    r: targetR,
-  }, now, options);
+  const requestedEncounterId = String(encounterId || combatEncounterId || '').trim();
+  if (!requestedEncounterId) {
+    return failure('WORLD_COMBAT_ENCOUNTER_ID_REQUIRED', '缺少敌军标识，请重新选择目标。');
+  }
+  const encounter = WorldCombatEncounterService.getActiveEncounter(
+    gameState,
+    requestedEncounterId,
+    now,
+    options,
+  );
   if (!encounter) {
     return failure('WORLD_COMBAT_ENCOUNTER_NOT_FOUND', '该敌军已不在此处。');
+  }
+  const hasTargetCoord = Number.isFinite(Number(targetQ)) && Number.isFinite(Number(targetR));
+  if (hasTargetCoord && (
+    toInteger(targetQ, 0) !== toInteger(encounter.q, 0)
+    || toInteger(targetR, 0) !== toInteger(encounter.r, 0)
+  )) {
+    return failure('WORLD_COMBAT_ENCOUNTER_TARGET_MISMATCH', '敌军位置已变化，请重新选择目标。');
   }
 
   const mission = findSourceMission(gameState, { missionId, cityId, formationSlot });
@@ -178,7 +199,7 @@ function openSession(
 // apply casualties, mutate the encounter, build the report, clear the session.
 function resolveSession(
   gameState = {},
-  { battleId = '', inputStream = [] } = {},
+  { battleId = '', encounterId = '', combatEncounterId = '', inputStream = [] } = {},
   now = new Date(),
   options = {},
 ) {
@@ -190,6 +211,13 @@ function resolveSession(
   }
   if (session.battleId !== battleId) {
     return failure('WORLD_COMBAT_SESSION_MISMATCH', '战斗信息不匹配，请重新发起战斗。');
+  }
+  const requestedEncounterId = String(encounterId || combatEncounterId || '').trim();
+  if (!requestedEncounterId) {
+    return failure('WORLD_COMBAT_ENCOUNTER_ID_REQUIRED', '缺少敌军标识，请重新发起战斗。');
+  }
+  if (session.encounterId !== requestedEncounterId) {
+    return failure('WORLD_COMBAT_ENCOUNTER_MISMATCH', '敌军信息与战斗会话不匹配。');
   }
 
   const stream = Array.isArray(inputStream) ? inputStream : [];
@@ -246,9 +274,7 @@ function resolveSession(
   });
   report.loot = loot;
 
-  if (encounter && options.worldEncounterRepo?.upsertEncounter) {
-    options.worldEncounterRepo.upsertEncounter(encounter, now);
-  }
+  if (encounter) options.stageEncounter?.(encounter, now);
   WorldCombatEncounterService.markEncounterFought(gameState, session.encounterId, report, now);
 
   // Transition the squad/mission back: write casualties onto the live mission's

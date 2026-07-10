@@ -4,7 +4,10 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const Database = require('better-sqlite3');
 
-const { normalizeCommandEnvelope } = require('../application/commands/CommandEnvelope');
+const {
+  createInternalCommandEnvelope,
+  normalizeCommandEnvelope,
+} = require('../application/commands/CommandEnvelope');
 const {
   CommandIdempotencyStore,
   STATUS_COMMITTED,
@@ -63,6 +66,28 @@ test('CommandIdempotencyStore replays the exact stored response for the same pay
     const replay = store.begin(command);
     assert.equal(replay.status, 'replay');
     assert.deepEqual(replay.response, response);
+  } finally {
+    db.close();
+  }
+});
+
+test('CommandIdempotencyStore accepts stable internal worker command keys', () => {
+  const { db, store } = createStore();
+  try {
+    const command = createInternalCommandEnvelope({
+      type: 'worldWorkerPersonUpdate',
+      playerId: 'system:world-worker',
+      commandId: 'cmd-world-worker-person-1',
+      idempotencyKey: 'idem-world-worker-person-1',
+      payload: { personId: 'person-1' },
+    });
+    const started = store.begin(command);
+    const bound = store.bindOwner(started.record, 'person:person-1');
+    store.recordResult(bound, { statusCode: 200, payload: { success: true } });
+
+    const replay = store.begin(command);
+    assert.equal(replay.status, 'replay');
+    assert.deepEqual(replay.response, { statusCode: 200, payload: { success: true } });
   } finally {
     db.close();
   }

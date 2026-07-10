@@ -8,7 +8,13 @@ function loadProjection(repository, playerId) {
   return repository.getClientProjectionForPlayer?.(playerId) || {};
 }
 
-function loadProgressedGameState(repository, gameStateService, playerId, projection = {}) {
+function loadProgressedGameState(
+  repository,
+  gameStateService,
+  playerId,
+  projection = {},
+  options = {},
+) {
   const rawState = repository.findByPlayerId(playerId);
   if (!rawState) return null;
   return gameStateService.applyOnlineProgress
@@ -16,6 +22,7 @@ function loadProgressedGameState(repository, gameStateService, playerId, project
       planningContext: projection,
       worldEncounterRepo: repository.worldEncounterRepo,
       sharedWorldEncounters: projection.sharedWorldEncounters,
+      resolveEngagedTimeouts: options.resolveEngagedTimeouts,
     })
     : gameStateService.normalizeState(rawState);
 }

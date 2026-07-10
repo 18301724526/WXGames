@@ -324,6 +324,7 @@ function advanceExploreMissions(gameState, now = new Date(), options = {}) {
       WorldCombatEncounterService.resolveMissionArrival(gameState, mission, now, {
         worldEncounterRepo: options.worldEncounterRepo,
         sharedWorldEncounters: options.sharedWorldEncounters || options.planningContext?.sharedWorldEncounters,
+        stageEncounter: options.stageEncounter,
       });
       settleReturnedFormationSnapshot(gameState, mission, now);
     }
@@ -342,10 +343,13 @@ function advanceExploreMissions(gameState, now = new Date(), options = {}) {
   // longer than the fallback window (a player who never opened the interactive battle).
   // Runs every tick/heartbeat that advances missions; defers to an open interactive
   // session so it never double-settles a fight the player is actively playing.
-  WorldCombatEncounterService.resolveEngagedTimeouts(gameState, now, {
-    worldEncounterRepo: options.worldEncounterRepo,
-    sharedWorldEncounters: options.sharedWorldEncounters || options.planningContext?.sharedWorldEncounters,
-  });
+  if (options.resolveEngagedTimeouts !== false) {
+    WorldCombatEncounterService.resolveEngagedTimeouts(gameState, now, {
+      worldEncounterRepo: options.worldEncounterRepo,
+      sharedWorldEncounters: options.sharedWorldEncounters || options.planningContext?.sharedWorldEncounters,
+      stageEncounter: options.stageEncounter,
+    });
+  }
   if (options.marchVerification?.enabled === true) {
     WorldMarchVerification.verifyMissions(gameState, now, options.marchVerification);
   }
@@ -360,6 +364,8 @@ function normalizeExploreState(gameState, now = new Date(), options = {}) {
     worldEncounterRepo: options.worldEncounterRepo,
     sharedWorldEncounters: options.sharedWorldEncounters || options.planningContext?.sharedWorldEncounters,
     marchVerification: options.marchVerification,
+    resolveEngagedTimeouts: options.resolveEngagedTimeouts,
+    stageEncounter: options.stageEncounter,
   });
   return gameState.exploreMissions;
 }

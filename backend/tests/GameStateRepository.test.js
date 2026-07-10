@@ -103,6 +103,52 @@ test('GameStateRepository increments revision and rejects stale expected revisio
   }
 });
 
+test('GameStateRepository commits player and shared command mutations atomically', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+  try {
+    const playerId = 'command-shared-atomic';
+    repository.save(GameStateService.createInitialGameState(playerId));
+    const state = repository.findByPlayerId(playerId);
+    state.happiness = 77;
+    const encounter = {
+      id: 'command-shared-encounter',
+      q: 3,
+      r: -1,
+      status: 'active',
+      defender: { soldiers: 10 },
+    };
+
+    assert.throws(() => repository.commitCommandState(state, {
+      encounters: [{ encounter, now: '2026-07-10T01:00:00.000Z' }],
+      people: [{
+        person: { id: 'invalid-player-person', factionId: `player_${playerId}` },
+        now: '2026-07-10T01:00:00.000Z',
+      }],
+    }), /player-owned people live in game_states/);
+    assert.equal(repository.findByPlayerId(playerId).revision, 1);
+    assert.equal(repository.findByPlayerId(playerId).happiness, 100);
+    assert.equal(repository.worldEncounterRepo.getEncounter(
+      encounter.id,
+      { refreshRespawns: false },
+    ), null);
+
+    const committed = repository.commitCommandState(state, {
+      encounters: [{ encounter, now: '2026-07-10T01:00:00.000Z' }],
+    });
+    assert.equal(committed.savedState.revision, 2);
+    assert.equal(committed.shared.encounterCount, 1);
+    assert.equal(repository.findByPlayerId(playerId).happiness, 77);
+    assert.equal(repository.worldEncounterRepo.getEncounter(
+      encounter.id,
+      { refreshRespawns: false },
+    ).status, 'active');
+  } finally {
+    db.close();
+  }
+});
+
 test('GameStateRepository serializes player state locks across repository instances', () => {
   const db = new Database(':memory:');
   const firstRepository = new GameStateRepository(db);
