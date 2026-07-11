@@ -360,6 +360,9 @@
       ['state.changed', 'modal.changed'].forEach((eventName) => {
         unsubscribers.push(bus.subscribe(eventName, (change = {}) => {
           if (host?.isChangeEventRelevant?.(eventName, change) === false) return false;
+          if (typeof host?.requestHighlightRefresh === 'function') {
+            return host.requestHighlightRefresh(eventName, change);
+          }
           return host?.refreshCurrentHighlight?.();
         }));
       });

@@ -274,6 +274,21 @@
     return getRefreshReentryTraceSnapshot();
   }
 
+  const highlightRefreshTransactions = new WeakMap();
+
+  function getHighlightRefreshTransaction(host) {
+    const owner = host?.game?.lastGame || host?.game || host;
+    if (!owner || (typeof owner !== 'object' && typeof owner !== 'function')) {
+      return { active: false };
+    }
+    let transaction = highlightRefreshTransactions.get(owner);
+    if (!transaction) {
+      transaction = { active: false };
+      highlightRefreshTransactions.set(owner, transaction);
+    }
+    return transaction;
+  }
+
   function getGlobalAdvanceWatchdogTrace() {
     if (!global.__tutorialAdvanceWatchdogTrace) {
       global.__tutorialAdvanceWatchdogTrace = {
@@ -363,6 +378,18 @@
       if (eventName !== 'state.changed') return true;
       const owner = change.owner;
       return !owner || !this.game || owner === this.game || owner === this.game.lastGame;
+    }
+
+    requestHighlightRefresh(eventName = '', _change = {}) {
+      if (eventName === 'state.changed' && getHighlightRefreshTransaction(this).active) {
+        recordRefreshReentryTrace({
+          stepKey: this.getCurrentStep(),
+          phase: 'primary',
+          trailingScheduled: false,
+        });
+        return false;
+      }
+      return this.refreshCurrentHighlight();
     }
 
     getTutorialMirrorSources() {
@@ -1511,7 +1538,8 @@
     }
 
     refreshCurrentHighlight() {
-      if (this.highlightRefreshActive) {
+      const transaction = getHighlightRefreshTransaction(this);
+      if (transaction.active) {
         this.highlightRefreshPending = true;
         const trailingScheduled = this.highlightRefreshTrailing
           ? false
@@ -1524,6 +1552,7 @@
         return false;
       }
       this.highlightRefreshActive = true;
+      transaction.active = true;
       try {
         const stepKey = this.getCurrentStep();
         if (!this.hasStepScript(stepKey)) return this.refreshLegacyHighlight();
@@ -1534,6 +1563,7 @@
         return this.renderStepScriptInstruction(instruction) || false;
       } finally {
         this.highlightRefreshActive = false;
+        transaction.active = false;
       }
     }
 }

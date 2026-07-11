@@ -231,6 +231,66 @@ test('reentry during a trailing refresh schedules one more non-recursive refresh
   context.disconnectChangeEventBus();
 });
 
+test('state.changed back-edge is coalesced across contexts sharing one game owner', async () => {
+  TutorialHostContext.resetRefreshReentryTrace();
+  const tutorial = { completed: false, currentStep: 'cityEntered' };
+  const game = { tutorial, state: { tutorial } };
+  const bus = ChangeEventBus.createEventBus();
+  let firstRefreshCount = 0;
+  let secondRefreshCount = 0;
+  let activeDepth = 0;
+  let maxDepth = 0;
+
+  const first = new TutorialHostContext({
+    state: tutorial,
+    game,
+    changeEventBus: bus,
+    stepScriptConfig: {},
+    flowRegistry: {
+      refresh() {
+        firstRefreshCount += 1;
+        activeDepth += 1;
+        maxDepth = Math.max(maxDepth, activeDepth);
+        bus.emit('state.changed', { owner: game, source: 'renderActive:getActiveTab' });
+        activeDepth -= 1;
+        return true;
+      },
+    },
+    targetResolver: null,
+    queryTable: null,
+  });
+  const second = new TutorialHostContext({
+    state: tutorial,
+    game,
+    changeEventBus: bus,
+    stepScriptConfig: {},
+    flowRegistry: {
+      refresh() {
+        secondRefreshCount += 1;
+        activeDepth += 1;
+        maxDepth = Math.max(maxDepth, activeDepth);
+        activeDepth -= 1;
+        return true;
+      },
+    },
+    targetResolver: null,
+    queryTable: null,
+  });
+
+  assert.equal(first.refreshCurrentHighlight(), true);
+  await Promise.resolve();
+
+  assert.equal(firstRefreshCount, 1);
+  assert.equal(secondRefreshCount, 0);
+  assert.equal(maxDepth, 1);
+  assert.deepEqual(TutorialHostContext.getRefreshReentryTrace().traces, [
+    { stepKey: 'cityEntered', phase: 'primary', trailingScheduled: false },
+    { stepKey: 'cityEntered', phase: 'primary', trailingScheduled: false },
+  ]);
+  first.disconnectChangeEventBus();
+  second.disconnectChangeEventBus();
+});
+
 test('cityEntered advances before refreshing its pure projection', async () => {
   const steps = TutorialFlowShared.TUTORIAL_STEPS;
   const calls = [];
