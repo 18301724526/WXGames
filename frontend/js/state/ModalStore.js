@@ -21,6 +21,18 @@
     tokenSeq: 0,
   };
 
+  function getChangeEventBus() {
+    if (global.ChangeEventBus) return global.ChangeEventBus;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./ChangeEventBus');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  }
+
   const OWNED_UI_RUNTIME_FIELDS = Object.freeze([
     'activeCommandPanel',
     'activeEventId',
@@ -69,6 +81,13 @@
       payload: freezePayload(payload),
       callbacks: callbacks && typeof callbacks === 'object' ? callbacks : null,
     };
+    getChangeEventBus()?.emit?.('modal.changed', {
+      source: 'ModalStore',
+      operation: 'open',
+      subtype: key,
+      token,
+      payload: state.entries[key].payload,
+    });
     return token;
   }
 
@@ -83,7 +102,17 @@
 
   function closeModal(subtype) {
     const key = normalizeSubtype(subtype);
+    const previous = state.entries[key] || null;
     delete state.entries[key];
+    if (previous) {
+      getChangeEventBus()?.emit?.('modal.changed', {
+        source: 'ModalStore',
+        operation: 'close',
+        subtype: key,
+        token: previous.token,
+        payload: previous.payload,
+      });
+    }
     return null;
   }
 

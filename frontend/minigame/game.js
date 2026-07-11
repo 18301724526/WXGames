@@ -19,6 +19,7 @@ require('../js/ecs/foundation/TileMapGeometry');
 require('../js/ecs/runtime/EcsModeRuntimeBundle');
 require('../js/ecs/foundation/WorldTime');
 require('../js/ecs/system/WorldMarchProgressSnapshot');
+require('../js/state/ChangeEventBus');
 require('../js/state/StateWriter');
 require('../js/state/UiRuntimeStateStore');
 require('../js/state/TerritoryUiStateStore');

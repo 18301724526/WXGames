@@ -25,3 +25,19 @@ node scripts/run-architecture-smoke.js
 ```
 
 `git diff --no-index --exit-code` 返回 0，逐字节 diff 为空；基线未重录、未修改。
+
+## X1|双漏斗 change-notify + 薄总线
+
+- 新增 `frontend/js/state/ChangeEventBus.js`，仅支持精确事件名的 `emit/subscribe`；退订幂等，无第三方依赖，无通配符分发。
+- 单测覆盖订阅、退订、多订阅者，以及异常订阅者不阻断后续订阅者且异常不逃逸到发布方。
+- `ModalStore.openModal/closeModal` 发布 `modal.changed`，携带 `source/operation/subtype/token/payload`。
+- `StateWriter.commit` 发布 `state.changed`，携带 `source/operation/owner/previous/next/meta`。
+- 原调用点、返回值和状态写入顺序保持不变；未割接任何 `onXxx` 调用点。
+
+验证结果：
+
+- 总线与双漏斗定向测试 23/23 通过。
+- `TUTORIAL_WITNESS_ASSERT_ZERO=1 npm test`：298 个测试文件，exit 0。
+- `node scripts/run-architecture-smoke.js`：exit 0。
+- 全程教程：`stopReason=tutorial-completed`、`finalStepName=completed`、62 个动作、64 条投影、0 verification failure、`tutorialHostContextWitness.count=0`。
+- X1 transcript 与仓库基线 SHA-256 同为 `16862F819B0EE78ACBD8C358CB964FC1307646BD122BA4BA6EC9C270E79D605F`，逐字节 diff 为空。

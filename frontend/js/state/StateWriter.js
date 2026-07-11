@@ -33,18 +33,39 @@
     return null;
   }
 
+  function getChangeEventBus() {
+    if (global.ChangeEventBus) return global.ChangeEventBus;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('./ChangeEventBus');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  }
+
   // commit(host, patcher[, meta])
   //   - object patcher  => wholesale replace: owner.state = patcher
   //   - function patcher => derive-from-prev: owner.state = patcher(owner.state || {})
   // Returns the new state object (or undefined when there is no owner to write).
   // `meta` ({ source, action }) is accepted for future debug routing; StateWriter
   // does not store it -- it stays a pure write conduit.
-  function commit(host, patcher, _meta) {
+  function commit(host, patcher, meta) {
     const owner = getStateHost(host);
     if (!owner || typeof owner !== 'object') return undefined;
-    const next = typeof patcher === 'function' ? patcher(owner.state || {}) : patcher;
+    const previous = owner.state;
+    const next = typeof patcher === 'function' ? patcher(previous || {}) : patcher;
     owner.state = next;
     getUiRuntimeStateStore()?.syncFromState?.(owner, next);
+    getChangeEventBus()?.emit?.('state.changed', {
+      source: 'StateWriter',
+      operation: 'commit',
+      owner,
+      previous,
+      next,
+      meta: meta && typeof meta === 'object' ? { ...meta } : {},
+    });
     return next;
   }
 

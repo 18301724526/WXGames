@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const StateWriter = require('./StateWriter');
+const ChangeEventBus = require('./ChangeEventBus');
 
 test('getStateHost returns the host itself when there is no lastGame', () => {
   const host = { state: { a: 1 } };
@@ -67,4 +68,24 @@ test('wholesaleReplace is a thin alias of commit with an object patcher', () => 
   const result = StateWriter.wholesaleReplace(host, next);
   assert.equal(host.state, next);
   assert.equal(result, next);
+});
+
+test('commit publishes a state change description with caller metadata', () => {
+  const host = { state: { revision: 1 } };
+  const changes = [];
+  const unsubscribe = ChangeEventBus.subscribe('state.changed', (change) => changes.push(change));
+  const next = StateWriter.commit(
+    host,
+    (previous) => ({ ...previous, revision: 2 }),
+    { source: 'test', action: 'advance' },
+  );
+  unsubscribe();
+
+  assert.equal(changes.length, 1);
+  assert.equal(changes[0].source, 'StateWriter');
+  assert.equal(changes[0].operation, 'commit');
+  assert.equal(changes[0].owner, host);
+  assert.deepEqual(changes[0].previous, { revision: 1 });
+  assert.equal(changes[0].next, next);
+  assert.deepEqual(changes[0].meta, { source: 'test', action: 'advance' });
 });

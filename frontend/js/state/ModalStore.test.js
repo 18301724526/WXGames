@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const ModalStore = require('./ModalStore');
+const ChangeEventBus = require('./ChangeEventBus');
 
 function resetModalStore() {
   // ModalStore is a module-level singleton; close every subtype touched by tests so
@@ -107,4 +108,36 @@ test('buildModalSnapshot reconstructs the { open, token, payload } entry shape',
   // closed subtypes are absent (presence is computed)
   assert.equal(snapshot.entries['modal:naming'], undefined);
   ModalStore.closeModal('modal:event');
+});
+
+test('openModal and closeModal publish modal change descriptions', () => {
+  resetModalStore();
+  const changes = [];
+  const unsubscribe = ChangeEventBus.subscribe('modal.changed', (change) => changes.push(change));
+  const token = ModalStore.openModal('modal:event', { eventId: 'e2' });
+  ModalStore.closeModal('modal:event');
+  unsubscribe();
+
+  assert.deepEqual(changes.map(({ source, operation, subtype, token: changeToken, payload }) => ({
+    source,
+    operation,
+    subtype,
+    token: changeToken,
+    payload,
+  })), [
+    {
+      source: 'ModalStore',
+      operation: 'open',
+      subtype: 'modal:event',
+      token,
+      payload: { eventId: 'e2' },
+    },
+    {
+      source: 'ModalStore',
+      operation: 'close',
+      subtype: 'modal:event',
+      token,
+      payload: { eventId: 'e2' },
+    },
+  ]);
 });

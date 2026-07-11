@@ -35,6 +35,8 @@ const REQUIRED_SCRIPTS = [
 ];
 
 const REQUIRED_ORDER_PAIRS = [
+  ['js/state/ChangeEventBus.js', 'js/state/StateWriter.js'],
+  ['js/state/ChangeEventBus.js', 'js/state/ModalStore.js'],
   // StateWriter is the single state-write entry point; optimistic/index.js eagerly binds it
   // at module-eval (window global), so StateWriter must load first in the browser.
   ['js/state/StateWriter.js', 'js/state/optimistic/index.js'],
