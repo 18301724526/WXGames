@@ -74,3 +74,70 @@ for (const step of [steps.initial, steps.cityEntered]) {
 {"commit":"e4","step":"initial","firstMatch":null,"allMatches":[]}
 {"commit":"e4","step":"cityEntered","firstMatch":"house-build","allMatches":["house-build"]}
 ```
+
+## G2｜系统性修复
+
+### 三刀结果
+
+1. `TutorialHostContext.refreshCurrentHighlight` 增加同步重入守卫。重入不会递归执行，而是写入 `tutorial-highlight-refresh-reentry-trace/v1` 全局账本，并通过 `TutorialHostContextTrace.log('tutorial-highlight-refresh-reentry', ...)` 对外记录；同一轮同步重入合并为至多一次尾随刷新。
+2. 尾随刷新采用 microtask：当前同步通知链先完整退出，再在同一事件循环内重投影，不引入可见的定时器延迟。尾随刷新内部若再次重入，只记 trace，不再安排第二次尾随刷新，保证上界为一次。
+3. `ModalStore.openModal` 与 `updateModalPayload` 改为 notify-on-change。相同 payload 且 callbacks 引用相同的二次 `openModal` 保留原 token、零状态写入、零 `modal.changed`；嵌套 payload 参与值比较。
+4. 按 G1 结论完成分治：`house-build` residual 规则只投影高亮，不再调用 `ensureHouseGuideVisible`；`cityEntered` 事件效果在必要的 `advanceTo(cityEntered)` 完成后准备民居表面，再刷新纯投影。没有新增 intro、规则 ID 或 modal subtype 特判。
+
+### 特征测试
+
+- 原环复现：`modal.changed` 同步订阅刷新，遗留规则首次刷新时打开面板。断言 `refreshCount=2`、`maxDepth=1`、最终高亮为 `buildBuilding:house`，且 trace 为 `phase=primary`、`trailingScheduled=true`。
+- notify-on-change：同一 subtype 以相同嵌套 payload 二次 `openModal`，断言 token 不变且总 emit 数仍为 `1`。
+- 落点分治：断言 `cityEntered` 的顺序为 `advance -> ensureHouseGuideVisible -> refreshCurrentHighlight`；单独执行 `house-build.render` 时面板写入次数为 `0`。
+
+专项测试：
+
+```text
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 77.4967
+```
+
+扩大影响面复跑：
+
+```text
+ℹ tests 45
+ℹ suites 0
+ℹ pass 45
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 484.5964
+```
+
+架构 smoke 最终复跑：
+
+```text
+ℹ tests 1719
+ℹ suites 0
+ℹ pass 1719
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4347.8262
+[architecture-smoke] passed
+```
+
+### 生成清单核销
+
+G2 改动只造成源码哈希、行号和 host surface 位置漂移，规则数量与契约内容不变。按各自生成器重录：
+
+- S2 rule inventory：`flowRules=38`、`eventHandlers=18`。
+- S3 host surface：`total=200`，分类计数不变。
+- S4 event contracts：`events=18`。
+- S5 hit-target types：`tutorialTypes=29`、`missingTypes=0`。
+- command-owner `advanceTutorial` 坐标由 `TutorialHostContext.js:595` 更新为 `:639`，未处理范围外 S7b 账目。
+
+G2 未改变教程投影内容，仅改变表面准备与投影的执行时序；不触发 §1-9 基线重录。

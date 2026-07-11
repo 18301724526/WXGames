@@ -232,6 +232,46 @@
     return getStepScriptTraceSnapshot();
   }
 
+  function getGlobalRefreshReentryTrace() {
+    if (!global.__tutorialHighlightRefreshReentryTrace) {
+      global.__tutorialHighlightRefreshReentryTrace = {
+        schema: 'tutorial-highlight-refresh-reentry-trace/v1',
+        count: 0,
+        traces: [],
+      };
+    }
+    return global.__tutorialHighlightRefreshReentryTrace;
+  }
+
+  function recordRefreshReentryTrace(trace = {}) {
+    const ledger = getGlobalRefreshReentryTrace();
+    const snapshot = {
+      stepKey: String(trace.stepKey || ''),
+      phase: trace.phase === 'trailing' ? 'trailing' : 'primary',
+      trailingScheduled: trace.trailingScheduled === true,
+    };
+    ledger.count += 1;
+    ledger.traces.push(snapshot);
+    global.TutorialHostContextTrace?.log?.('tutorial-highlight-refresh-reentry', snapshot);
+    return snapshot;
+  }
+
+  function getRefreshReentryTraceSnapshot() {
+    const ledger = getGlobalRefreshReentryTrace();
+    return {
+      schema: ledger.schema,
+      count: ledger.count,
+      traces: ledger.traces.map((trace) => ({ ...trace })),
+    };
+  }
+
+  function resetRefreshReentryTrace() {
+    const ledger = getGlobalRefreshReentryTrace();
+    ledger.count = 0;
+    ledger.traces.length = 0;
+    return getRefreshReentryTraceSnapshot();
+  }
+
   class TutorialHostContext {
     constructor(options = {}) {
       this.game = options.game || null;
@@ -239,6 +279,10 @@
       this.state = options.state || null;
       this.focusedFirstCitySiteId = '';
       this.pendingAdvanceByStep = new Map();
+      this.highlightRefreshActive = false;
+      this.highlightRefreshPending = false;
+      this.highlightRefreshTrailing = false;
+      this.highlightRefreshTrailingScheduled = false;
       this.targetResolver = options.targetResolver
         || (SharedTutorialGuideTargetResolver ? new SharedTutorialGuideTargetResolver({ host: this }) : null);
       this.flowRegistry = options.flowRegistry
@@ -1350,14 +1394,52 @@
       return this.flowRegistry?.refresh?.(this) || false;
     }
 
+    scheduleTrailingHighlightRefresh() {
+      if (this.highlightRefreshTrailingScheduled || this.highlightRefreshTrailing) return false;
+      this.highlightRefreshTrailingScheduled = true;
+      const runtime = this.game?.runtime || global;
+      const run = () => {
+        this.highlightRefreshTrailingScheduled = false;
+        if (!this.highlightRefreshPending) return;
+        this.highlightRefreshPending = false;
+        this.highlightRefreshTrailing = true;
+        try {
+          this.refreshCurrentHighlight();
+        } finally {
+          this.highlightRefreshTrailing = false;
+          this.highlightRefreshPending = false;
+        }
+      };
+      if (typeof runtime?.queueMicrotask === 'function') runtime.queueMicrotask(run);
+      else Promise.resolve().then(run);
+      return true;
+    }
+
     refreshCurrentHighlight() {
-      const stepKey = this.getCurrentStep();
-      if (!this.hasStepScript(stepKey)) return this.refreshLegacyHighlight();
-      const projection = this.evaluateStepScript(stepKey);
-      if (this.isLegacyOverlayActive()) return this.refreshLegacyHighlight();
-      const instruction = projection?.instructions?.[0] || null;
-      if (!instruction) return this.refreshLegacyHighlight();
-      return this.renderStepScriptInstruction(instruction) || false;
+      if (this.highlightRefreshActive) {
+        this.highlightRefreshPending = true;
+        const trailingScheduled = this.highlightRefreshTrailing
+          ? false
+          : this.scheduleTrailingHighlightRefresh();
+        recordRefreshReentryTrace({
+          stepKey: this.getCurrentStep(),
+          phase: this.highlightRefreshTrailing ? 'trailing' : 'primary',
+          trailingScheduled,
+        });
+        return false;
+      }
+      this.highlightRefreshActive = true;
+      try {
+        const stepKey = this.getCurrentStep();
+        if (!this.hasStepScript(stepKey)) return this.refreshLegacyHighlight();
+        const projection = this.evaluateStepScript(stepKey);
+        if (this.isLegacyOverlayActive()) return this.refreshLegacyHighlight();
+        const instruction = projection?.instructions?.[0] || null;
+        if (!instruction) return this.refreshLegacyHighlight();
+        return this.renderStepScriptInstruction(instruction) || false;
+      } finally {
+        this.highlightRefreshActive = false;
+      }
     }
 }
 
@@ -1376,6 +1458,8 @@
   };
   TutorialHostContext.getStepScriptTrace = getStepScriptTraceSnapshot;
   TutorialHostContext.resetStepScriptTrace = resetStepScriptTrace;
+  TutorialHostContext.getRefreshReentryTrace = getRefreshReentryTraceSnapshot;
+  TutorialHostContext.resetRefreshReentryTrace = resetRefreshReentryTrace;
   if (
     typeof process !== 'undefined'
     && process?.env?.TUTORIAL_WITNESS_ASSERT_ZERO === '1'

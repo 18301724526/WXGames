@@ -531,7 +531,7 @@ const FRONTEND_DIRECT_SUBMIT_CALL_SITE_ROWS = Object.freeze([
   ['frontend:direct-submit:frontend-js-platform-WorldMarchActionHandler-js:483:returnWorldMarch', 'frontend/js/platform/WorldMarchActionHandler.js', 483, 'returnWorldMarch', 'returnWorldMarch', 'controller-direct-submit', 'ClientCommandSender world-march adapter'],
   ['frontend:direct-submit:frontend-js-platform-WorldMarchActionHandler-js:504:stopWorldMarch', 'frontend/js/platform/WorldMarchActionHandler.js', 504, 'stopWorldMarch', 'stopWorldMarch', 'controller-direct-submit', 'ClientCommandSender world-march adapter'],
   ['frontend:direct-submit:frontend-js-services-GameStateSync-js:151:heartbeat', 'frontend/js/services/GameStateSync.js', 151, 'heartbeat', 'heartbeat', 'compatibility-direct-submit', 'ClientCommandSender service bridge'],
-  ['frontend:direct-submit:frontend-js-tutorial-TutorialHostContext-js:595:advanceTutorial', 'frontend/js/tutorial/TutorialHostContext.js', 595, 'advanceTutorial', 'tutorialAdvance', 'controller-direct-submit', 'ClientCommandSender tutorial adapter'],
+  ['frontend:direct-submit:frontend-js-tutorial-TutorialHostContext-js:639:advanceTutorial', 'frontend/js/tutorial/TutorialHostContext.js', 639, 'advanceTutorial', 'tutorialAdvance', 'controller-direct-submit', 'ClientCommandSender tutorial adapter'],
 ]);
 
 const FRONTEND_DIRECT_SUBMIT_COMMAND_PATHS = Object.freeze(FRONTEND_DIRECT_SUBMIT_CALL_SITE_ROWS.map(

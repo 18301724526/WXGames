@@ -309,7 +309,6 @@
   }
 
   function renderHouseGuide(host) {
-    host.ensureHouseGuideVisible?.();
     const target = host.getCanvasTarget?.(
       'buildBuilding',
       (action) => !isVisuallyDisabled(action) && action.buildingId === 'house',

@@ -3,11 +3,11 @@
   "sources": [
     {
       "file": "frontend/js/tutorial/TutorialGuideFlowRegistry.js",
-      "sha256": "13ec24b921fe49d191ddd2467789f66c147bdb665de2075c8c80151ef566c19b"
+      "sha256": "3b58369a27d61d27ea9a50bf5d36ecebec9babe3557d900e572bdb716f883a62"
     },
     {
       "file": "frontend/js/tutorial/TutorialGuideEventRegistry.js",
-      "sha256": "65cfb14cff33993b11e9208e578e410ab537110d54b5660203ed2e2f10c14c52"
+      "sha256": "4ad8dd52142ede32227c027c7d4344b6b184b633671ca8c04acff41dd930c0d7"
     }
   ],
   "counts": {
@@ -20,14 +20,14 @@
       "stepNames": [],
       "kind": "renderer:hideHighlight",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:366"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:365"
     },
     {
       "id": "reward-reveal-open",
       "stepNames": [],
       "kind": "renderer:hideHighlight",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:367"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:366"
     },
     {
       "id": "capital-site-picker-follow-through",
@@ -36,7 +36,7 @@
       ],
       "kind": "renderer:renderChooseGuidedSiteCandidate",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:375"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:374"
     },
     {
       "id": "first-city-site-picker-follow-through",
@@ -47,7 +47,7 @@
       ],
       "kind": "renderer:renderChooseGuidedSiteCandidate",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:385"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:384"
     },
     {
       "id": "first-era-open-civilization",
@@ -56,7 +56,7 @@
       ],
       "kind": "renderer:renderOpenCommandPanel",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:402"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:401"
     },
     {
       "id": "first-era-advance",
@@ -65,14 +65,14 @@
       ],
       "kind": "renderer:renderAdvanceEra",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:408"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:407"
     },
     {
       "id": "farm-build",
       "kind": "highlight:buildBuilding",
       "stepNames": [],
       "source": "factory:makeBuildRule",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:413"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:412"
     },
     {
       "id": "era2-advance",
@@ -81,7 +81,7 @@
       ],
       "kind": "renderer:renderAdvanceEra",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:419"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:418"
     },
     {
       "id": "era2-open-forest-event",
@@ -91,7 +91,7 @@
       ],
       "kind": "highlight:openEvent",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:424"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:423"
     },
     {
       "id": "era2-claim-forest-event",
@@ -101,7 +101,7 @@
       ],
       "kind": "highlight:claimEvent",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:435"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:434"
     },
     {
       "id": "lumbermill-build",
@@ -111,7 +111,7 @@
         "buildingsTabOpenedForLumbermill"
       ],
       "source": "factory:makeBuildRule",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:453"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:452"
     },
     {
       "id": "era3-advance",
@@ -120,7 +120,7 @@
       ],
       "kind": "renderer:renderAdvanceEra",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:462"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:461"
     },
     {
       "id": "barracks-build",
@@ -130,7 +130,7 @@
         "buildingsTabOpenedForBarracks"
       ],
       "source": "factory:makeBuildRule",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:475"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:474"
     },
     {
       "id": "scout-open-famous",
@@ -139,7 +139,7 @@
       ],
       "kind": "renderer:renderScoutFamousPersonOpen",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:484"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:483"
     },
     {
       "id": "scout-open-famous-detail",
@@ -148,7 +148,7 @@
       ],
       "kind": "renderer:renderOpenScoutFamousDetail",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:489"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:488"
     },
     {
       "id": "scout-close-famous-detail",
@@ -157,7 +157,7 @@
       ],
       "kind": "highlight:closeFamousPersonDetail",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:494"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:493"
     },
     {
       "id": "scout-close-famous-panel",
@@ -166,7 +166,7 @@
       ],
       "kind": "highlight:closeFamousPersons",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:505"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:504"
     },
     {
       "id": "scout-enter-selected-capital",
@@ -175,7 +175,7 @@
       ],
       "kind": "custom",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:516"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:515"
     },
     {
       "id": "scout-focus-capital",
@@ -184,7 +184,7 @@
       ],
       "kind": "custom",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:523"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:522"
     },
     {
       "id": "scout-switch-city-military-tab",
@@ -193,7 +193,7 @@
       ],
       "kind": "highlight:switchCityManagementTab",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:528"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:527"
     },
     {
       "id": "scout-open-formation",
@@ -202,7 +202,7 @@
       ],
       "kind": "highlight:openArmyFormation",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:543"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:542"
     },
     {
       "id": "scout-formation-member-or-save",
@@ -211,7 +211,7 @@
       ],
       "kind": "renderer:renderScoutFormationMemberOrSave",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:559"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:558"
     },
     {
       "id": "scout-select-world-target",
@@ -220,7 +220,7 @@
       ],
       "kind": "highlight:selectWorldMarchTarget",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:567"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:566"
     },
     {
       "id": "scout-open-world-formation-picker",
@@ -229,7 +229,7 @@
       ],
       "kind": "highlight:openWorldMarchFormationPicker",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:598"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:597"
     },
     {
       "id": "scout-start-world-march",
@@ -238,7 +238,7 @@
       ],
       "kind": "highlight:startWorldMarch",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:614"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:613"
     },
     {
       "id": "scout-explore-active",
@@ -247,7 +247,7 @@
       ],
       "kind": "renderer:hideHighlight",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:627"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:626"
     },
     {
       "id": "first-city-discovered",
@@ -256,7 +256,7 @@
       ],
       "kind": "renderer:renderFirstCityDiscovered",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:634"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:633"
     },
     {
       "id": "first-city-conquest-ready",
@@ -265,7 +265,7 @@
       ],
       "kind": "highlight:claimConquest",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:639"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:638"
     },
     {
       "id": "first-city-occupied",
@@ -274,7 +274,7 @@
       ],
       "kind": "renderer:renderFirstCityOccupied",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:654"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:653"
     },
     {
       "id": "first-city-named",
@@ -283,7 +283,7 @@
       ],
       "kind": "renderer:renderPolityNaming",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:659"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:658"
     },
     {
       "id": "talent-policy-open-direct",
@@ -292,7 +292,7 @@
       ],
       "kind": "step-transition",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:660"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:659"
     },
     {
       "id": "talent-policy-apply-direct",
@@ -301,7 +301,7 @@
       ],
       "kind": "highlight:switchCityManagementTab",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:674"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:673"
     },
     {
       "id": "talent-adjustment",
@@ -310,7 +310,7 @@
       ],
       "kind": "renderer:renderTalentAdjustment",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:695"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:694"
     },
     {
       "id": "talent-open-famous",
@@ -319,7 +319,7 @@
       ],
       "kind": "highlight:openFamousPersons",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:700"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:699"
     },
     {
       "id": "famous-seek-open-panel",
@@ -328,7 +328,7 @@
       ],
       "kind": "highlight:openFamousPersons",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:711"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:710"
     },
     {
       "id": "famous-seek-action",
@@ -337,7 +337,7 @@
       ],
       "kind": "highlight:seekFamousPerson",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:722"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:721"
     },
     {
       "id": "final-tech-soft-guide",
@@ -347,14 +347,14 @@
       ],
       "kind": "soft-guide",
       "source": "handwritten",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:733"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:732"
     },
     {
       "id": "house-build",
       "kind": "highlight:buildBuilding",
       "stepNames": [],
       "source": "factory:makeBuildRule",
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:739"
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:738"
     }
   ],
   "eventHandlers": [
@@ -398,7 +398,7 @@
       "stepNames": [],
       "kind": "event-handler",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:171"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:174"
     },
     {
       "eventName": "eraAdvanced",
@@ -411,7 +411,7 @@
       ],
       "kind": "state-sync",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:181"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:184"
     },
     {
       "eventName": "taskRewardClaimed",
@@ -420,7 +420,7 @@
       ],
       "kind": "state-sync",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:214"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:217"
     },
     {
       "eventName": "famousPersonsOpened",
@@ -432,7 +432,7 @@
       ],
       "kind": "step-transition",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:219"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:222"
     },
     {
       "eventName": "talentPolicyOpened",
@@ -443,7 +443,7 @@
       ],
       "kind": "step-transition",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:229"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:232"
     },
     {
       "eventName": "tutorialStateChanged",
@@ -452,7 +452,7 @@
       ],
       "kind": "state-sync",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:239"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:242"
     },
     {
       "eventName": "famousPersonDetailOpened",
@@ -462,7 +462,7 @@
       ],
       "kind": "step-transition",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:248"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:251"
     },
     {
       "eventName": "armyFormationOpened",
@@ -472,7 +472,7 @@
       ],
       "kind": "step-transition",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:260"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:263"
     },
     {
       "eventName": "armyFormationSaved",
@@ -482,7 +482,7 @@
       ],
       "kind": "state-sync",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:267"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:270"
     },
     {
       "eventName": "militaryViewSwitched",
@@ -492,21 +492,21 @@
       ],
       "kind": "step-transition",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:284"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:287"
     },
     {
       "eventName": "famousPersonsClosed",
       "stepNames": [],
       "kind": "projection-refresh",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:293"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:296"
     },
     {
       "eventName": "cityManagementOpened",
       "stepNames": [],
       "kind": "projection-refresh",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:299"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:302"
     },
     {
       "eventName": "worldMarchTargetSelected",
@@ -516,14 +516,14 @@
       ],
       "kind": "step-transition",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:308"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:311"
     },
     {
       "eventName": "exploreStarted",
       "stepNames": [],
       "kind": "state-sync",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:315"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:318"
     },
     {
       "eventName": "advisorClosed",
@@ -533,7 +533,7 @@
       ],
       "kind": "step-transition",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:321"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:324"
     }
   ]
 }

@@ -61,6 +61,18 @@
     return Object.freeze({ ...(payload && typeof payload === 'object' ? payload : {}) });
   }
 
+  function valuesEqual(left, right) {
+    if (Object.is(left, right)) return true;
+    if (!left || !right || typeof left !== 'object' || typeof right !== 'object') return false;
+    if (Array.isArray(left) !== Array.isArray(right)) return false;
+    const leftKeys = Object.keys(left);
+    const rightKeys = Object.keys(right);
+    if (leftKeys.length !== rightKeys.length) return false;
+    return leftKeys.every((key) => (
+      Object.prototype.hasOwnProperty.call(right, key) && valuesEqual(left[key], right[key])
+    ));
+  }
+
   function subtypeFromToken(token) {
     const text = String(token || '');
     const index = text.lastIndexOf('#');
@@ -74,12 +86,22 @@
   // the minted token.
   function openModal(subtype, payload = {}, callbacks = null) {
     const key = normalizeSubtype(subtype);
+    const nextPayload = freezePayload(payload);
+    const nextCallbacks = callbacks && typeof callbacks === 'object' ? callbacks : null;
+    const current = state.entries[key] || null;
+    if (
+      current
+      && valuesEqual(current.payload, nextPayload)
+      && current.callbacks === nextCallbacks
+    ) {
+      return current.token;
+    }
     state.tokenSeq += 1;
     const token = `${key}#${state.tokenSeq}`;
     state.entries[key] = {
       token,
-      payload: freezePayload(payload),
-      callbacks: callbacks && typeof callbacks === 'object' ? callbacks : null,
+      payload: nextPayload,
+      callbacks: nextCallbacks,
     };
     getChangeEventBus()?.emit?.('modal.changed', {
       source: 'ModalStore',
@@ -96,7 +118,9 @@
     const key = normalizeSubtype(subtype);
     const entry = state.entries[key];
     if (!entry) return null;
-    entry.payload = freezePayload({ ...entry.payload, ...(patch || {}) });
+    const nextPayload = freezePayload({ ...entry.payload, ...(patch || {}) });
+    if (valuesEqual(entry.payload, nextPayload)) return entry.payload;
+    entry.payload = nextPayload;
     getChangeEventBus()?.emit?.('modal.changed', {
       source: 'ModalStore',
       operation: 'update',

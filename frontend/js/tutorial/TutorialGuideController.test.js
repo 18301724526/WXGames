@@ -129,7 +129,7 @@ test('TutorialGuideController deduplicates concurrent advance requests for the s
   ]);
 });
 
-test('TutorialGuideController highlights the house build button when available', () => {
+test('TutorialGuideController prepares the house surface before projecting its highlight', async () => {
   const calls = [];
   const shell = makeModalHost({
     activeCityManagementTab: '',
@@ -154,7 +154,7 @@ test('TutorialGuideController highlights the house build button when available',
   const controller = new TutorialGuideController({ game });
   controller.sync(game.tutorial);
 
-  assert.equal(controller.refreshCurrentHighlight(), true);
+  await controller.markCityEntered();
   assert.equal(shell.isBlockingPanelSnapshotOpen('showCityManagement'), true);
   assert.equal(game.activeCityManagementTab, 'buildings');
   assert.equal(shell.activeCityManagementTab, '');

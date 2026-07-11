@@ -2,6 +2,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const TutorialHostContext = require('./TutorialHostContext');
+const ChangeEventBus = require('../state/ChangeEventBus');
+const TutorialGuideEventRegistry = require('./TutorialGuideEventRegistry');
+const TutorialGuideFlowRegistry = require('./TutorialGuideFlowRegistry');
+const TutorialFlowShared = require('../../../shared/tutorialFlowConfig');
 
 function createHarness(options = {}) {
   const tutorial = {
@@ -123,4 +127,128 @@ test('steps outside the config stay entirely on the legacy registry', () => {
     totalEvaluations: 0,
     steps: {},
   });
+});
+
+test('synchronous modal refresh reentry is traced and coalesced into one trailing refresh', async (t) => {
+  TutorialHostContext.resetRefreshReentryTrace();
+  const traceEvents = [];
+  const previousTrace = global.TutorialHostContextTrace;
+  global.TutorialHostContextTrace = {
+    log(eventName, detail) {
+      traceEvents.push({ eventName, detail });
+    },
+  };
+  t.after(() => {
+    global.TutorialHostContextTrace = previousTrace;
+  });
+
+  const tutorial = { completed: false, currentStep: 'cityEntered' };
+  const bus = ChangeEventBus.createEventBus();
+  let refreshCount = 0;
+  let activeDepth = 0;
+  let maxDepth = 0;
+  let panelOpen = false;
+  let finalHighlight = '';
+  const context = new TutorialHostContext({
+    state: tutorial,
+    game: { tutorial, state: { tutorial } },
+    changeEventBus: bus,
+    stepScriptConfig: {},
+    flowRegistry: {
+      refresh() {
+        refreshCount += 1;
+        activeDepth += 1;
+        maxDepth = Math.max(maxDepth, activeDepth);
+        if (!panelOpen) {
+          panelOpen = true;
+          bus.emit('modal.changed', { source: 'test-house-rule', subtype: 'modal:cityManagement' });
+        }
+        finalHighlight = panelOpen ? 'buildBuilding:house' : '';
+        activeDepth -= 1;
+        return true;
+      },
+    },
+    targetResolver: null,
+    queryTable: null,
+  });
+
+  assert.equal(context.refreshCurrentHighlight(), true);
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(refreshCount, 2);
+  assert.equal(maxDepth, 1);
+  assert.equal(finalHighlight, 'buildBuilding:house');
+  assert.deepEqual(TutorialHostContext.getRefreshReentryTrace(), {
+    schema: 'tutorial-highlight-refresh-reentry-trace/v1',
+    count: 1,
+    traces: [{ stepKey: 'cityEntered', phase: 'primary', trailingScheduled: true }],
+  });
+  assert.equal(traceEvents.length, 1);
+  assert.equal(traceEvents[0].eventName, 'tutorial-highlight-refresh-reentry');
+  context.disconnectChangeEventBus();
+});
+
+test('cityEntered prepares the house surface before refreshing its pure projection', async () => {
+  const steps = TutorialFlowShared.TUTORIAL_STEPS;
+  const calls = [];
+  let step = steps.initial;
+  const host = {
+    constructor: { TUTORIAL_STEPS: steps },
+    state: { currentStep: step },
+    isCompleted: () => false,
+    getCurrentStep: () => step,
+    async advanceTo(nextStep) {
+      calls.push(`advance:${nextStep}`);
+      step = nextStep;
+      this.state = { currentStep: nextStep };
+      return this.state;
+    },
+    ensureHouseGuideVisible() {
+      calls.push('ensureHouseGuideVisible');
+      return true;
+    },
+    refreshCurrentHighlight() {
+      calls.push('refreshCurrentHighlight');
+      return true;
+    },
+  };
+
+  const handlers = TutorialGuideEventRegistry.createDefaultHandlers(steps);
+  const result = await handlers.cityEntered(host);
+
+  assert.deepEqual(calls, [
+    `advance:${steps.cityEntered}`,
+    'ensureHouseGuideVisible',
+    'refreshCurrentHighlight',
+  ]);
+  assert.equal(result.currentStep, steps.cityEntered);
+});
+
+test('house-build residual rule projects the highlight without mutating panel state', () => {
+  const steps = TutorialFlowShared.TUTORIAL_STEPS;
+  const rule = TutorialGuideFlowRegistry.createDefaultRules(steps)
+    .find((entry) => entry.id === 'house-build');
+  let ensureCalls = 0;
+  let shown = null;
+  const target = { action: { type: 'buildBuilding', buildingId: 'house' } };
+  const host = {
+    constructor: { TUTORIAL_STEPS: steps },
+    getCurrentStep: () => steps.cityEntered,
+    isHouseGuideActive: () => true,
+    ensureHouseGuideVisible: () => {
+      ensureCalls += 1;
+    },
+    getCanvasTarget: () => target,
+    showTutorialHighlight(actualTarget, _message, options) {
+      shown = { actualTarget, options };
+      return true;
+    },
+  };
+
+  assert.equal(rule.matches(host), true);
+  assert.equal(rule.render(host), true);
+  assert.equal(ensureCalls, 0);
+  assert.equal(shown.actualTarget, target);
+  assert.deepEqual(shown.options.allowedAction, { type: 'buildBuilding', buildingId: 'house' });
 });

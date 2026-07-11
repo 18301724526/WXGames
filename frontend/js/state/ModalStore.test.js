@@ -43,6 +43,19 @@ test('openModal mints strictly incrementing tokens', () => {
   assert.equal(seq2, seq1 + 1);
 });
 
+test('opening the same modal payload twice preserves the token and emits no second change', () => {
+  resetModalStore();
+  const changes = [];
+  const unsubscribe = ChangeEventBus.subscribe('modal.changed', (change) => changes.push(change));
+  const first = ModalStore.openModal('modal:taskCenter', { tab: 'main', filter: { ready: true } });
+  const second = ModalStore.openModal('modal:taskCenter', { tab: 'main', filter: { ready: true } });
+  unsubscribe();
+
+  assert.equal(second, first);
+  assert.equal(changes.length, 1);
+  assert.equal(changes[0].operation, 'open');
+});
+
 test('updateModalPayload patches an open modal and no-ops on a closed one', () => {
   resetModalStore();
   ModalStore.openModal('modal:naming', { inputValue: '' });

@@ -162,10 +162,13 @@
 
       cityEntered: async (host) => {
         if (host.isCompleted?.()) return host.state;
+        let result = host.state;
         if (TutorialFlowShared.stepBefore(getStep(host), steps.cityEntered)) {
-          return host.advanceTo?.(steps.cityEntered) || host.state;
+          result = await (host.advanceTo?.(steps.cityEntered) || host.state);
         }
-        return host.state;
+        host.ensureHouseGuideVisible?.();
+        host.refreshCurrentHighlight?.();
+        return result;
       },
 
       buildingAction: (host, payload = {}) => {

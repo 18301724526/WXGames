@@ -627,11 +627,11 @@
     },
     {
       "file": "frontend/js/tutorial/TutorialGuideEventRegistry.js",
-      "sha256": "65cfb14cff33993b11e9208e578e410ab537110d54b5660203ed2e2f10c14c52"
+      "sha256": "4ad8dd52142ede32227c027c7d4344b6b184b633671ca8c04acff41dd930c0d7"
     },
     {
       "file": "frontend/js/tutorial/TutorialGuideFlowRegistry.js",
-      "sha256": "13ec24b921fe49d191ddd2467789f66c147bdb665de2075c8c80151ef566c19b"
+      "sha256": "3b58369a27d61d27ea9a50bf5d36ecebec9babe3557d900e572bdb716f883a62"
     },
     {
       "file": "frontend/js/tutorial/TutorialGuideStepPolicy.js",
@@ -643,7 +643,7 @@
     },
     {
       "file": "frontend/js/tutorial/TutorialHostContext.js",
-      "sha256": "fe2d85b1b2fccf117ae9de1a391114a80e532760cb08d1f982ad277f0fb3424f"
+      "sha256": "e8fbee076b5f7802bdb619a9899c76d50fc4befc6f5c0162f625bf5c0cf98217"
     },
     {
       "file": "frontend/js/tutorial/TutorialIntroOverlay.js",
@@ -692,12 +692,12 @@
         {
           "type": "assignJob",
           "via": "getCanvasTarget",
-          "location": "frontend/js/tutorial/TutorialHostContext.js:1021"
+          "location": "frontend/js/tutorial/TutorialHostContext.js:1065"
         },
         {
           "type": "assignJob",
           "via": "getCanvasTarget",
-          "location": "frontend/js/tutorial/TutorialHostContext.js:1023"
+          "location": "frontend/js/tutorial/TutorialHostContext.js:1067"
         }
       ],
       "registrations": [
@@ -733,12 +733,12 @@
         {
           "type": "buildBuilding",
           "via": "getCanvasTarget",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:313"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:312"
         },
         {
           "type": "buildBuilding",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialHostContext.js:1263"
+          "location": "frontend/js/tutorial/TutorialHostContext.js:1307"
         }
       ],
       "registrations": [
@@ -770,7 +770,7 @@
         {
           "type": "claimConquest",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:644"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:643"
         }
       ],
       "registrations": [
@@ -786,7 +786,7 @@
         {
           "type": "claimEvent",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:439"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:438"
         }
       ],
       "registrations": [
@@ -838,7 +838,7 @@
         {
           "type": "closeFamousPersonDetail",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:498"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:497"
         }
       ],
       "registrations": [
@@ -854,7 +854,7 @@
         {
           "type": "closeFamousPersons",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:509"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:508"
         }
       ],
       "registrations": [
@@ -886,7 +886,7 @@
         {
           "type": "enterCity",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialHostContext.js:1075"
+          "location": "frontend/js/tutorial/TutorialHostContext.js:1119"
         }
       ],
       "registrations": [
@@ -918,7 +918,7 @@
         {
           "type": "openArmyFormation",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:552"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:551"
         }
       ],
       "registrations": [
@@ -991,7 +991,7 @@
         {
           "type": "openEvent",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:428"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:427"
         }
       ],
       "registrations": [
@@ -1032,12 +1032,12 @@
         {
           "type": "openFamousPersons",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:704"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:703"
         },
         {
           "type": "openFamousPersons",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:715"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:714"
         }
       ],
       "registrations": [
@@ -1093,7 +1093,7 @@
         {
           "type": "openWorldMarchFormationPicker",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:606"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:605"
         }
       ],
       "registrations": [
@@ -1198,7 +1198,7 @@
         {
           "type": "seekFamousPerson",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:726"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:725"
         }
       ],
       "registrations": [
@@ -1214,12 +1214,12 @@
         {
           "type": "selectWorldMarchTarget",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:579"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:578"
         },
         {
           "type": "selectWorldMarchTarget",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:590"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:589"
         }
       ],
       "registrations": [
@@ -1235,7 +1235,7 @@
         {
           "type": "startWorldMarch",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:620"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:619"
         }
       ],
       "registrations": [
@@ -1277,12 +1277,12 @@
         {
           "type": "switchCityManagementTab",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:536"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:535"
         },
         {
           "type": "switchCityManagementTab",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:680"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:679"
         }
       ],
       "registrations": [
