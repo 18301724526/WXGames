@@ -133,6 +133,16 @@ function createGameStateSchemaMigrations() {
           ON command_idempotency(commandId);
       `);
     },
+  }, {
+    id: '005-task-reward-grants-column',
+    description: 'Add task reward grant ledger column for non-tutorial reward claims.',
+    statements: ['ALTER TABLE game_states ADD COLUMN taskRewardGrants TEXT'],
+    apply(db) {
+      const columns = new Set(db.prepare('PRAGMA table_info(game_states)').all().map((column) => column.name));
+      if (!columns.has('taskRewardGrants')) {
+        db.prepare('ALTER TABLE game_states ADD COLUMN taskRewardGrants TEXT').run();
+      }
+    },
   }];
 }
 
@@ -208,6 +218,7 @@ class GameStateRepository {
         famousPeople TEXT,
         famousPersonState TEXT,
         taskProgress TEXT,
+        taskRewardGrants TEXT,
         military TEXT,
         polity TEXT,
         territories TEXT,
@@ -393,6 +404,7 @@ class GameStateRepository {
       famousPeople: row.famousPeople ? JSON.parse(row.famousPeople) : null,
       famousPersonState: row.famousPersonState ? JSON.parse(row.famousPersonState) : null,
       taskProgress: row.taskProgress ? JSON.parse(row.taskProgress) : null,
+      taskRewardGrants: row.taskRewardGrants ? JSON.parse(row.taskRewardGrants) : null,
       military: row.military ? JSON.parse(row.military) : null,
       polity: row.polity ? JSON.parse(row.polity) : null,
       territories: row.territories ? JSON.parse(row.territories) : null,
@@ -523,11 +535,11 @@ class GameStateRepository {
         playerId, revision, saveMetadata, resources, buildings, population, techs, techEffects, currentEra,
         eraHistory, happiness, gameDay, eventQueue, eventHistory, offlineSnapshot,
         offlineEventLog, negativeStreak, lastEventAt, tutorial, softGuideState, talentPolicies,
-        famousPeople, famousPersonState, taskProgress, military,
+        famousPeople, famousPersonState, taskProgress, taskRewardGrants, military,
         regularEventState, threatEventState, activeBuffs, polity, territories, worldMap, activeCityId, cities,
         scoutedCoordinates, scoutState, exploreMissions, worldMarchClientReports, worldMarchVerification,
         worldCombat, worldAi, warMissions, scoutReports, updatedAt, captureDecisions
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(playerId) DO UPDATE SET
         revision = excluded.revision,
         saveMetadata = excluded.saveMetadata,
@@ -552,6 +564,7 @@ class GameStateRepository {
         famousPeople = excluded.famousPeople,
         famousPersonState = excluded.famousPersonState,
         taskProgress = excluded.taskProgress,
+        taskRewardGrants = excluded.taskRewardGrants,
         military = excluded.military,
         regularEventState = excluded.regularEventState,
         threatEventState = excluded.threatEventState,
@@ -600,6 +613,7 @@ class GameStateRepository {
       JSON.stringify(gameState.famousPeople || []),
       JSON.stringify(gameState.famousPersonState || {}),
       JSON.stringify(gameState.taskProgress || {}),
+      JSON.stringify(gameState.taskRewardGrants || {}),
       null,
       JSON.stringify(gameState.regularEventState || {}),
       JSON.stringify(gameState.threatEventState || {}),

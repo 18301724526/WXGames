@@ -29,6 +29,35 @@ test('GameStateRepository persists task progress with the game state', () => {
   db.close();
 });
 
+test('GameStateRepository persists task reward grants with the game state', () => {
+  const db = new Database(':memory:');
+  const repository = new GameStateRepository(db);
+  repository.init();
+
+  const state = GameStateNormalizer.createInitialGameState('task-reward-grants-repo-test');
+  state.taskRewardGrants.soldiers.firstArmy = {
+    grantedAt: '2026-07-11T00:00:00.000Z',
+    amount: 300,
+  };
+  state.taskRewardGrants.famousPersons.scoutFamousPerson = {
+    grantedAt: '2026-07-11T00:01:00.000Z',
+    personId: 'scout_officer',
+  };
+
+  repository.save(state);
+  const saved = repository.findByPlayerId('task-reward-grants-repo-test');
+
+  assert.deepEqual(saved.taskRewardGrants.soldiers.firstArmy, {
+    grantedAt: '2026-07-11T00:00:00.000Z',
+    amount: 300,
+  });
+  assert.deepEqual(saved.taskRewardGrants.famousPersons.scoutFamousPerson, {
+    grantedAt: '2026-07-11T00:01:00.000Z',
+    personId: 'scout_officer',
+  });
+  db.close();
+});
+
 test('GameStateRepository persists captureDecisions (②b) with the game state', () => {
   const db = new Database(':memory:');
   const repository = new GameStateRepository(db);
@@ -61,12 +90,13 @@ test('GameStateRepository records schema migration ledger during init', () => {
       { id: '002-capture-decisions-column', status: 'applied' },
       { id: '003-owner-locks-generalization', status: 'applied' },
       { id: '004-command-idempotency-store', status: 'applied' },
+      { id: '005-task-reward-grants-column', status: 'applied' },
     ]);
 
     const secondRepository = new GameStateRepository(db);
     secondRepository.init();
     const count = db.prepare('SELECT COUNT(*) AS count FROM schema_migrations').get().count;
-    assert.equal(count, 4);
+    assert.equal(count, 5);
   } finally {
     db.close();
   }

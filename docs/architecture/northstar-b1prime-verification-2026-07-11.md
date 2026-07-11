@@ -137,3 +137,51 @@ rg -n "tutorialStepAtLeast" . --glob "!docs/architecture/northstar-b1prime-order
 - 新条件类型满足/不满足/边界: `TaskProgressEvaluator evaluates task reward grant conditions`。
 - 旧档不回退: `legacy first-army tutorial grant keeps the scout-officer task claimable for old saves`。
 - 模板往返: `TaskDefinitionService can preview its template without doubling formula rewards`。
+
+## T4 - 收尾验证
+### 变更
+- 补齐 `GameStateRepository` 对 `gameState.taskRewardGrants` 的持久化: 新库建表列、老库 `005-task-reward-grants-column` 迁移、读取解析、upsert 写入。
+- 新增 `GameStateRepository persists task reward grants with the game state`，覆盖 `soldiers.firstArmy` 与 `famousPersons.scoutFamousPerson` 台账跨保存读取。
+
+### 自验命令
+
+```powershell
+node --check backend/repositories/GameStateRepository.js
+```
+
+结果: 通过。
+
+```powershell
+node --test backend/tests/GameStateRepository.test.js backend/tests/TaskCenterService.test.js backend/tests/GameRoutesTutorial.test.js backend/tests/MilitaryService.test.js
+```
+
+结果: 82/82 通过。
+
+```powershell
+npm test
+```
+
+结果: 297 个测试文件，2391/2391 通过。
+
+```powershell
+node scripts/run-architecture-smoke.js
+```
+
+结果: 通过；末尾 `git diff --check` 通过。
+
+### 真实本地服务领取流程
+- 服务入口: `backend/server.js`。
+- 临时运行目录: `C:\Users\18301\AppData\Local\Temp\wxgames-b1prime-t4-real-server-78I2mz`。
+- 临时 config release: `20260711T002200594Z-6e10c57c7c30-43ce0d6e`，snapshotHash `6e10c57c7c30`。
+- 登录: `test1`，HTTP 200。
+- 领取链路: `main_barracks_supplies` HTTP 200 -> `main_first_army` HTTP 200 -> `main_scout_officer` HTTP 200。
+- 最终 SQLite 读回: `food=260`、`knowledge=80`、`barracks.level=1`、`military.soldiers=1000`、`famousPeople.length=1`。
+- `taskProgress.claimed` 键: `main_barracks_supplies`、`main_first_army`、`main_scout_officer`。
+- `taskRewardGrants.soldiers.firstArmy`: `{ soldiers: 1000, grantedAt: '2026-07-11T00:22:01.613Z' }`。
+- `taskRewardGrants.famousPersons.scoutFamousPerson`: `{ personId: 'fp_tutorial_scout_1st7bw9', grantedAt: '2026-07-11T00:22:01.639Z' }`。
+- `tutorial.grants` 未重新承载本次两个奖励台账；仅保留既有 `firstExploreEmptyCity` 引导记录。
+
+### 未做清单
+- 未删除 `TutorialGrantService` 文件本体。
+- 未触碰前端教程终态整改。
+- 未预做路线图 S2 及后续步骤。
