@@ -84,7 +84,7 @@
   }
 
   function hideHighlight(host) {
-    host.game?.canvasShell?.hideTutorialHighlight?.();
+    host.hideTutorialHighlight?.();
     return false;
   }
 
@@ -275,7 +275,7 @@
 
   function renderPolityNaming(host) {
     if (!host.isNamingOpen?.('polity')) {
-      host.game?.openNaming?.({
+      host.openNaming?.({
         type: 'polity',
         title: t('tutorial.guide.namePolityTitle'),
         message: t('tutorial.guide.namePolityMessage'),
@@ -310,7 +310,7 @@
     const picked = host.pickManualAssignAction?.();
     if (picked?.target) {
       return (
-        host.game?.canvasShell?.showTutorialHighlight?.(
+        host.showTutorialHighlight?.(
           picked.target,
           t('tutorial.highlight.adjustTalentDetail'),
           {
@@ -332,14 +332,13 @@
 
   function renderHouseGuide(host) {
     host.ensureHouseGuideVisible?.();
-    const shell = host.game?.canvasShell;
-    const target = shell?.getCanvasTarget?.(
+    const target = host.getCanvasTarget?.(
       'buildBuilding',
       (action) => !isVisuallyDisabled(action) && action.buildingId === 'house',
     );
     if (!target) return false;
     return (
-      shell.showTutorialHighlight?.(target, t('tutorial.highlight.buildFirstHouse'), {
+      host.showTutorialHighlight?.(target, t('tutorial.highlight.buildFirstHouse'), {
         allowedAction: { type: 'buildBuilding', buildingId: 'house' },
         source: 'strongTutorial',
       }) || false
@@ -736,7 +735,7 @@
       {
         id: 'scout-explore-active',
         matches: all(stepIs(steps.scoutExploreStarted), (host) =>
-          Boolean(host.game?.state?.worldExplorerState?.activeMission),
+          Boolean(host.hasActiveWorldExplorerMission?.()),
         ),
         render: hideHighlight,
       },
@@ -776,7 +775,7 @@
               ? host.handleEvent('talentPolicyOpened')
               : host.onTalentPolicyOpened?.();
           result?.then?.(() => host.refreshCurrentHighlight?.())?.catch?.(() => {});
-          host.game?.canvasShell?.hideTutorialHighlight?.();
+          host.hideTutorialHighlight?.();
           return false;
         },
       },
@@ -797,7 +796,7 @@
             .advanceTo?.(steps.talentPolicyApplied)
             ?.then?.(() => host.refreshCurrentHighlight?.())
             ?.catch?.(() => {});
-          host.game?.canvasShell?.hideTutorialHighlight?.();
+          host.hideTutorialHighlight?.();
           return false;
         },
       },

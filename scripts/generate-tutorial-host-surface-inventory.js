@@ -159,8 +159,8 @@ function sourceFiles() {
     .sort();
 }
 
-function parseFile(file) {
-  const source = fs.readFileSync(path.join(REPO_ROOT, file), 'utf8').replace(/\r\n/g, '\n');
+function parseSource(file, sourceText) {
+  const source = sourceText.replace(/\r\n/g, '\n');
   return {
     file,
     source,
@@ -172,6 +172,10 @@ function parseFile(file) {
       range: true,
     }),
   };
+}
+
+function parseFile(file) {
+  return parseSource(file, fs.readFileSync(path.join(REPO_ROOT, file), 'utf8'));
 }
 
 function scanFile(parsed) {
@@ -263,6 +267,7 @@ module.exports = {
   DEFAULT_OUTPUT,
   buildInventory,
   parseFile,
+  parseSource,
   scanFile,
   writeInventory,
 };

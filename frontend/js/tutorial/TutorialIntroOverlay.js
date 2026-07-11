@@ -41,11 +41,18 @@
   };
   const MAX_INTRO_TUTORIAL_STEP = TutorialFlowShared?.TUTORIAL_STEPS?.tutorialStarted || 'tutorialStarted';
 
+  function createHostContext(options = {}) {
+    if (options.context) return options.context;
+    const TutorialHostContext = global.TutorialHostContext
+      || (typeof module !== 'undefined' && module.exports ? require('./TutorialHostContext') : null);
+    return TutorialHostContext ? new TutorialHostContext({ game: options.game || null }) : null;
+  }
+
   class TutorialIntroOverlay {
     constructor(options = {}) {
       this.runtime = options.runtime || global;
       this.storage = options.storage || null;
-      this.game = options.game || null;
+      this.context = createHostContext(options);
       this.running = false;
       this.step = STEPS.done;
       this.startedAt = 0;
@@ -88,12 +95,12 @@
       return true;
     }
 
-    shouldStart(state = this.game?.state) {
+    shouldStart(state = this.context?.getGameState?.()) {
       if (this.running || this.hasSeen()) return false;
       if (this.completedThisSession) return false;
       if (!state || typeof state !== 'object') return false;
-      if (this.game?.authView?.loginPanelVisible || this.game?.canvasShell?.auth?.view?.loginPanelVisible) return false;
-      if (!this.game?.hasServerState) return false;
+      if (this.context?.isLoginPanelVisible?.()) return false;
+      if (!this.context?.hasServerState?.()) return false;
       if (!this.hasCapitalSite(state)) return false;
       if (this.getQueryMode() === 'force') return true;
       if (!this.isIntroTutorialStep(state)) return false;
@@ -103,8 +110,8 @@
         && (!Number.isFinite(totalBuildings) || totalBuildings <= 0);
     }
 
-    isIntroTutorialStep(state = this.game?.state) {
-      const tutorial = state?.tutorial || this.game?.tutorial || null;
+    isIntroTutorialStep(state = this.context?.getGameState?.()) {
+      const tutorial = state?.tutorial || this.context?.getTutorialStateFromGame?.() || null;
       if (!tutorial || typeof tutorial !== 'object') return true;
       if (tutorial.completed || tutorial.disabled) return false;
       const step = TutorialFlowShared?.stepName(tutorial.currentStep) || '';
@@ -115,7 +122,7 @@
       return this.runtime?.performance?.now?.() || this.runtime?.now?.() || Date.now();
     }
 
-    start(state = this.game?.state) {
+    start(state = this.context?.getGameState?.()) {
       if (!this.shouldStart(state)) return false;
       this.clearTimer();
       this.running = true;
@@ -132,7 +139,7 @@
       return true;
     }
 
-    hasCapitalSite(state = this.game?.state) {
+    hasCapitalSite(state = this.context?.getGameState?.()) {
       const cityId = this.getCapitalCityId(state);
       const territories = Array.isArray(state?.territoryState?.territories) ? state.territoryState.territories : [];
       const tiles = Array.isArray(state?.territoryState?.worldMap?.tiles) ? state.territoryState.worldMap.tiles : [];
@@ -230,7 +237,7 @@
       if (typeof action === 'function') {
         Promise.resolve()
           .then(() => action())
-          .catch((error) => this.game?.log?.(error?.message || String(error)));
+          .catch((error) => this.context?.logTutorialError?.(error));
       }
       return true;
     }
@@ -252,7 +259,7 @@
       return true;
     }
 
-    getCapitalCityId(state = this.game?.state || {}) {
+    getCapitalCityId(state = this.context?.getGameState?.() || {}) {
       return state.cityState?.capitalCityId
         || state.activeCityId
         || state.cityState?.activeCityId
@@ -280,21 +287,12 @@
     }
 
     syncGame() {
-      if (this.game && typeof this.game === 'object') {
-        this.game.tutorialIntro = this.getViewState();
-      }
-      if (this.game?.canvasShell && typeof this.game.canvasShell === 'object') {
-        this.game.canvasShell.tutorialIntro = this.getViewState();
-      }
+      this.context?.setTutorialIntroState?.(this.getViewState());
       return true;
     }
 
     requestRender() {
-      const shell = this.game?.canvasShell;
-      if (shell?.renderActive) return shell.renderActive({ invalidateWorldTileView: false });
-      if (this.game?.renderCanvasSurface) return this.game.renderCanvasSurface();
-      if (this.game?.render) return this.game.render();
-      return false;
+      return this.context?.renderTutorialIntro?.() || false;
     }
   }
 

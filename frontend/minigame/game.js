@@ -137,6 +137,7 @@ require('../js/tutorial/TutorialGuideStepPolicy');
 require('../js/tutorial/TutorialGuideTargetResolver');
 require('../js/tutorial/TutorialGuideFlowRegistry');
 require('../js/tutorial/TutorialGuideEventRegistry');
+require('../js/tutorial/TutorialHostContext');
 require('../js/tutorial/TutorialGuideController');
 require('../js/platform/interactions/TechTreeInteractionModel');
 require('../js/platform/WorldMarchActionHandler');

@@ -104,10 +104,8 @@
         "frontend/js/platform/CanvasGameApp.js",
         "frontend/js/platform/CanvasGameShell.js",
         "frontend/js/platform/CanvasActionController.js",
-        "frontend/js/platform/CanvasModeOwnershipRuntime.js",
-        "frontend/js/tutorial/TutorialGuideController.js",
-        "frontend/js/tutorial/TutorialGuideEventRegistry.js",
-        "frontend/js/tutorial/TutorialIntroOverlay.js"
+      "frontend/js/platform/CanvasModeOwnershipRuntime.js",
+      "frontend/js/tutorial/TutorialHostContext.js"
       ]
     }
   ]

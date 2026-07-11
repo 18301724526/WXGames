@@ -71,14 +71,15 @@
   }
 
   function syncFromResult(host, payload = {}) {
+    if (typeof host?.syncFromResultPayload === 'function') {
+      return host.syncFromResultPayload(payload);
+    }
     if (
       payload &&
       typeof payload === 'object' &&
       ('tutorial' in payload || 'gameState' in payload)
     ) {
-      host.sync?.(
-        payload.tutorial || payload.gameState?.tutorial || host.game?.tutorial || host.state,
-      );
+      host.sync?.(payload.tutorial || payload.gameState?.tutorial || host.state);
     }
     return host.state;
   }
@@ -199,11 +200,7 @@
       tutorialStateChanged: (host, payload = {}) => {
         syncFromResult(host, payload.result || payload);
         if (stepEquals(getStep(host), steps.famousSeekCompleted)) {
-          const game = host.game || {};
-          game.getPanelSurfaceManager?.()?.closePanel?.('famousPersons', { render: true });
-          CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, 'showFamousPersons');
-          game.famousPersonsPage = 0;
-          game.selectedFamousPersonId = '';
+          host.closeFamousPersonsSurface?.();
         }
         host.refreshCurrentHighlight?.();
         return host.state;
@@ -255,10 +252,7 @@
       },
 
       famousPersonsClosed: (host) => {
-        const game = host.game || {};
-        CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, 'showFamousPersons');
-        game.famousPersonsPage = 0;
-        game.selectedFamousPersonId = '';
+        host.closeFamousPersonsSurface?.();
         host.refreshCurrentHighlight?.();
         return host.state;
       },
@@ -286,25 +280,12 @@
       },
 
       advisorClosed: async (host) => {
-        const game = host.game || {};
-        CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, 'showAdvisor');
-        game.tutorialAdvisorDialogue = null;
-        if (game.canvasShell) {
-          game.canvasShell.tutorialAdvisorDialogue = null;
-        }
+        host.closeAdvisorSurface?.();
         if (!stepEquals(getStep(host), steps.finalTechOpened)) {
           host.refreshCurrentHighlight?.();
           return host.state;
         }
-        game.canvasShell?.hideTutorialHighlight?.();
-        StateWriter.commit(
-          game,
-          (prev) => ({
-            ...(prev || {}),
-            softGuide: null,
-          }),
-          { source: 'tutorialEvent:advisorClosed' },
-        );
+        host.clearTutorialSoftGuide?.();
         const result = await host.advanceTo?.(steps.completed);
         host.refreshCurrentHighlight?.();
         return result;

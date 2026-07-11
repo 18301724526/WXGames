@@ -1,7 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
-const { buildInventory } = require('./generate-tutorial-host-surface-inventory');
+const {
+  buildInventory,
+  parseSource,
+  scanFile,
+} = require('./generate-tutorial-host-surface-inventory');
 
 test('tutorial host surface inventory is deterministic and fully classified', () => {
   const first = buildInventory();
@@ -19,7 +25,11 @@ test('tutorial host surface inventory is deterministic and fully classified', ()
 });
 
 test('tutorial host surface inventory catches S2b EventRegistry direct writes', () => {
-  const entries = buildInventory().entries.filter((entry) => (
+  const artifact = JSON.parse(fs.readFileSync(path.resolve(
+    __dirname,
+    '../docs/architecture/artifacts/northstar-s3-tutorial-host-surface.json',
+  ), 'utf8'));
+  const entries = artifact.entries.filter((entry) => (
     entry.location.startsWith('frontend/js/tutorial/TutorialGuideEventRegistry.js:')
   ));
 
@@ -34,9 +44,21 @@ test('tutorial host surface inventory catches S2b EventRegistry direct writes', 
 });
 
 test('tutorial host surface inventory catches dynamic host writes', () => {
-  const entries = buildInventory().entries;
+  const entries = scanFile(parseSource(
+    'frontend/js/tutorial/SyntheticTutorialHostProbe.js',
+    [
+      'function probe(host, key) {',
+      '  const game = host.game || {};',
+      '  game.famousPersonsPage = 0;',
+      "  game.selectedFamousPersonId = '';",
+      '  host[key] = true;',
+      '}',
+    ].join('\n'),
+  ));
   assert.ok(
     entries.some((entry) => entry.accessShape.includes('[*dynamic*]') && entry.note.startsWith('write;')),
     'setIfChanged host[key] writes must be inventoried',
   );
+  assert.ok(entries.some((entry) => entry.accessShape === 'game.famousPersonsPage'));
+  assert.ok(entries.some((entry) => entry.accessShape === 'game.selectedFamousPersonId'));
 });
