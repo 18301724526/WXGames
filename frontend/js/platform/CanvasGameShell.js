@@ -10,6 +10,11 @@
     }
     return null;
   })();
+  const TutorialActionMatches = (() => {
+    if (global.TutorialActionMatches) return global.TutorialActionMatches;
+    if (typeof module !== 'undefined' && module.exports) return require('./TutorialActionMatches');
+    return null;
+  })();
   var CanvasGameAppBase = global.CanvasGameApp;
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppBase) {
     CanvasGameAppBase = require('./CanvasGameApp');
@@ -1093,31 +1098,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
         }
 
     matchesTutorialAllowedAction(action = {}, allowedAction = null) {
-          if (!action?.type || !allowedAction?.type) return false;
-          // A guided openWorldSite click on a tile the scout actor still overlaps
-          // resolves to the multi-candidate world target picker. Accept that picker
-          // when it carries the guided site candidate so the click is not blocked;
-          // the first-city guide then highlights choosing the site from the picker.
-          if (allowedAction.type === 'openWorldSite' && action.type === 'openWorldTargetPicker') {
-            const wanted = String(allowedAction.siteId || allowedAction.cityId || allowedAction.territoryId || '');
-            const candidates = Array.isArray(action.candidates) ? action.candidates : [];
-            return candidates.some((candidate) => {
-              const candidateAction = candidate?.action || candidate || {};
-              const candidateSiteId = String(candidateAction.siteId || candidateAction.cityId || candidateAction.territoryId || '');
-              return (candidateAction.type === 'openWorldSite' || candidate?.kind === 'site')
-                && (!wanted || candidateSiteId === wanted);
-            });
-          }
-          if (action.type !== allowedAction.type) return false;
-          const getTargetId = (item = {}) => item.siteId || item.territoryId || item.cityId || item.targetId || '';
-          const allowedTargetId = getTargetId(allowedAction);
-          const actionTargetId = getTargetId(action);
-          return Object.entries(allowedAction).every(([key, value]) => (
-            key === 'type'
-            || value === undefined
-            || action[key] === value
-            || (['siteId', 'territoryId', 'cityId', 'targetId'].includes(key) && (!actionTargetId || !allowedTargetId || actionTargetId === allowedTargetId))
-          ));
+          return TutorialActionMatches?.actionMatches?.(action, allowedAction) === true;
         }
 
     isTutorialHighlightActionAllowed(action = {}, highlight = this.tutorialHighlight) {
@@ -1133,20 +1114,16 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
         }
 
     isTutorialAdvisorCloseActionAllowed(action = {}) {
-          if (action?.type !== 'closeAdvisor') return false;
           const dialogue = this.tutorialAdvisorDialogue || this.lastGame?.tutorialAdvisorDialogue || null;
-          if (!dialogue) return false;
-          const actionSource = action.source || '';
-          const dialogueSource = dialogue.source || '';
-          return !actionSource
-            || actionSource === 'tutorialAdvisorDialogue'
-            || !dialogueSource
-            || actionSource === dialogueSource;
+          return TutorialActionMatches?.isAdvisorCloseAllowed?.(action, dialogue) === true;
         }
 
     isTutorialActionAllowed(action = {}) {
           if (!action?.type || action.type === 'blockCanvasModal') return false;
-          if (this.isRewardRevealSnapshotOpen?.() && action.type === 'closeRewardReveal') return true;
+          if (TutorialActionMatches?.isRewardRevealCloseAllowed?.(
+            action,
+            this.isRewardRevealSnapshotOpen?.() === true,
+          )) return true;
           if (this.isTutorialAdvisorCloseActionAllowed(action)) return true;
           const targetAction = action.allowedAction || action;
           if (this.tutorialHighlight?.allowedAction

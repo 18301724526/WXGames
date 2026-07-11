@@ -61,7 +61,7 @@
     },
     {
       "file": "frontend/js/platform/CanvasGameShell.js",
-      "sha256": "1166d02989f1d854e11699567ffb6fa85e73a13c3260210aff01b309ddb6f66b"
+      "sha256": "77097bddd70f35edd5a1a366fee1735b69a2c0bda7ffb8d34ecbe150da8ebddc"
     },
     {
       "file": "frontend/js/platform/CanvasLayerRegistry.js",
@@ -174,6 +174,10 @@
     {
       "file": "frontend/js/platform/TileMapWaterAnimationTimer.js",
       "sha256": "4eb43c4e608515bf8c317322d2ef517877503c3111ef40ed033ab5a788be2c06"
+    },
+    {
+      "file": "frontend/js/platform/TutorialActionMatches.js",
+      "sha256": "e1ce729f76229e3b211492495f601bb27e141724f6f2da7fa1bedb938b0438fa"
     },
     {
       "file": "frontend/js/platform/TutorialGuideUiController.js",
@@ -641,7 +645,7 @@
     }
   ],
   "counts": {
-    "rendererFiles": 150,
+    "rendererFiles": 151,
     "tutorialFiles": 7,
     "registrationSites": 204,
     "registeredTypes": 114,

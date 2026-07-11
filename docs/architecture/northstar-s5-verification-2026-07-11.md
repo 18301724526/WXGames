@@ -60,3 +60,37 @@ git diff --no-index --exit-code -- docs/architecture/artifacts/northstar-s2-tuto
 ```
 
 结果：exit 0，投影与基线 diff 为空。Y1 枚举与 S3 host-surface inventory 随源码 hash 重生成；`CanvasGameApp.js` 新增 4 行 import 后，command-owner 清单的 17 个既有直接提交点仅机械同步行号 `+4`，inventory drift 回到 0。architecture smoke 最终通过。
+
+## Y3
+
+将 `CanvasGameShell` 的教程输入盾动作等价语义抽到纯函数模块 `TutorialActionMatches`，Shell 原位委托该模块。保留的语义包括：
+
+- `siteId`、`territoryId`、`cityId`、`targetId` 四种目标字段别名互认与原有缺省规则。
+- `openWorldSite` 对携带目标站点候选的 `openWorldTargetPicker` 特例。
+- reward reveal 打开时允许 `closeRewardReveal`。
+- 当前教程 advisor 对话允许无 source、`tutorialAdvisorDialogue` source、同 source 的 `closeAdvisor`，拒绝过期 source。
+
+新增模块特征测试枚举全部 16 个目标别名组合、普通字段等价与拒绝边界、picker 等价与拒绝边界、两条关闭白名单的接受与拒绝边界。既有 `CanvasGameShell.test.js` 继续覆盖 reward reveal、advisor、目标别名、picker 和非匹配动作的真实 Shell 输入盾路径。
+
+纯度门禁：
+
+```text
+TutorialActionMatches purity check passed: zero imports.
+```
+
+定向测试：86/86 通过，包含新增比较器、纯度门禁与既有 Shell 特征测试；前端脚本清单通过，`TutorialActionMatches.js` 位于 `CanvasGameShell.js` 之前加载。
+
+全程投影：使用 S2b Run 2 的完整成功 `summary.json`，通过当前 `scripts/playtest-tutorial-transcript.js` 重新生成 64 条投影，再执行：
+
+```powershell
+git diff --no-index --exit-code -- docs/architecture/artifacts/northstar-s2-tutorial-transcript.json $env:TEMP\wxgames-s5-y3-reprojected.json
+```
+
+结果：exit 0，投影与基线逐字节 diff 为空。命中类型清单 freshness check 通过：151 个 renderer 文件、204 个注册点、114 个注册类型、29 个教程引用类型、0 个缺失类型。
+
+全量门禁：
+
+- `npm test`：300 个测试文件，2409/2409 通过，0 fail。
+- `node scripts/run-architecture-smoke.js`：exit 0，最终输出 `[architecture-smoke] passed`，内含纯度门禁、脚本清单和 `git diff --check` 通过。
+
+Y3 未建立 query 表，未修改 `onXxx` 调用点，未迁移任何教程规则。
