@@ -305,12 +305,13 @@
           .setArmyFormation(cityId, slot, memberIds, soldierAssignments);
         host.applyApiState(result);
         this.close({ render: false });
-        const tutorialHandled = host.tutorialController?.onArmyFormationSaved?.(result) === true;
+        const tutorialHandled = await Promise.resolve(
+          host.emitTutorialEvent?.('armyFormationSaved', { result }),
+        ) === true;
         host.showFloatingText(result.message || t('command.formation.saved'));
         host.log(result.message || t('command.formation.saved'));
         if (!tutorialHandled) {
           host.tutorialController?.sync?.(host.tutorial);
-          host.tutorialController?.refreshCurrentHighlight?.();
           host.renderCanvasSurface(host.getState()?.currentTab);
         }
         return true;

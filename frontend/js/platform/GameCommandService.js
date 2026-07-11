@@ -105,9 +105,8 @@
     async handleBuildingAction(buildingId, action) {
       const host = this.host || {};
       if (!buildingId) return false;
-      if (host.tutorialController?.onBuildingAction?.(buildingId, action) === false) {
+      if (host.emitTutorialEvent?.('buildingAction', { buildingId, action }) === false) {
         host.showFloatingText?.(t('guide.buildFirstHouseFirst'));
-        host.tutorialController?.refreshCurrentHighlight?.();
       }
       if (host.pendingBuildingAction?.buildingId) return false;
       const normalizedAction = action === 'upgrade' ? 'upgrade' : 'build';

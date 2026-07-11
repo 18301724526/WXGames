@@ -62,13 +62,13 @@ test('CanvasActionController keeps world march HUD state and refresh contract', 
       calls.push(['stopWorldMarch', missionId]);
       return Promise.resolve(true);
     },
-    tutorialController: {
-      onWorldMarchTargetSelected(action) {
-        calls.push(['targetSelected', action.targetQ, action.targetR]);
-        return true;
-      },
-      refreshCurrentHighlight() {
-        calls.push(['refreshCurrentHighlight']);
+    emitTutorialEvent(eventName) {
+      calls.push(['tutorialEvent', eventName]);
+      return true;
+    },
+    changeEventBus: {
+      emit(eventName) {
+        calls.push([eventName]);
       },
     },
     runtime: {
@@ -148,17 +148,17 @@ test('CanvasActionController keeps world march HUD state and refresh contract', 
   );
 
   assert.deepEqual(calls, [
-    ['targetSelected', 4, -2],
+    ['tutorialEvent', 'worldMarchTargetSelected'],
     ['render', 'selectWorldMarchTarget'],
     ['refreshWorldMap', { force: true, invalidateWorldTileView: false }],
-    ['refreshCurrentHighlight'],
+    ['state.changed'],
     ['setTimeout'],
-    ['refreshCurrentHighlight'],
+    ['state.changed'],
     ['render', 'openWorldMarchFormationPicker'],
     ['refreshWorldMap', { force: true, invalidateWorldTileView: false }],
-    ['refreshCurrentHighlight'],
+    ['state.changed'],
     ['setTimeout'],
-    ['refreshCurrentHighlight'],
+    ['state.changed'],
     [
       'startWorldMarch',
       {
@@ -171,15 +171,15 @@ test('CanvasActionController keeps world march HUD state and refresh contract', 
     ],
     ['render', 'startWorldMarch'],
     ['refreshWorldMap', { force: true, invalidateWorldTileView: false }],
-    ['refreshCurrentHighlight'],
+    ['state.changed'],
     ['setTimeout'],
-    ['refreshCurrentHighlight'],
+    ['state.changed'],
     ['stopWorldMarch', 'march-1'],
     ['render', 'stopWorldMarch'],
     ['refreshWorldMap', { force: true, invalidateWorldTileView: false }],
-    ['refreshCurrentHighlight'],
+    ['state.changed'],
     ['setTimeout'],
-    ['refreshCurrentHighlight'],
+    ['state.changed'],
   ]);
 });
 
@@ -198,9 +198,9 @@ test('CanvasActionController refreshes world march UI before start command resol
       calls.push(['startWorldMarch', options.targetQ, options.targetR]);
       return startPromise;
     },
-    tutorialController: {
-      refreshCurrentHighlight() {
-        calls.push(['refreshCurrentHighlight']);
+    changeEventBus: {
+      emit(eventName) {
+        calls.push([eventName]);
       },
     },
     runtime: {
@@ -233,9 +233,9 @@ test('CanvasActionController refreshes world march UI before start command resol
     ['startWorldMarch', 4, -2],
     ['render', 'startWorldMarch'],
     ['refreshWorldMap', true],
-    ['refreshCurrentHighlight'],
+    ['state.changed'],
     ['setTimeout'],
-    ['refreshCurrentHighlight'],
+    ['state.changed'],
   ]);
 
   resolveStart(true);

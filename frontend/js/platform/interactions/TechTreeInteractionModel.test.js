@@ -9,6 +9,15 @@ const { makeModalOwnerHost } = require('../../../test-support/CanvasOwnerTestHar
 
 const makeModalHost = makeModalOwnerHost;
 
+function makeTutorialEventBus(calls, handlers = {}) {
+  return {
+    emit(eventName, payload = {}) {
+      calls.push(['tutorialEvent', eventName, payload.panelId || payload.view || '']);
+      return { results: [handlers[eventName]?.(payload)] };
+    },
+  };
+}
+
 function createHost() {
   const calls = [];
   const host = {
@@ -350,13 +359,9 @@ test('CanvasActionController defers tutorial enter-city action until the intro t
 
 test('CanvasActionController notifies tutorial when opening civilization command panel', async () => {
   const calls = [];
-  const game = makeModalHost({
-    tutorialController: {
-      async onCommandPanelOpened(panelId) {
-        calls.push(['onCommandPanelOpened', panelId]);
-        return true;
-      },
-    },
+  const game = makeModalHost();
+  const changeEventBus = makeTutorialEventBus(calls, {
+    commandPanelOpened: async () => true,
   });
   const host = makeModalHost({
     getCanvasGameHost() {
@@ -367,13 +372,13 @@ test('CanvasActionController notifies tutorial when opening civilization command
       return true;
     },
   });
-  const controller = new CanvasActionController({ host, awaitAsync: true });
+  const controller = new CanvasActionController({ host, awaitAsync: true, changeEventBus });
 
   assert.equal(await controller.handle_openCommandPanel({ type: 'openCommandPanel', panel: 'civilization' }), true);
 
   assert.equal(host.getCommandPanelValue(), 'civilization');
   assert.deepEqual(calls, [
-    ['onCommandPanelOpened', 'civilization'],
+    ['tutorialEvent', 'commandPanelOpened', 'civilization'],
     ['render'],
   ]);
 });
@@ -394,11 +399,10 @@ test('CanvasActionController vetoes tutorial-locked command panel without mutati
       normalizePanelTab(panelId) {
         return panelId === 'capital' ? 'buildings' : panelId;
       },
-      async onCommandPanelOpened(panelId) {
-        calls.push(['onCommandPanelOpened', panelId]);
-        return false;
-      },
     },
+  });
+  const changeEventBus = makeTutorialEventBus(calls, {
+    commandPanelOpened: async () => false,
   });
   const host = makeModalHost({
     getCanvasGameHost() {
@@ -413,7 +417,7 @@ test('CanvasActionController vetoes tutorial-locked command panel without mutati
       return true;
     },
   });
-  const controller = new CanvasActionController({ host, awaitAsync: true });
+  const controller = new CanvasActionController({ host, awaitAsync: true, changeEventBus });
 
   assert.equal(controller.handle_openCommandPanel({ type: 'openCommandPanel', panel: 'tech' }), false);
 
@@ -445,11 +449,10 @@ test('CanvasActionController rolls back the command panel when the tutorial regi
       normalizePanelTab(panelId) {
         return panelId;
       },
-      async onCommandPanelOpened(panelId) {
-        calls.push(['onCommandPanelOpened', panelId]);
-        return false;
-      },
     },
+  });
+  const changeEventBus = makeTutorialEventBus(calls, {
+    commandPanelOpened: async () => false,
   });
   const host = makeModalHost({
     getCanvasGameHost() {
@@ -460,14 +463,14 @@ test('CanvasActionController rolls back the command panel when the tutorial regi
       return true;
     },
   });
-  const controller = new CanvasActionController({ host, awaitAsync: true });
+  const controller = new CanvasActionController({ host, awaitAsync: true, changeEventBus });
 
   assert.equal(await controller.handle_openCommandPanel({ type: 'openCommandPanel', panel: 'tech' }), false);
 
   assert.equal(host.getCommandPanelValue(), '');
   assert.equal(host.deriveModeFacts().techTreeActive, false);
   assert.deepEqual(calls, [
-    ['onCommandPanelOpened', 'tech'],
+    ['tutorialEvent', 'commandPanelOpened', 'tech'],
     ['render'],
   ]);
 });
@@ -484,14 +487,10 @@ test('CanvasActionController opens the tech command panel when the tutorial gate
       normalizePanelTab(panelId) {
         return panelId;
       },
-      async onCommandPanelOpened(panelId) {
-        calls.push(['onCommandPanelOpened', panelId]);
-        return true;
-      },
-      refreshCurrentHighlight() {
-        calls.push(['refreshCurrentHighlight']);
-      },
     },
+  });
+  const changeEventBus = makeTutorialEventBus(calls, {
+    commandPanelOpened: async () => true,
   });
   const host = makeModalHost({
     getCanvasGameHost() {
@@ -502,7 +501,7 @@ test('CanvasActionController opens the tech command panel when the tutorial gate
       return true;
     },
   });
-  const controller = new CanvasActionController({ host, awaitAsync: true });
+  const controller = new CanvasActionController({ host, awaitAsync: true, changeEventBus });
 
   assert.equal(await controller.handle_openCommandPanel({ type: 'openCommandPanel', panel: 'tech' }), true);
 
@@ -510,7 +509,7 @@ test('CanvasActionController opens the tech command panel when the tutorial gate
   assert.equal(host.deriveModeFacts().techTreeActive, true);
   assert.deepEqual(calls.slice(0, 3), [
     ['canOpenTab', 'tech'],
-    ['onCommandPanelOpened', 'tech'],
+    ['tutorialEvent', 'commandPanelOpened', 'tech'],
     ['render'],
   ]);
 });
@@ -520,18 +519,14 @@ test('CanvasActionController lets tutorial finish asynchronously when closing ad
   const game = {
     showAdvisor: true,
     tutorialAdvisorDialogue: { source: 'houseBuilt' },
-    tutorialController: {
-      async onAdvisorClosed() {
-        calls.push(['onAdvisorClosed']);
-        await Promise.resolve();
-        calls.push(['advisorClosedDone']);
-        return true;
-      },
-      refreshCurrentHighlight() {
-        calls.push(['refreshCurrentHighlight']);
-      },
-    },
   };
+  const changeEventBus = makeTutorialEventBus(calls, {
+    advisorClosed: async () => {
+      await Promise.resolve();
+      calls.push(['advisorClosedDone']);
+      return true;
+    },
+  });
   const host = makeModalHost({
     tutorialAdvisorDialogue: { source: 'houseBuilt' },
     renderer: {
@@ -548,7 +543,7 @@ test('CanvasActionController lets tutorial finish asynchronously when closing ad
     },
   });
   host.openBlockingPanelSnapshot('showAdvisor', true);
-  const controller = new CanvasActionController({ host, awaitAsync: true });
+  const controller = new CanvasActionController({ host, awaitAsync: true, changeEventBus });
 
   assert.equal(await controller.handle_closeAdvisor({ type: 'closeAdvisor' }), true);
 
@@ -557,10 +552,9 @@ test('CanvasActionController lets tutorial finish asynchronously when closing ad
   assert.equal(game.tutorialAdvisorDialogue, null);
   assert.deepEqual(calls, [
     ['clearTutorialAdvisorDialogue'],
-    ['onAdvisorClosed'],
+    ['tutorialEvent', 'advisorClosed', ''],
     ['advisorClosedDone'],
     ['render'],
-    ['refreshCurrentHighlight'],
   ]);
 });
 
@@ -679,9 +673,6 @@ test('CanvasActionController refreshes lumbermill guide after event reward claim
       sync(nextTutorial) {
         calls.push(['syncTutorial', nextTutorial.currentStep]);
       },
-      refreshCurrentHighlight() {
-        calls.push(['refreshCurrentHighlight']);
-      },
     },
     applyApiState(result) {
       calls.push(['applyApiState', result.tutorial.currentStep]);
@@ -706,7 +697,6 @@ test('CanvasActionController refreshes lumbermill guide after event reward claim
     ['syncTutorial', 13],
     ['closeEvent'],
     ['hideTutorialHighlight'],
-    ['refreshCurrentHighlight'],
   ]);
 });
 
@@ -741,11 +731,6 @@ test('CanvasActionController opens task center above city management after lumbe
     isEventSnapshotOpen() {
       return Boolean(eventStore.snapshot);
     },
-    tutorialController: {
-      refreshCurrentHighlight() {
-        calls.push(['refreshCurrentHighlight']);
-      },
-    },
   });
   // The bidirectional shell<->game link lets the owner fan the opens out to both.
   shell.openBlockingPanelSnapshot('showCityManagement', true);
@@ -768,7 +753,7 @@ test('CanvasActionController opens task center above city management after lumbe
   assert.equal(shell.activeTaskCenterTab, 'main');
   assert.equal(game.activeTaskCenterTab, 'main');
   assert.deepEqual(ownerCalls, [['shellCloseEventSnapshot'], ['gameCloseEventSnapshot']]);
-  assert.deepEqual(calls, [['render'], ['refreshCurrentHighlight']]);
+  assert.deepEqual(calls, [['render']]);
 });
 
 test('CanvasActionController mirrors city management open to the game host', () => {
@@ -825,24 +810,12 @@ test('CanvasActionController closes command panel after switching military view'
       calls.push(['switchMilitaryView', view]);
       return true;
     },
-    tutorialController: {
-      onMilitaryViewSwitched(view) {
-        calls.push(['onMilitaryViewSwitched', view]);
-        return true;
-      },
-      refreshCurrentHighlight() {
-        calls.push(['refreshCurrentHighlight']);
-      },
-    },
-    runtime: {
-      setTimeout(callback) {
-        calls.push(['setTimeout']);
-        callback();
-      },
-    },
+  });
+  const changeEventBus = makeTutorialEventBus(calls, {
+    militaryViewSwitched: () => true,
   });
   shell.openBlockingPanelSnapshot('activeCommandPanel', 'military');
-  const controller = new CanvasActionController({ host: shell });
+  const controller = new CanvasActionController({ host: shell, changeEventBus });
 
   assert.equal(controller.handle_switchMilitaryView({ type: 'switchMilitaryView', view: 'world' }), true);
 
@@ -850,11 +823,8 @@ test('CanvasActionController closes command panel after switching military view'
   assert.equal(game.getCommandPanelValue(), '');
   assert.deepEqual(calls, [
     ['switchMilitaryView', 'world'],
-    ['onMilitaryViewSwitched', 'world'],
+    ['tutorialEvent', 'militaryViewSwitched', 'world'],
     ['render'],
-    ['refreshCurrentHighlight'],
-    ['setTimeout'],
-    ['refreshCurrentHighlight'],
   ]);
 });
 
@@ -862,13 +832,7 @@ test('CanvasActionController opens world site from territory id aliases', () => 
   const calls = [];
   const host = {
     territoryUiState: {},
-    lastGame: {
-      tutorialController: {
-        refreshCurrentHighlight() {
-          calls.push(['refresh']);
-        },
-      },
-    },
+    lastGame: {},
     render() {
       calls.push(['render']);
     },
@@ -878,7 +842,7 @@ test('CanvasActionController opens world site from territory id aliases', () => 
   assert.equal(controller.handle_openWorldSite({ type: 'openWorldSite', territoryId: 'site_1_2' }), true);
 
   assert.equal(host.territoryUiState.selectedSiteId, 'site_1_2');
-  assert.deepEqual(calls, [['render'], ['refresh']]);
+  assert.deepEqual(calls, [['render']]);
 });
 
 test('CanvasActionController keeps local world site HUD open after forwarded action', () => {
@@ -945,13 +909,13 @@ test('CanvasActionController advances tutorial after selecting a world march tar
         calls.push(['closeSiteDialog', options]);
       },
     },
-    tutorialController: {
-      async onWorldMarchTargetSelected(action) {
-        calls.push(['onWorldMarchTargetSelected', action.targetQ, action.targetR]);
-        return true;
-      },
-      refreshCurrentHighlight() {
-        calls.push(['refreshCurrentHighlight']);
+    emitTutorialEvent(eventName) {
+      calls.push(['tutorialEvent', eventName]);
+      return Promise.resolve(true);
+    },
+    changeEventBus: {
+      emit(eventName) {
+        calls.push([eventName]);
       },
     },
     runtime: {
@@ -993,12 +957,12 @@ test('CanvasActionController advances tutorial after selecting a world march tar
   assert.equal(host.territoryUiState.selectedSiteId, '');
   assert.deepEqual(calls, [
     ['closeSiteDialog', { render: false }],
-    ['onWorldMarchTargetSelected', 3, -2],
+    ['tutorialEvent', 'worldMarchTargetSelected'],
     ['renderCanvasAction', 'selectWorldMarchTarget'],
     ['requestWorldMapRenderAnimationFrame', { force: true, invalidateWorldTileView: false }],
-    ['refreshCurrentHighlight'],
+    ['state.changed'],
     ['setTimeout'],
-    ['refreshCurrentHighlight'],
+    ['state.changed'],
   ]);
 });
 
@@ -1022,9 +986,9 @@ test('CanvasActionController refreshes world map layer after world march HUD cha
     canvasShell: shell,
     territoryUiState: shell.territoryUiState,
     state: { activeCityId: 'capital' },
-    tutorialController: {
-      refreshCurrentHighlight() {
-        calls.push(['refreshCurrentHighlight']);
+    changeEventBus: {
+      emit(eventName) {
+        calls.push([eventName]);
       },
     },
     runtime: {
@@ -1109,7 +1073,7 @@ test('CanvasActionController refreshes world map layer after world march HUD cha
     'returnWorldMarch',
     'stopWorldMarch',
   ]);
-  assert.equal(calls.filter((call) => call[0] === 'refreshCurrentHighlight').length, 12);
+  assert.equal(calls.filter((call) => call[0] === 'state.changed').length, 12);
   assert.equal(calls.filter((call) => call[0] === 'setTimeout').length, 6);
 });
 

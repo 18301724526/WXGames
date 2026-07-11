@@ -1700,7 +1700,10 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             const territory = this.lastGame?.territoryController || null;
             if (territory?.openSiteDialog) territory.openSiteDialog(siteId);
             TerritoryUiStateStore?.patch?.(this, { selectedSiteId: siteId });
-            this.lastGame?.tutorialController?.refreshCurrentHighlight?.();
+            this.lastGame?.changeEventBus?.emit?.('state.changed', {
+              owner: this.lastGame,
+              source: 'CanvasGameShell:openWorldSite',
+            });
             return true;
           }
           return false;
@@ -3348,7 +3351,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           this.closeRewardRevealSnapshot?.();
           if (hadReveal) {
             this.renderActive();
-            this.lastGame?.tutorialController?.refreshCurrentHighlight?.();
           }
           return hadReveal;
         }
@@ -3650,10 +3652,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             const inputValue = String(value).trim().slice(0, maxLength);
             this.updateNamingSnapshot?.({ inputValue });
             this.renderActive();
-            const game = this.getCanvasGameHost?.() || this.lastGame || null;
-            const refresh = () => game?.tutorialController?.refreshCurrentHighlight?.();
-            if (typeof this.runtime?.setTimeout === 'function') this.runtime.setTimeout(refresh, 0);
-            else refresh();
           }).catch(() => {});
           return true;
         }

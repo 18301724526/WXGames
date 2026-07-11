@@ -6,6 +6,7 @@ const LocaleText = require('../ecs/resource/LocaleText');
 const CanvasGameApp = require('./CanvasGameApp');
 const UIStatePresenter = require('../state/UIStatePresenter');
 const TutorialGuideController = require('../tutorial/TutorialGuideController');
+const ChangeEventBus = require('../state/ChangeEventBus');
 const { CanvasModalOwnerTestHost } = require('../../test-support/CanvasOwnerTestHarness');
 
 function createCommandHost(api) {
@@ -100,19 +101,17 @@ test('GameCommandService keeps tutorial hint but submits non-house building', as
     },
   };
   const { host, calls } = createCommandHost(api);
-  host.tutorialController = {
-    onBuildingAction(buildingId) {
-      return buildingId === 'house';
-    },
-    refreshCurrentHighlight() {
-      calls.push(['refreshCurrentHighlight']);
-    },
+  host.emitTutorialEvent = (eventName, payload) => {
+    calls.push(['tutorialEvent', eventName, payload.buildingId, payload.action]);
+    return payload.buildingId === 'house';
   };
   const service = new GameCommandService({ host });
 
   assert.equal(await service.buildBuilding('farm'), true);
   assert.deepEqual(apiCalls, ['farm']);
-  assert.deepEqual(calls.filter(([name]) => name === 'refreshCurrentHighlight'), [['refreshCurrentHighlight']]);
+  assert.deepEqual(calls.filter(([name]) => name === 'tutorialEvent'), [
+    ['tutorialEvent', 'buildingAction', 'farm', 'build'],
+  ]);
   assert.equal(calls.some(([name]) => name === 'showFloatingText'), true);
 });
 
@@ -241,7 +240,12 @@ test('CanvasGameApp keeps command facades and delegates to command service', asy
 
 test('CanvasGameApp advanceEra returns true after applying successful API state', async () => {
   const calls = [];
+  const changeEventBus = ChangeEventBus.createEventBus();
+  changeEventBus.subscribe('eraAdvanced', ({ result }) => {
+    calls.push(['eraAdvanced', result.tutorial.currentStep]);
+  });
   const app = new CanvasGameApp({
+    changeEventBus,
     runtimeRequired: false,
     apiRequired: false,
     rendererRequired: false,
@@ -276,9 +280,6 @@ test('CanvasGameApp advanceEra returns true after applying successful API state'
       sync(tutorial) {
         calls.push(['sync', tutorial.currentStep]);
       },
-      onEraAdvanced(result) {
-        calls.push(['onEraAdvanced', result.tutorial.currentStep]);
-      },
     },
   });
   app.showFloatingText = (message) => calls.push(['showFloatingText', message]);
@@ -288,16 +289,21 @@ test('CanvasGameApp advanceEra returns true after applying successful API state'
 
   assert.equal(await app.advanceEra(), true);
   assert.equal(app.state.currentEra, 1);
-  assert.deepEqual(calls.filter(([name]) => ['advanceEra', 'onEraAdvanced', 'showFloatingText'].includes(name)), [
+  assert.deepEqual(calls.filter(([name]) => ['advanceEra', 'eraAdvanced', 'showFloatingText'].includes(name)), [
     ['advanceEra'],
-    ['onEraAdvanced', 6],
+    ['eraAdvanced', 6],
     ['showFloatingText', '进入农耕时代'],
   ]);
 });
 
 test('CanvasGameApp can advance era two when farm completion is promoted to era guide step', async () => {
   const calls = [];
+  const changeEventBus = ChangeEventBus.createEventBus();
+  changeEventBus.subscribe('eraAdvanced', ({ result }) => {
+    calls.push(['eraAdvanced', result.tutorial.currentStep]);
+  });
   const app = new CanvasGameApp({
+    changeEventBus,
     runtimeRequired: false,
     apiRequired: false,
     rendererRequired: false,
@@ -338,9 +344,6 @@ test('CanvasGameApp can advance era two when farm completion is promoted to era 
       sync(tutorial) {
         calls.push(['sync', tutorial.currentStep]);
       },
-      onEraAdvanced(result) {
-        calls.push(['onEraAdvanced', result.tutorial.currentStep]);
-      },
     },
   });
   app.tutorial = { completed: false, currentStep: 9, phaseCompleted: { newbie: true, era2: false } };
@@ -353,14 +356,14 @@ test('CanvasGameApp can advance era two when farm completion is promoted to era 
   assert.equal(await app.advanceEra(), true);
   assert.equal(app.state.currentEra, 2);
   assert.equal(app.tutorial.currentStep, 11);
-  assert.deepEqual(calls.filter(([name]) => ['advanceEra', 'onEraAdvanced', 'showFloatingText'].includes(name)), [
+  assert.deepEqual(calls.filter(([name]) => ['advanceEra', 'eraAdvanced', 'showFloatingText'].includes(name)), [
     ['advanceEra'],
-    ['onEraAdvanced', 11],
+    ['eraAdvanced', 11],
     ['showFloatingText', '进入聚落时代'],
   ]);
 });
 
-test('CanvasGameApp advisor task target opens task center and refreshes tutorial highlight', () => {
+test('CanvasGameApp advisor task target opens task center through modal funnels', () => {
   const calls = [];
   const app = new CanvasGameApp({
     runtimeRequired: false,
@@ -372,12 +375,6 @@ test('CanvasGameApp advisor task target opens task center and refreshes tutorial
         calls.push(['handle_openTaskCenter', action]);
         app.showTaskCenter = true;
         app.activeTaskCenterTab = action.tab;
-        return true;
-      },
-    },
-    tutorialController: {
-      refreshCurrentHighlight() {
-        calls.push(['refreshCurrentHighlight']);
         return true;
       },
     },
@@ -406,7 +403,7 @@ test('CanvasGameApp advisor task target opens task center and refreshes tutorial
   assert.equal(app.showTaskCenter, true);
   assert.equal(app.canvasShell.showTaskCenter, true);
   assert.equal(app.activeTaskCenterTab, 'main');
-  assert.deepEqual(calls.map(([name]) => name), ['hideTutorialHighlight', 'shell_handle_openTaskCenter', 'refreshCurrentHighlight']);
+  assert.deepEqual(calls.map(([name]) => name), ['hideTutorialHighlight', 'shell_handle_openTaskCenter']);
 });
 
 test('CanvasGameApp shows tutorial spine advisor dialogue after first house build', () => {
@@ -533,9 +530,8 @@ test('CanvasGameApp waits for house-built advisor before refreshing civilization
   );
 });
 
-test('CanvasGameApp openNaming writes owner snapshot before delayed tutorial highlight refresh', () => {
+test('CanvasGameApp openNaming writes the owner snapshot through the modal funnel', () => {
   const calls = [];
-  const timers = [];
   const app = new CanvasGameApp({
     runtimeRequired: false,
     apiRequired: false,
@@ -551,19 +547,6 @@ test('CanvasGameApp openNaming writes owner snapshot before delayed tutorial hig
         };
       },
     },
-    scheduler: {
-      setTimeout(callback, delayMs) {
-        calls.push(['setTimeout', delayMs]);
-        timers.push(callback);
-        return 1;
-      },
-    },
-    tutorialController: {
-      refreshCurrentHighlight() {
-        calls.push(['refreshCurrentHighlight']);
-        return true;
-      },
-    },
   });
   app.canvasShell = {};
   app.render = () => calls.push(['render']);
@@ -573,15 +556,11 @@ test('CanvasGameApp openNaming writes owner snapshot before delayed tutorial hig
   const naming = app.getRendererSnapshot().modal['modal:naming'].payload;
   assert.equal(naming.visible, true);
   assert.equal(naming.prompt.territoryId, 'site_1');
-  assert.deepEqual(calls, [['render'], ['setTimeout', 80]]);
-
-  timers[0]();
-  assert.deepEqual(calls.at(-1), ['refreshCurrentHighlight']);
+  assert.deepEqual(calls, [['render']]);
 });
 
-test('CanvasGameApp refreshes tutorial highlight after naming input is filled', async () => {
+test('CanvasGameApp updates naming input through the modal funnel', async () => {
   const calls = [];
-  const timers = [];
   const app = new CanvasGameApp({
     runtimeRequired: false,
     apiRequired: false,
@@ -590,19 +569,6 @@ test('CanvasGameApp refreshes tutorial highlight after naming input is filled', 
       async requestTextInput() {
         calls.push(['requestTextInput']);
         return 'River League';
-      },
-    },
-    scheduler: {
-      setTimeout(callback, delayMs) {
-        calls.push(['setTimeout', delayMs]);
-        timers.push(callback);
-        return 1;
-      },
-    },
-    tutorialController: {
-      refreshCurrentHighlight() {
-        calls.push(['refreshCurrentHighlight']);
-        return true;
       },
     },
   });
@@ -621,9 +587,5 @@ test('CanvasGameApp refreshes tutorial highlight after naming input is filled', 
   assert.deepEqual(calls, [
     ['requestTextInput'],
     ['render', 'River League'],
-    ['setTimeout', 0],
   ]);
-
-  timers[0]();
-  assert.deepEqual(calls.at(-1), ['refreshCurrentHighlight']);
 });

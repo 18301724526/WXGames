@@ -105,3 +105,58 @@ tutorialHostContextWitness.count=0
 ```
 
 `git diff --no-index --exit-code` 返回 0，投影逐字节 diff 为空；未触发 L2，未重录基线。受控运行记录的 `tutorialHostContextWitness.count=0`。`node scripts/run-architecture-smoke.js` 最终输出 `[architecture-smoke] passed`。
+
+## Z4|割接批三并退役 poke
+
+- `WorldMarchActionHandler/ArmyFormationEditorController/GameCommandService/CanvasGameShell` 的教程事件均已改由 `ChangeEventBus` 发布；`state.changed/modal.changed` 承担刷新通知。
+- 删除最后 9 处非冻结 poke，原行号为 `WorldMarchActionHandler.js:142/148/150/153`、`ArmyFormationEditorController.js:313`、`GameCommandService.js:110`、`CanvasGameShell.js:1703/3351/3654`；每处均有同名 `file:line` 特征测试。
+- 非冻结 poke 期望计数与实数：`9→0`；非冻结 `tutorialController?.onXxx` 实数为 0。冻结 `CanvasPanelActionRunner*` 3 处 declared 残留未修改、未计入。
+- `TutorialGuideEventRegistry` 已删除 `tutorial.event` 包装主题、跨通道去重状态和双通道订阅，仅保留 18 个契约主题；包装主题实数为 0。
+- `TutorialHostContext.handleEvent` 统一发布到事件总线；旧 `onXxx` 仅作为冻结文件所需的总线别名保留。command-owner `inventoryDriftFindings=0`，Step4 debt catalog `violations=0`。
+- S3/S4/S5 派生清单机械重建并通过 freshness 检查：`total=202`、`events=18`、`registrationSites=204/tutorialReferenceSites=39/missingTypes=0`。
+
+定向测试原文：
+
+```text
+ℹ tests 143
+ℹ suites 0
+ℹ pass 143
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+```
+
+全量测试原文：
+
+```text
+ℹ tests 2448
+ℹ suites 0
+ℹ pass 2448
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+```
+
+架构 smoke 原文：
+
+```text
+ℹ tests 1689
+ℹ pass 1689
+[architecture-smoke] passed
+```
+
+受控环境双跑均使用 S2b Run 2 投影输入，结果为：
+
+```text
+run1.rows=64
+run2.rows=64
+stopReason=tutorial-completed
+finalStepName=completed
+baselineSHA256=16862F819B0EE78ACBD8C358CB964FC1307646BD122BA4BA6EC9C270E79D605F
+run1SHA256=16862F819B0EE78ACBD8C358CB964FC1307646BD122BA4BA6EC9C270E79D605F
+run2SHA256=16862F819B0EE78ACBD8C358CB964FC1307646BD122BA4BA6EC9C270E79D605F
+```
+
+基线、Run 1、Run 2 逐字节 diff 均为空。`tutorialHostContextWitness.count=0` 引用同一 S2b 受控运行记录，不冒充本次重投影新生成 witness。未出现投影差异，未触发 L2，未重录基线。

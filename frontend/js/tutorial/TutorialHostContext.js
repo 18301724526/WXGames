@@ -162,8 +162,11 @@
       this.eventRegistry = options.eventRegistry
         || (SharedTutorialGuideEventRegistry?.create ? SharedTutorialGuideEventRegistry.create({ steps: TUTORIAL_STEPS }) : null);
       const changeEventBus = options.changeEventBus
-        || (typeof window !== 'undefined' ? SharedChangeEventBus : null);
-      this.changeEventBusUnsubscribe = this.eventRegistry?.subscribeToBus?.(changeEventBus, this) || null;
+        || (typeof window !== 'undefined'
+          ? SharedChangeEventBus
+          : SharedChangeEventBus?.createEventBus?.());
+      this.changeEventBus = changeEventBus || null;
+      this.changeEventBusUnsubscribe = this.eventRegistry?.subscribeToBus?.(this.changeEventBus, this) || null;
     }
 
     disconnectChangeEventBus() {
@@ -473,7 +476,8 @@
     }
 
     handleEvent(eventName, payload = {}) {
-      const result = this.eventRegistry?.handle?.(this, eventName, payload);
+      const report = this.changeEventBus?.emit?.(eventName, payload);
+      const result = report?.results?.find((entry) => entry !== undefined);
       return result === undefined ? this.state : result;
     }
 

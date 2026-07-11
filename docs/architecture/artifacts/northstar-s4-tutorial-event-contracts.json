@@ -3,7 +3,7 @@
   "generatedBy": "scripts/generate-tutorial-event-contracts.js",
   "source": {
     "file": "frontend/js/tutorial/TutorialGuideEventRegistry.js",
-    "sha256": "541ac4ab883618dc2cb8bbb0677df0be9cff5d15f374675dbb3299fb1324959e"
+    "sha256": "65cfb14cff33993b11e9208e578e410ab537110d54b5660203ed2e2f10c14c52"
   },
   "events": [
     {

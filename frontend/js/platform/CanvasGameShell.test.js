@@ -360,25 +360,14 @@ test('CanvasGameShell layer helpers ignore disabled feature layers', () => {
   assert.deepEqual(calls, []);
 });
 
-test('CanvasGameShell refreshes tutorial highlight after naming input is filled', async () => {
+test('CanvasGameShell updates naming through the modal change funnel', async () => {
   const calls = [];
-  const game = makeModalHost({
-    tutorialController: {
-      refreshCurrentHighlight() {
-        calls.push(['refreshCurrentHighlight']);
-        return true;
-      },
-    },
-  });
+  const game = makeModalHost();
   const shell = new CanvasGameShell({
     runtime: {
       requestTextInput() {
         calls.push(['requestTextInput']);
         return Promise.resolve('River City');
-      },
-      setTimeout(callback, delayMs) {
-        calls.push(['setTimeout', delayMs]);
-        callback();
       },
     },
   });
@@ -401,8 +390,6 @@ test('CanvasGameShell refreshes tutorial highlight after naming input is filled'
   assert.deepEqual(calls, [
     ['requestTextInput'],
     ['renderActive', 'River City'],
-    ['setTimeout', 0],
-    ['refreshCurrentHighlight'],
   ]);
 });
 
@@ -2775,9 +2762,9 @@ test('CanvasGameShell keeps local world site selection after forwarded open acti
     },
   });
   shell.lastGame = {
-    tutorialController: {
-      refreshCurrentHighlight() {
-        calls.push(['refresh']);
+    changeEventBus: {
+      emit(eventName, payload) {
+        calls.push([eventName, payload.source]);
       },
     },
   };
@@ -2787,7 +2774,7 @@ test('CanvasGameShell keeps local world site selection after forwarded open acti
   assert.equal(shell.territoryUiState.selectedSiteId, 'site_2_-8');
   assert.deepEqual(calls, [
     ['forward', 'openWorldSite', 'site_2_-8'],
-    ['refresh'],
+    ['state.changed', 'CanvasGameShell:openWorldSite'],
   ]);
 });
 

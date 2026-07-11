@@ -136,21 +136,21 @@
     return nextTarget;
   }
 
-  // Every action in the world-march/target-picker cluster that changes what the
-  // player should click next (HUD, pickers, selection) must re-run the tutorial
-  // guide registry: the guide's follow-through rules (e.g. into an open picker)
-  // only fire on refreshCurrentHighlight, and nothing else re-runs them — on a
-  // restored session there is no march-poll render loop to catch up for a missed
-  // notification. Shared with TargetPickerActionHandler via the class static.
-  function refreshTutorialHighlightAfterAction(core) {
+  // World-march UI changes publish state.changed immediately and on the next turn.
+  // This lets follow-through rules observe settled picker state after restoration.
+  // Shared with TargetPickerActionHandler via the class static.
+  function notifyTutorialStateChangedAfterAction(core) {
     const game = core.getGameHost();
-    const tutorialController = game?.tutorialController || core.host?.tutorialController || null;
-    if (!tutorialController || typeof tutorialController.refreshCurrentHighlight !== 'function')
-      return false;
-    tutorialController.refreshCurrentHighlight();
+    const bus = game?.changeEventBus || core.host?.changeEventBus || global.ChangeEventBus || null;
+    if (!bus?.emit) return false;
+    const notify = () => bus.emit('state.changed', {
+      owner: game || core.host || null,
+      source: 'WorldMarchActionHandler',
+    });
+    notify();
     const scheduler = core.host?.runtime || game?.runtime || global;
     if (typeof scheduler?.setTimeout === 'function') {
-      scheduler.setTimeout(() => tutorialController.refreshCurrentHighlight(), 0);
+      scheduler.setTimeout(notify, 0);
     }
     return true;
   }
@@ -178,7 +178,7 @@
     }
 
     refreshWorldMarchTutorialHighlight() {
-      return refreshTutorialHighlightAfterAction(this.core);
+      return notifyTutorialStateChangedAfterAction(this.core);
     }
 
     getWorldMarchDeploymentEligibility(action = {}) {
@@ -313,7 +313,7 @@
         target,
         uiState: this.helpers.summarizeActorPickingUiState(uiState),
       });
-      const tutorialResult = game?.tutorialController?.onWorldMarchTargetSelected?.(action) || true;
+      const tutorialResult = game?.emitTutorialEvent?.('worldMarchTargetSelected', {}) || true;
       return this.core.finalize(
         Promise.resolve(tutorialResult).then((allowed) => {
           this.helpers.logActorPickingDiag('territory:selectWorldMarchTarget:tutorialResult', {
@@ -523,7 +523,7 @@
   WorldMarchActionHandler.t = t;
   WorldMarchActionHandler.clonePlain = clonePlain;
   WorldMarchActionHandler.openTargetPickerSnapshot = openTargetPickerSnapshot;
-  WorldMarchActionHandler.refreshTutorialHighlightAfterAction = refreshTutorialHighlightAfterAction;
+  WorldMarchActionHandler.refreshTutorialHighlightAfterAction = notifyTutorialStateChangedAfterAction;
 
   global.WorldMarchActionHandler = WorldMarchActionHandler;
   if (typeof module !== 'undefined' && module.exports) module.exports = WorldMarchActionHandler;

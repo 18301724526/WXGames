@@ -52,7 +52,7 @@ test('EventRegistry subscribes to all 18 contract event names and rejects invali
   ]);
 });
 
-test('transition dual channel deduplicates the same event without suppressing same-channel repeats', () => {
+test('contract topics remain repeatable and the retired wrapper topic is inert', () => {
   const bus = ChangeEventBus.createEventBus();
   let handled = 0;
   const registry = TutorialGuideEventRegistry.create({
@@ -67,9 +67,9 @@ test('transition dual channel deduplicates the same event without suppressing sa
   const unsubscribe = registry.subscribeToBus(bus, host);
   const payload = { buildingId: 'farm', action: 'build' };
 
-  registry.handle(host, 'buildingAction', payload);
   bus.emit('buildingAction', { ...payload });
-  registry.handle(host, 'buildingAction', payload);
+  bus.emit('buildingAction', { ...payload });
+  bus.emit('tutorial.event', { eventName: 'buildingAction', payload });
   unsubscribe();
 
   assert.equal(handled, 2);

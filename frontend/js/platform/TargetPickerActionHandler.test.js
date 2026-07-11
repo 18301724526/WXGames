@@ -99,7 +99,7 @@ test('chooseWorldTarget closes the picker and dispatches the candidate action vi
   assert.deepEqual(core.calls, [['handle', 'selectWorldActor', {}]]);
 });
 
-test('opening and closing the world target picker re-runs the tutorial guide', () => {
+test('opening and closing the world target picker publishes the tutorial state funnel', () => {
   // Regression for the restored-session picker stall: without this notification
   // nothing re-runs the guide registry when the picker opens (the in-session
   // flow only recovered via incidental march-poll renders), so the follow-through
@@ -108,10 +108,10 @@ test('opening and closing the world target picker re-runs the tutorial guide', (
   const refreshes = [];
   const scheduled = [];
   const game = {
-    tutorialController: {
-      refreshCurrentHighlight() {
+    changeEventBus: {
+      emit(eventName) {
+        assert.equal(eventName, 'state.changed');
         refreshes.push('refresh');
-        return true;
       },
     },
   };

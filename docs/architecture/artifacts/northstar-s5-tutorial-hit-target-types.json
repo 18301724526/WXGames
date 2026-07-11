@@ -13,7 +13,7 @@
   "sources": [
     {
       "file": "frontend/js/platform/ArmyFormationEditorController.js",
-      "sha256": "54d80d9878d271215fae4c27a0979585a2bedc5aa510cf12455e9d4e7afed4e0"
+      "sha256": "babb5250b6fee893d3e78b3845a4993c50e49ec4e5c502b337d39afd9e816591"
     },
     {
       "file": "frontend/js/platform/ArmyFormationQueries.js",
@@ -61,7 +61,7 @@
     },
     {
       "file": "frontend/js/platform/CanvasGameShell.js",
-      "sha256": "77097bddd70f35edd5a1a366fee1735b69a2c0bda7ffb8d34ecbe150da8ebddc"
+      "sha256": "398780dd09832fdee59eb2d3eac3d5230a1ae228b40d1e1884e93020d73b01d7"
     },
     {
       "file": "frontend/js/platform/CanvasLayerRegistry.js",
@@ -117,7 +117,7 @@
     },
     {
       "file": "frontend/js/platform/GameCommandService.js",
-      "sha256": "c52e2867fd36f337a5a4a38851b6245a479a656b8fecd50113b8113e973e289a"
+      "sha256": "5a117a0f62768a0efefbd7a25d883bcffdd0c08ffa53294ae13e0d3ff28c9fb7"
     },
     {
       "file": "frontend/js/platform/H5CanvasAppShell.js",
@@ -233,7 +233,7 @@
     },
     {
       "file": "frontend/js/platform/WorldMarchActionHandler.js",
-      "sha256": "96d57a00739274d341e405741bc6ee4da9edb1643e3bfc03846f5103f5959680"
+      "sha256": "71fa320c1aa1ccbb205229c2f4e4b43f7d163222c68476b7a08929ed66946cd5"
     },
     {
       "file": "frontend/js/platform/WorldTileMapCacheCoordinator.js",
@@ -621,7 +621,7 @@
     },
     {
       "file": "frontend/js/tutorial/TutorialGuideEventRegistry.js",
-      "sha256": "541ac4ab883618dc2cb8bbb0677df0be9cff5d15f374675dbb3299fb1324959e"
+      "sha256": "65cfb14cff33993b11e9208e578e410ab537110d54b5660203ed2e2f10c14c52"
     },
     {
       "file": "frontend/js/tutorial/TutorialGuideFlowRegistry.js",
@@ -637,7 +637,7 @@
     },
     {
       "file": "frontend/js/tutorial/TutorialHostContext.js",
-      "sha256": "82a3e97a0a7ad11fb071d5e021cc9d6ad0f234040129ff4e26e40587168d5dcc"
+      "sha256": "b9e9dbc23988ecc9a308da8fbf13d0cb3b3ffc05b5fc7c0d29381fac5bf4014b"
     },
     {
       "file": "frontend/js/tutorial/TutorialIntroOverlay.js",
@@ -681,12 +681,12 @@
         {
           "type": "assignJob",
           "via": "getCanvasTarget",
-          "location": "frontend/js/tutorial/TutorialHostContext.js:922"
+          "location": "frontend/js/tutorial/TutorialHostContext.js:926"
         },
         {
           "type": "assignJob",
           "via": "getCanvasTarget",
-          "location": "frontend/js/tutorial/TutorialHostContext.js:924"
+          "location": "frontend/js/tutorial/TutorialHostContext.js:928"
         }
       ],
       "registrations": [
@@ -727,7 +727,7 @@
         {
           "type": "buildBuilding",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialHostContext.js:1164"
+          "location": "frontend/js/tutorial/TutorialHostContext.js:1168"
         }
       ],
       "registrations": [
@@ -855,7 +855,7 @@
         {
           "type": "enterCity",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialHostContext.js:976"
+          "location": "frontend/js/tutorial/TutorialHostContext.js:980"
         }
       ],
       "registrations": [

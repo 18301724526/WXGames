@@ -188,10 +188,10 @@ test('save posts the normalized draft, closes, and lets the tutorial own the tra
       };
     },
     applyApiState() {},
-    tutorialController: {
-      onArmyFormationSaved() {
-        return true;
-      },
+    emitTutorialEvent(eventName, payload) {
+      assert.equal(eventName, 'armyFormationSaved');
+      assert.equal(payload.result.message, 'saved');
+      return Promise.resolve(true);
     },
   });
   const controller = new ArmyFormationEditorController({ host });

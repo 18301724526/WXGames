@@ -349,16 +349,13 @@ test('saveArmyFormation lets tutorial own the post-save map transition', async (
       calls.push(['applyApiState', result.tutorial.currentStep]);
       this.tutorial = result.tutorial;
     },
+    emitTutorialEvent(eventName, payload) {
+      calls.push(['tutorialEvent', eventName, payload.result.tutorial.currentStep]);
+      return Promise.resolve(true);
+    },
     tutorialController: {
-      onArmyFormationSaved(result) {
-        calls.push(['onArmyFormationSaved', result.tutorial.currentStep]);
-        return true;
-      },
       sync() {
         calls.push(['sync']);
-      },
-      refreshCurrentHighlight() {
-        calls.push(['refreshCurrentHighlight']);
       },
     },
     renderCanvasSurface(tab) {
@@ -377,7 +374,7 @@ test('saveArmyFormation lets tutorial own the post-save map transition', async (
     ['renderCanvasSurface', 'buildings'],
     ['setArmyFormation', 'capital', 1, ['fp-scout'], { 'fp-scout': 999 }],
     ['applyApiState', 22],
-    ['onArmyFormationSaved', 22],
+    ['tutorialEvent', 'armyFormationSaved', 22],
     ['showFloatingText', 'saved'],
     ['log', 'saved'],
   ]);

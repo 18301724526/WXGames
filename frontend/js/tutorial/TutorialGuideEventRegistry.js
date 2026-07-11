@@ -95,18 +95,6 @@
     });
   }
 
-  function stableSerialize(value, seen = new Set()) {
-    if (value === null || typeof value !== 'object') return JSON.stringify(value);
-    if (seen.has(value)) return '"[Circular]"';
-    seen.add(value);
-    if (Array.isArray(value)) {
-      return `[${value.map((entry) => stableSerialize(entry, seen)).join(',')}]`;
-    }
-    return `{${Object.keys(value).sort().map((key) => (
-      `${JSON.stringify(key)}:${stableSerialize(value[key], seen)}`
-    )).join(',')}}`;
-  }
-
   function getStep(host) {
     return TutorialFlowShared.stepName(host?.getCurrentStep?.()) || 'initial';
   }
@@ -348,24 +336,10 @@
     constructor(options = {}) {
       this.steps = options.steps || TutorialGuideStepPolicy?.TUTORIAL_STEPS || {};
       this.handlers = options.handlers || createDefaultHandlers(this.steps);
-      this.recentDispatches = new WeakMap();
     }
 
-    handle(host, eventName, payload = {}, options = {}) {
+    handle(host, eventName, payload = {}) {
       if (!validatePayload(eventName, payload)) return undefined;
-      const channel = options.channel || 'direct';
-      const key = `${eventName}:${stableSerialize(payload)}`;
-      const recent = this.recentDispatches.get(host) || new Map();
-      const previousChannel = recent.get(key);
-      if (previousChannel && previousChannel !== channel) return undefined;
-      recent.set(key, channel);
-      this.recentDispatches.set(host, recent);
-      const clear = () => {
-        if (recent.get(key) === channel) recent.delete(key);
-        if (recent.size === 0) this.recentDispatches.delete(host);
-      };
-      if (typeof setTimeout === 'function') setTimeout(clear, 0);
-      else Promise.resolve().then(clear);
       const steps = getSteps(host, this.steps);
       if (steps !== this.steps) {
         this.steps = steps;
@@ -374,16 +348,13 @@
       return this.handlers[eventName]?.(host, payload);
     }
 
-    subscribeToBus(bus, host, topic = 'tutorial.event') {
+    subscribeToBus(bus, host) {
       if (!bus || typeof bus.subscribe !== 'function') return () => false;
       const unsubscribers = EVENT_NAMES.map((eventName) => (
         bus.subscribe(eventName, (payload = {}) => (
-          this.handle(host, eventName, payload, { channel: 'bus' })
+          this.handle(host, eventName, payload)
         ))
       ));
-      unsubscribers.push(bus.subscribe(topic, (event = {}) => (
-        this.handle(host, event.eventName, event.payload || {}, { channel: 'bus' })
-      )));
       ['state.changed', 'modal.changed'].forEach((eventName) => {
         unsubscribers.push(bus.subscribe(eventName, (change = {}) => {
           if (host?.isChangeEventRelevant?.(eventName, change) === false) return false;
