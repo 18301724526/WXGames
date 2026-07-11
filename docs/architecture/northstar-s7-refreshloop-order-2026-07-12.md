@@ -24,3 +24,11 @@ terra 隔离环境全程双跑:intro-enter-city-2 通关、投影与 64 基线 d
 **判据**:全程双跑通关(停滞消除的真机证据)+原 E5 全部判据。
 
 做完 G4 即停等 L2 终审。范围外:不追其它步骤停滞(若有另案);S7b 账目另单。
+
+---
+## G0 结论(2026-07-12,GLM 3-pause 已定死)+ 机制修正
+- **实测机制=同步 commit 回边,非微任务循环**:GLM 3 pause 帧数 1/62/34,runClosureEntries=0(H1 尾随微任务未参与)。精确环:refreshCurrentHighlight(TutorialHostContext:1529)→refreshLegacyHighlight(:1489)→flowRegistry.refresh(:761)→renderHouseGuide(:318)→showTutorialHighlight(CanvasGameShell:1919)→renderGuideHighlightFrame(:1850)→renderActive(:2956)→getActiveTab(:2775)→StateWriter.commit(:61)→ChangeEventBus.emit('state.changed')(:31)→TutorialGuideEventRegistry state.changed 订阅者(:363)→refreshCurrentHighlight[回边]。同栈 refreshCurrentHighlight 出现 2 次=重入守卫在此路径失效。
+- **G0 视为完成(GLM),sol 从 G1 起。** G1/G2 重定向:不是尾随微任务问题——
+  - **G1(改为:诊断守卫失效+堵 state.changed 回边)**:sol 先查 refreshCurrentHighlight 的 highlightRefreshActive 守卫为何未挡住 state.changed 订阅者的回边(是否跨 context 实例/是否订阅者走了旁路);修法二选一并说明:(a)state.changed 订阅者在"刷新/渲染进行中"标志下不得同步回刷(coalesce);(b)统一守卫覆盖所有回刷入口含 state.changed 路径。特征测试复现该回边→断言终止。
+  - **G2(改为:渲染纯化——根治)**:getActiveTab/renderActive 在渲染期调 StateWriter.commit 写派生状态=北极星"渲染非纯投影"违规,是回边的源头。评估把渲染期的派生状态写移出渲染路径(或标记为不发 state.changed)。这是根治;若体量超本单,至少 G3 断言守住不复发。
+- **H1(5b206ec2)/H2(9128b74b)修错对象(尾随微任务未参与),本单评估撤销**:H1 撤(其重排在真机制下无益且曾疑助长);H2 看门狗与本 bug 无关,可留作独立防御但需 declared 非本 bug 修复。
