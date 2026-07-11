@@ -2771,13 +2771,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           });
           this.mapHomeActive = view.isMapHome;
           if (this.lastGame && 'mapHomeActive' in this.lastGame) this.lastGame.mapHomeActive = view.isMapHome;
-          if (this.lastGame?.state && view.isMapHome) {
-            StateWriter.commit(this, (prev) => ({
-              ...prev,
-              currentTab: view.activeTab,
-              militaryView: view.militaryView,
-            }), { source: 'shellRendering:getActiveTab' });
-          }
           return view.activeTab;
         }
 
@@ -3019,21 +3012,9 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           });
           this.mapHomeActive = homeView.isMapHome;
           const resolvedMilitaryView = homeView.activeTab === 'military' ? homeView.militaryView : 'army';
-          // Honor the name: renderReadOnly must NOT mutate the state object it is handed.
-          // The active tab/military view it derives are owned facts, so route the update
-          // through StateWriter (the single write point), then re-point the local `state`
-          // to the canonical owner's fresh object for the rest of the read-only render.
           const needsTabUpdate = state.currentTab !== homeView.activeTab;
           const needsMilitaryUpdate = Boolean(resolvedMilitaryView) && state.militaryView !== resolvedMilitaryView;
-          if ((needsTabUpdate || needsMilitaryUpdate) && StateWriter.getStateHost(this)?.state === state) {
-            state = StateWriter.commit(this, (prev) => ({
-              ...prev,
-              ...(needsTabUpdate ? { currentTab: homeView.activeTab } : {}),
-              ...(needsMilitaryUpdate ? { militaryView: resolvedMilitaryView } : {}),
-            }), { source: 'shellRendering:renderReadOnly' });
-          } else if (needsTabUpdate || needsMilitaryUpdate) {
-            // Fallback: the handed state is not the owner's slot (e.g. a detached snapshot).
-            // Derive a fresh object instead of mutating the caller's input.
+          if (needsTabUpdate || needsMilitaryUpdate) {
             state = {
               ...state,
               ...(needsTabUpdate ? { currentTab: homeView.activeTab } : {}),

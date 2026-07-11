@@ -16,6 +16,7 @@ const CanvasActionDispatcher = require('./CanvasActionDispatcher');
 const CanvasPanelSurfaceManager = require('./CanvasPanelSurfaceManager');
 const BattleStore = require('../state/BattleStore');
 const ModalStore = require('../state/ModalStore');
+const ChangeEventBus = require('../state/ChangeEventBus');
 const CanvasSurfaceHitTargets = require('./renderers/CanvasSurfaceHitTargets');
 
 // Modal presence is a single global ModalStore (no per-host owner). Reset it before
@@ -1323,13 +1324,46 @@ test('CanvasGameShell can render resources without default map-home coercion', (
   assert.equal(shell.renderReadOnly(state, 'resources', { forceMapHome: false, allowDefaultMapHome: false }), true);
 
   assert.deepEqual(calls.at(-1), ['render', 'resources', 'resources', false]);
-  // renderReadOnly honors its name: the input `state` object is not mutated; the
-  // resolved tab/view land on the canonical owner via StateWriter (single write point).
   assert.equal(state.currentTab, 'military');
   assert.equal(state.militaryView, 'world');
-  assert.equal(shell.lastGame.state.currentTab, 'resources');
-  assert.equal(shell.lastGame.state.militaryView, 'army');
+  assert.equal(shell.lastGame.state, state);
   assert.equal(shell.mapHomeActive, false);
+});
+
+test('CanvasGameShell renderActive does not publish derived navigation state', () => {
+  const state = {
+    currentTab: 'military',
+    militaryView: 'world',
+    territoryState: { worldMap: { tiles: [{ id: 'tile_0_0' }] } },
+  };
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    renderer: { render() {} },
+  });
+  shell.lastGame = {
+    state,
+    mapHomeActive: true,
+    activeTab: 'military',
+    militaryView: 'world',
+    tutorial: {},
+  };
+  shell.setWorldMapLayerVisible = () => {};
+  shell.renderWorldMapLayer = () => false;
+  const stateChanges = [];
+  const unsubscribe = ChangeEventBus.subscribe('state.changed', (change) => {
+    if (change.owner === shell.lastGame) stateChanges.push(change);
+  });
+
+  try {
+    assert.equal(shell.renderActive(), true);
+  } finally {
+    unsubscribe();
+  }
+
+  assert.equal(stateChanges.length, 0);
+  assert.equal(shell.lastGame.state, state);
+  assert.equal(state.currentTab, 'military');
+  assert.equal(state.militaryView, 'world');
 });
 
 test('CanvasGameShell renderCanvasSurface uses mounted game state instead of inherited shell state', () => {
@@ -1774,6 +1808,7 @@ test('CanvasGameShell forces world map redraw instead of hiding an invalid baked
 
 test('CanvasGameShell keeps guided resource render target during active refreshes', () => {
   const calls = [];
+  const stateChanges = [];
   const state = {
     currentTab: 'military',
     militaryView: 'world',
@@ -1794,6 +1829,9 @@ test('CanvasGameShell keeps guided resource render target during active refreshe
     militaryView: 'world',
     tutorial: {},
   };
+  const unsubscribe = ChangeEventBus.subscribe('state.changed', (change) => {
+    if (change.owner === shell.lastGame) stateChanges.push(change);
+  });
   shell.setWorldMapLayerVisible = () => {};
   shell.renderWorldMapLayer = () => false;
   shell.tutorialHighlight = {
@@ -1801,15 +1839,17 @@ test('CanvasGameShell keeps guided resource render target during active refreshe
     renderOptions: { forceMapHome: false, allowDefaultMapHome: false },
   };
 
-  assert.equal(shell.renderActive(), true);
+  try {
+    assert.equal(shell.renderActive(), true);
+  } finally {
+    unsubscribe();
+  }
 
   assert.deepEqual(calls.at(-1), ['render', 'resources', 'resources', false]);
-  // renderReadOnly honors its name: the input `state` object is not mutated; the
-  // resolved tab/view land on the canonical owner via StateWriter (single write point).
+  assert.equal(stateChanges.length, 0);
   assert.equal(state.currentTab, 'military');
   assert.equal(state.militaryView, 'world');
-  assert.equal(shell.lastGame.state.currentTab, 'resources');
-  assert.equal(shell.lastGame.state.militaryView, 'army');
+  assert.equal(shell.lastGame.state, state);
   assert.equal(shell.mapHomeActive, false);
 });
 
