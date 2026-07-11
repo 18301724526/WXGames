@@ -41,6 +41,14 @@
     return null;
   })();
 
+  const SharedTutorialEngineQueryTable = (() => {
+    if (global.TutorialEngineQueryTable) return global.TutorialEngineQueryTable;
+    if (typeof module !== 'undefined' && module.exports) {
+      return require('./TutorialEngineQueryTable');
+    }
+    return null;
+  })();
+
   const TerritoryUiStateStore = (() => {
     if (global.TerritoryUiStateStore) return global.TerritoryUiStateStore;
     if (typeof module !== 'undefined' && module.exports) {
@@ -161,6 +169,8 @@
         || (SharedTutorialGuideFlowRegistry?.create ? SharedTutorialGuideFlowRegistry.create({ steps: TUTORIAL_STEPS }) : null);
       this.eventRegistry = options.eventRegistry
         || (SharedTutorialGuideEventRegistry?.create ? SharedTutorialGuideEventRegistry.create({ steps: TUTORIAL_STEPS }) : null);
+      this.queryTable = options.queryTable
+        || (SharedTutorialEngineQueryTable?.create ? SharedTutorialEngineQueryTable.create({ context: this }) : null);
       const changeEventBus = options.changeEventBus
         || (typeof window !== 'undefined'
           ? SharedChangeEventBus
@@ -246,7 +256,10 @@
     }
 
     queries(methodName, ...args) {
-      return this.invokeInterface('queries', methodName, ...args);
+      if (!this.queryTable) {
+        throw new TypeError('TutorialHostContext.queries table unavailable');
+      }
+      return this.queryTable.invoke(methodName, ...args);
     }
 
     next(step) {
