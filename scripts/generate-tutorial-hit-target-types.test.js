@@ -22,10 +22,38 @@ test('renderer type rename probe fires without changing tutorial references', ()
   const inventory = buildInventory({
     rendererFiles: [rendererFile],
     tutorialFiles: [tutorialFile],
+    tutorialConfigFiles: [],
     sourceOverride: {
       [rendererFile]: "renderer.addHitTarget(rect, { type: 'renamedTarget' });",
       [tutorialFile]: "host.showHighlight('originalTarget');",
     },
   });
   assert.deepEqual(inventory.missingTypes, ['originalTarget']);
+});
+
+test('StepScript target fields stay in the tutorial hit-target inventory', () => {
+  const rendererFile = 'probe/Renderer.js';
+  const configFile = 'probe/StepScripts.js';
+  const inventory = buildInventory({
+    rendererFiles: [rendererFile],
+    tutorialFiles: [],
+    tutorialConfigFiles: [configFile],
+    sourceOverride: {
+      [rendererFile]: [
+        "renderer.addHitTarget(rect, { type: 'openTaskCenter' });",
+        "renderer.addHitTarget(rect, { type: 'claimTaskReward' });",
+      ].join('\n'),
+      [configFile]: [
+        "const config = { target: 'openTaskCenter' };",
+        "const claim = { target: 'claimTaskReward:main_first_supplies' };",
+      ].join('\n'),
+    },
+  });
+
+  assert.deepEqual(inventory.missingTypes, []);
+  assert.deepEqual(inventory.tutorialTypes.map((entry) => entry.type), [
+    'claimTaskReward',
+    'openTaskCenter',
+  ]);
+  assert.equal(inventory.counts.tutorialConfigFiles, 1);
 });

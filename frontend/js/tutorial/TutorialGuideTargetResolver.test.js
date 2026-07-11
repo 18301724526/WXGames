@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const TutorialGuideTargetResolver = require('./TutorialGuideTargetResolver');
+const taskPanelStepScripts = require('../tutorial-config/TaskPanelStepScripts');
 
 const S2_HIGHLIGHT_PANEL_EXPECTATIONS = Object.freeze({
   buildBuilding: '',
@@ -24,11 +25,15 @@ const S2_HIGHLIGHT_PANEL_EXPECTATIONS = Object.freeze({
   switchCityManagementTab: '',
 });
 
-test('S2 highlight rule inventory has an explicit panel coverage decision for every type', () => {
+test('legacy and StepScript highlights have an explicit panel coverage decision for every type', () => {
   const inventory = require('../../../docs/architecture/artifacts/northstar-s2-tutorial-rule-inventory.json');
-  const highlightTypes = [...new Set(inventory.flowRules
+  const legacyHighlightTypes = inventory.flowRules
     .filter((rule) => rule.kind.startsWith('highlight:'))
-    .map((rule) => rule.kind.slice('highlight:'.length)))].sort();
+    .map((rule) => rule.kind.slice('highlight:'.length));
+  const stepScriptTargets = Object.values(taskPanelStepScripts).flatMap((script) => (
+    Array.isArray(script.clauses) ? script.clauses : [script]
+  )).map((entry) => String(entry.target || '').split(':')[0]).filter(Boolean);
+  const highlightTypes = [...new Set([...legacyHighlightTypes, ...stepScriptTargets])].sort();
   assert.deepEqual(Object.keys(S2_HIGHLIGHT_PANEL_EXPECTATIONS).sort(), highlightTypes);
   const panelTable = TutorialGuideTargetResolver.MODAL_TARGET_PANEL_BY_ACTION_TYPE;
   Object.entries(S2_HIGHLIGHT_PANEL_EXPECTATIONS).forEach(([type, panelKey]) => {

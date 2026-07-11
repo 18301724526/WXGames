@@ -95,6 +95,7 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-ui-runtime-field-ownership.test.js',
   'scripts/check-tutorial-host-context-boundary.js',
   'scripts/check-tutorial-host-context-boundary.test.js',
+  'frontend/js/tutorial/TutorialHostContextStepScript.test.js',
   'scripts/check-tutorial-engine-purity.js',
   'scripts/check-tutorial-engine-purity.test.js',
   'frontend/js/tutorial-engine/StepScriptTypeRegistry.js',
@@ -104,6 +105,8 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/tutorial-config/TaskPanelStepScripts.test.js',
   'scripts/check-tutorial-step-config-purity.js',
   'scripts/check-tutorial-step-config-purity.test.js',
+  'scripts/generate-tutorial-rule-inventory.js',
+  'scripts/generate-tutorial-rule-inventory.test.js',
   'scripts/check-tutorial-action-matches-purity.js',
   'scripts/check-tutorial-action-matches-purity.test.js',
   'scripts/check-step5-action-descriptor-coverage.js',
@@ -752,10 +755,12 @@ const TEST_FILES = Object.freeze([
   'scripts/check-step4-final-audit.test.js',
   'scripts/check-ui-runtime-field-ownership.test.js',
   'scripts/check-tutorial-host-context-boundary.test.js',
+  'frontend/js/tutorial/TutorialHostContextStepScript.test.js',
   'scripts/check-tutorial-engine-purity.test.js',
   'frontend/js/tutorial-engine/StepScriptRunner.test.js',
   'frontend/js/tutorial-config/TaskPanelStepScripts.test.js',
   'scripts/check-tutorial-step-config-purity.test.js',
+  'scripts/generate-tutorial-rule-inventory.test.js',
   'scripts/check-step5-action-descriptor-coverage.test.js',
   'scripts/verify-step4-phase3-real-server.test.js',
 ]);
@@ -898,6 +903,10 @@ function main() {
   ]);
   run('tutorial StepScript config purity blocking guard', process.execPath, [
     'scripts/check-tutorial-step-config-purity.js',
+  ]);
+  run('tutorial rule inventory freshness guard', process.execPath, [
+    'scripts/generate-tutorial-rule-inventory.js',
+    '--check',
   ]);
   run('Step5 action descriptor coverage blocking guard', process.execPath, [
     'scripts/check-step5-action-descriptor-coverage.js',

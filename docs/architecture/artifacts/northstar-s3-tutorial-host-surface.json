@@ -16,7 +16,7 @@
     },
     {
       "file": "frontend/js/tutorial/TutorialGuideFlowRegistry.js",
-      "sha256": "60ae8b1e0472ba3879eaff5afb2e4c86cc679bc0aa88029bbbc245c9841c933a"
+      "sha256": "13ec24b921fe49d191ddd2467789f66c147bdb665de2075c8c80151ef566c19b"
     },
     {
       "file": "frontend/js/tutorial/TutorialGuideStepPolicy.js",
@@ -32,13 +32,13 @@
     }
   ],
   "counts": {
-    "total": 202,
+    "total": 199,
     "categories": {
       "effects": 48,
       "waitFor": 0,
       "requestAction": 0,
-      "resolveTarget": 50,
-      "queries": 88,
+      "resolveTarget": 48,
+      "queries": 87,
       "next": 16
     }
   },
@@ -483,386 +483,380 @@
     },
     {
       "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:96",
-      "accessShape": "host.isTaskCenterOpen",
-      "category": "queries",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:100",
       "accessShape": "host.isFamousPersonsOpen",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:104",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:100",
       "accessShape": "host.isFamousPersonDetailOpen",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:108",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:104",
       "accessShape": "host.isCityManagementOpen",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:112",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:108",
       "accessShape": "host.isCityManagementTabOpen",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:116",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:112",
       "accessShape": "host.getArmyFormationEditor",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:120",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:116",
       "accessShape": "host.prepareCommandPanelGuide",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:121",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:117",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:130",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:126",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:136",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:132",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:145",
-      "accessShape": "host.showHighlight",
-      "category": "resolveTarget",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:154",
-      "accessShape": "host.showHighlight",
-      "category": "resolveTarget",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:163",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:141",
       "accessShape": "host.getScoutFamousPersonId",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:164",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:142",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:173",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:151",
       "accessShape": "host.getScoutFamousPersonId",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:177",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:155",
+      "accessShape": "host.showHighlight",
+      "category": "resolveTarget",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:171",
+      "accessShape": "host.showHighlight",
+      "category": "resolveTarget",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:178",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
       "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:193",
-      "accessShape": "host.showHighlight",
-      "category": "resolveTarget",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:200",
-      "accessShape": "host.showHighlight",
-      "category": "resolveTarget",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:215",
       "accessShape": "host.getWorldTargetPickerSiteCandidate",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:217",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:195",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:219",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:197",
       "accessShape": "candidate.id",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:221",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:199",
       "accessShape": "candidate.id",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:226",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:204",
       "accessShape": "host.getWorldTargetPickerSiteCandidate",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:230",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:208",
       "accessShape": "host.getFirstExploreCityId",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:231",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:209",
       "accessShape": "host.isWorldSiteSelected",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:232",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:210",
       "accessShape": "host.showFirstCitySiteOpenHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:234",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:212",
       "accessShape": "host.focusFirstCitySite",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:236",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:214",
+      "accessShape": "host.showHighlight",
+      "category": "resolveTarget",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:224",
+      "accessShape": "host.getFirstExploreCityId",
+      "category": "queries",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:225",
+      "accessShape": "host.getFirstExploreCity",
+      "category": "queries",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:226",
+      "accessShape": "host.isNamingOpen",
+      "category": "queries",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:227",
+      "accessShape": "host.showHighlight",
+      "category": "resolveTarget",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:233",
+      "accessShape": "site.naturalName",
+      "category": "queries",
+      "note": "read; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:238",
+      "accessShape": "host.getNamingInputValue",
+      "category": "queries",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:239",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
       "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:246",
-      "accessShape": "host.getFirstExploreCityId",
-      "category": "queries",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:247",
-      "accessShape": "host.getFirstExploreCity",
-      "category": "queries",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:248",
-      "accessShape": "host.isNamingOpen",
-      "category": "queries",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:249",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
       "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:255",
-      "accessShape": "site.naturalName",
-      "category": "queries",
-      "note": "read; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:260",
-      "accessShape": "host.getNamingInputValue",
-      "category": "queries",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:261",
-      "accessShape": "host.showHighlight",
-      "category": "resolveTarget",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:268",
-      "accessShape": "host.showHighlight",
-      "category": "resolveTarget",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:277",
       "accessShape": "host.isNamingOpen",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:278",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:256",
       "accessShape": "host.openNaming",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:284",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:262",
       "accessShape": "host.getNamingInputValue",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:285",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:263",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:292",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:270",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:301",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:279",
       "accessShape": "host.ensureCityPeopleGuideVisible",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:302",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:280",
       "accessShape": "host.isCityManagementTabOpen",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:303",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:281",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:310",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:288",
       "accessShape": "host.pickManualAssignAction",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:311",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:289",
       "accessShape": "picked.target",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:313",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:291",
       "accessShape": "host.showTutorialHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:314",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:292",
       "accessShape": "picked.target",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:317",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:295",
       "accessShape": "host.getCityPeopleGuideHighlightOptions",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:318",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:296",
       "accessShape": "picked.action",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:324",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:302",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:329",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:307",
       "accessShape": "host.getCityPeopleGuideHighlightOptions",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:334",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:312",
       "accessShape": "host.ensureHouseGuideVisible",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:335",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:313",
       "accessShape": "host.getCanvasTarget",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:341",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:319",
       "accessShape": "host.showTutorialHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:368",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:336",
       "accessShape": "host.showBuildingGuide",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:396",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:346",
       "accessShape": "host.getActiveEventId",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:403",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:353",
       "accessShape": "host.getActiveEventId",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:412",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:362",
       "accessShape": "host.getCapitalCityId",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:413",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:363",
       "accessShape": "host.getFirstExploreCityId",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:416",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:366",
       "accessShape": "host.isAdvisorOpen",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:419",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:369",
       "accessShape": "host.isRewardRevealOpen",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:454",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:404",
       "accessShape": "host.isOnTab",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:473",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:415",
       "accessShape": "host.isFarmGuideActive",
       "category": "queries",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:428",
+      "accessShape": "host.showHighlight",
+      "category": "resolveTarget",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:439",
+      "accessShape": "host.showHighlight",
+      "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
@@ -878,6 +872,120 @@
       "note": "call; root=host; direct host member access"
     },
     {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:519",
+      "accessShape": "host.getCapitalCityId",
+      "category": "queries",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:519",
+      "accessShape": "host.isWorldSiteSelected",
+      "category": "queries",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:521",
+      "accessShape": "host.getCapitalCityId",
+      "category": "queries",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:521",
+      "accessShape": "host.showCapitalEnterHighlight",
+      "category": "effects",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:526",
+      "accessShape": "host.focusCapitalSite",
+      "category": "effects",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:526",
+      "accessShape": "host.getCapitalCityId",
+      "category": "queries",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:536",
+      "accessShape": "host.showHighlight",
+      "category": "resolveTarget",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:552",
+      "accessShape": "host.showHighlight",
+      "category": "resolveTarget",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:556",
+      "accessShape": "host.getCapitalCityId",
+      "category": "queries",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:571",
+      "accessShape": "host.ensureMapHomeGuideVisible",
+      "category": "effects",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:577",
+      "accessShape": "host.getFirstExploreCityTarget",
+      "category": "queries",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:579",
+      "accessShape": "host.showHighlight",
+      "category": "resolveTarget",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:583",
+      "accessShape": "target.q",
+      "category": "queries",
+      "note": "read; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:584",
+      "accessShape": "target.r",
+      "category": "queries",
+      "note": "read; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:586",
+      "accessShape": "target.q",
+      "category": "queries",
+      "note": "read; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:586",
+      "accessShape": "target.r",
+      "category": "queries",
+      "note": "read; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:590",
+      "accessShape": "host.showHighlight",
+      "category": "resolveTarget",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:602",
+      "accessShape": "host.isWorldMarchFormationPickerOpen",
+      "category": "queries",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:605",
+      "accessShape": "host.ensureMapHomeGuideVisible",
+      "category": "effects",
+      "note": "call; root=host; direct host member access"
+    },
+    {
       "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:606",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
@@ -885,43 +993,25 @@
     },
     {
       "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:617",
+      "accessShape": "host.isWorldMarchFormationPickerOpen",
+      "category": "queries",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:620",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:627",
-      "accessShape": "host.getCapitalCityId",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:630",
+      "accessShape": "host.hasActiveWorldExplorerMission",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:627",
-      "accessShape": "host.isWorldSiteSelected",
-      "category": "queries",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:629",
-      "accessShape": "host.getCapitalCityId",
-      "category": "queries",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:629",
-      "accessShape": "host.showCapitalEnterHighlight",
-      "category": "effects",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:634",
-      "accessShape": "host.focusCapitalSite",
-      "category": "effects",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:634",
-      "accessShape": "host.getCapitalCityId",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:643",
+      "accessShape": "host.getFirstExploreCityId",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
@@ -932,223 +1022,115 @@
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:660",
-      "accessShape": "host.showHighlight",
-      "category": "resolveTarget",
-      "note": "call; root=host; direct host member access"
-    },
-    {
       "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:664",
-      "accessShape": "host.getCapitalCityId",
-      "category": "queries",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:679",
-      "accessShape": "host.ensureMapHomeGuideVisible",
-      "category": "effects",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:685",
-      "accessShape": "host.getFirstExploreCityTarget",
-      "category": "queries",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:687",
-      "accessShape": "host.showHighlight",
-      "category": "resolveTarget",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:691",
-      "accessShape": "target.q",
-      "category": "queries",
-      "note": "read; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:692",
-      "accessShape": "target.r",
-      "category": "queries",
-      "note": "read; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:694",
-      "accessShape": "target.q",
-      "category": "queries",
-      "note": "read; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:694",
-      "accessShape": "target.r",
-      "category": "queries",
-      "note": "read; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:698",
-      "accessShape": "host.showHighlight",
-      "category": "resolveTarget",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:710",
-      "accessShape": "host.isWorldMarchFormationPickerOpen",
-      "category": "queries",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:713",
-      "accessShape": "host.ensureMapHomeGuideVisible",
-      "category": "effects",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:714",
-      "accessShape": "host.showHighlight",
-      "category": "resolveTarget",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:725",
-      "accessShape": "host.isWorldMarchFormationPickerOpen",
-      "category": "queries",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:728",
-      "accessShape": "host.showHighlight",
-      "category": "resolveTarget",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:738",
-      "accessShape": "host.hasActiveWorldExplorerMission",
-      "category": "queries",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:751",
-      "accessShape": "host.getFirstExploreCityId",
-      "category": "queries",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:752",
-      "accessShape": "host.showHighlight",
-      "category": "resolveTarget",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:772",
       "accessShape": "host.ensureCityPeopleGuideVisible",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:774",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:666",
       "accessShape": "host.handleEvent",
       "category": "effects",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:775",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:667",
       "accessShape": "host.handleEvent",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:776",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:668",
       "accessShape": "host.onTalentPolicyOpened",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:777",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:669",
       "accessShape": "host.refreshCurrentHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:778",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:670",
       "accessShape": "host.hideTutorialHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:786",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:678",
       "accessShape": "host.ensureCityPeopleGuideVisible",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:787",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:679",
       "accessShape": "host.isCityManagementTabOpen",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:788",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:680",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:795",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:687",
       "accessShape": "host.advanceTo",
       "category": "next",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:795",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:687",
       "accessShape": "host.advanceTo().then",
       "category": "next",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:795",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:687",
       "accessShape": "host.advanceTo().then().catch",
       "category": "next",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:797",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:689",
       "accessShape": "host.refreshCurrentHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:799",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:691",
       "accessShape": "host.hideTutorialHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:812",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:704",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:823",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:715",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:834",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:726",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:851",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:737",
       "accessShape": "host.showSoftGuide",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:855",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:741",
       "accessShape": "host.isHouseGuideActive",
       "category": "queries",
       "note": "call; root=host; direct host member access"

@@ -9,6 +9,7 @@ const RENDER_ROOTS = Object.freeze([
   'frontend/js/state/presenters',
 ]);
 const TUTORIAL_ROOT = 'frontend/js/tutorial';
+const TUTORIAL_CONFIG_ROOT = 'frontend/js/tutorial-config';
 const DEFAULT_OUTPUT = 'docs/architecture/artifacts/northstar-s5-tutorial-hit-target-types.json';
 
 function normalizePath(value = '') {
@@ -143,6 +144,21 @@ function scanTutorialSource(parsed) {
   return references;
 }
 
+function scanTutorialConfigSource(parsed) {
+  const references = [];
+  visit(parsed.ast, (node) => {
+    if (node.type !== 'Property') return;
+    const key = !node.computed && node.key?.type === 'Identifier'
+      ? node.key.name
+      : staticString(node.key);
+    if (key !== 'target') return;
+    const target = staticString(node.value);
+    const type = target.split(':')[0];
+    if (type) references.push({ type, via: 'StepScript.target', location: location(parsed, node) });
+  });
+  return references;
+}
+
 function uniqueBy(items, keyOf) {
   const seen = new Set();
   return items.filter((item) => {
@@ -156,9 +172,13 @@ function uniqueBy(items, keyOf) {
 function buildInventory(options = {}) {
   const rendererFiles = options.rendererFiles || RENDER_ROOTS.flatMap(collectSourceFiles).sort();
   const tutorialFiles = options.tutorialFiles || collectSourceFiles(TUTORIAL_ROOT);
+  const tutorialConfigFiles = options.tutorialConfigFiles
+    || (options.tutorialFiles ? [] : collectSourceFiles(TUTORIAL_CONFIG_ROOT));
   const sourceOverride = options.sourceOverride || {};
   const rendererSources = rendererFiles.map((file) => parseSource(file, sourceOverride[file]));
   const tutorialSources = tutorialFiles.map((file) => parseSource(file, sourceOverride[file]));
+  const tutorialConfigSources = tutorialConfigFiles
+    .map((file) => parseSource(file, sourceOverride[file]));
   const registrations = rendererSources.flatMap((parsed) => {
     if (parsed.file.startsWith('frontend/js/state/presenters/')) {
       const entries = [];
@@ -170,7 +190,10 @@ function buildInventory(options = {}) {
     return scanRendererSource(parsed);
   })
     .sort((a, b) => a.type.localeCompare(b.type) || a.location.localeCompare(b.location));
-  const references = tutorialSources.flatMap(scanTutorialSource)
+  const references = [
+    ...tutorialSources.flatMap(scanTutorialSource),
+    ...tutorialConfigSources.flatMap(scanTutorialConfigSource),
+  ]
     .sort((a, b) => a.type.localeCompare(b.type) || a.location.localeCompare(b.location));
   const registeredTypes = [...new Set(registrations.map((entry) => entry.type))].sort();
   const tutorialTypes = [...new Set(references.map((entry) => entry.type))].sort();
@@ -182,13 +205,17 @@ function buildInventory(options = {}) {
     enumeration: {
       rendererRoots: RENDER_ROOTS,
       tutorialRoot: TUTORIAL_ROOT,
+      tutorialConfigRoot: TUTORIAL_CONFIG_ROOT,
       rendererSignal: "literal type action objects in addHitTarget renderer sources plus their state/presenters action sources; forwarding wrappers add no type",
       tutorialSignal: "showHighlight('<literal>', ...) or getCanvasTarget('<literal>', ...)",
+      tutorialConfigSignal: "literal target fields in frozen StepScript config; descriptor suffix after ':' is excluded from the action type",
     },
-    sources: [...rendererSources, ...tutorialSources].map(({ file, sha256 }) => ({ file, sha256 })),
+    sources: [...rendererSources, ...tutorialSources, ...tutorialConfigSources]
+      .map(({ file, sha256 }) => ({ file, sha256 })),
     counts: {
       rendererFiles: rendererFiles.length,
       tutorialFiles: tutorialFiles.length,
+      tutorialConfigFiles: tutorialConfigFiles.length,
       registrationSites: registrations.length,
       registeredTypes: registeredTypes.length,
       tutorialReferenceSites: references.length,
@@ -248,5 +275,6 @@ module.exports = {
   scanRendererSource,
   scanTutorialSource,
   parseSource,
+  scanTutorialConfigSource,
   writeInventory,
 };

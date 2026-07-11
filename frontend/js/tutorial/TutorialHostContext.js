@@ -49,6 +49,22 @@
     return null;
   })();
 
+  const SharedTutorialStepScriptRunner = (() => {
+    if (global.TutorialStepScriptRunner) return global.TutorialStepScriptRunner;
+    if (typeof module !== 'undefined' && module.exports) {
+      return require('../tutorial-engine/StepScriptRunner');
+    }
+    return null;
+  })();
+
+  const SharedTaskPanelStepScripts = (() => {
+    if (global.TutorialTaskPanelStepScripts) return global.TutorialTaskPanelStepScripts;
+    if (typeof module !== 'undefined' && module.exports) {
+      return require('../tutorial-config/TaskPanelStepScripts');
+    }
+    return null;
+  })();
+
   const TerritoryUiStateStore = (() => {
     if (global.TerritoryUiStateStore) return global.TerritoryUiStateStore;
     if (typeof module !== 'undefined' && module.exports) {
@@ -156,6 +172,66 @@
     return global.__tutorialHostContextWitness;
   }
 
+  function copyStepScriptTrace(trace = {}) {
+    return {
+      stepKey: String(trace.stepKey || ''),
+      scriptType: String(trace.scriptType || ''),
+      ruleId: String(trace.ruleId || ''),
+      instructionTypes: Array.isArray(trace.instructionTypes)
+        ? trace.instructionTypes.map((type) => String(type || ''))
+        : [],
+    };
+  }
+
+  function getGlobalStepScriptTrace() {
+    if (!global.__tutorialStepScriptTrace) {
+      global.__tutorialStepScriptTrace = {
+        schema: 'tutorial-step-script-trace/v1',
+        totalEvaluations: 0,
+        steps: {},
+      };
+    }
+    return global.__tutorialStepScriptTrace;
+  }
+
+  function recordStepScriptTrace(trace = {}) {
+    const snapshot = copyStepScriptTrace(trace);
+    if (!snapshot.stepKey) return false;
+    const ledger = getGlobalStepScriptTrace();
+    const previous = ledger.steps[snapshot.stepKey] || null;
+    ledger.totalEvaluations += 1;
+    ledger.steps[snapshot.stepKey] = {
+      count: (previous?.count || 0) + 1,
+      first: previous?.first || snapshot,
+      last: snapshot,
+    };
+    return true;
+  }
+
+  function getStepScriptTraceSnapshot() {
+    const ledger = getGlobalStepScriptTrace();
+    const steps = Object.fromEntries(Object.keys(ledger.steps).sort().map((stepKey) => {
+      const entry = ledger.steps[stepKey];
+      return [stepKey, {
+        count: entry.count,
+        first: copyStepScriptTrace(entry.first),
+        last: copyStepScriptTrace(entry.last),
+      }];
+    }));
+    return {
+      schema: ledger.schema,
+      totalEvaluations: ledger.totalEvaluations,
+      steps,
+    };
+  }
+
+  function resetStepScriptTrace() {
+    const ledger = getGlobalStepScriptTrace();
+    ledger.totalEvaluations = 0;
+    ledger.steps = {};
+    return getStepScriptTraceSnapshot();
+  }
+
   class TutorialHostContext {
     constructor(options = {}) {
       this.game = options.game || null;
@@ -171,6 +247,12 @@
         || (SharedTutorialGuideEventRegistry?.create ? SharedTutorialGuideEventRegistry.create({ steps: TUTORIAL_STEPS }) : null);
       this.queryTable = options.queryTable
         || (SharedTutorialEngineQueryTable?.create ? SharedTutorialEngineQueryTable.create({ context: this }) : null);
+      this.stepScriptConfig = options.stepScriptConfig === undefined
+        ? SharedTaskPanelStepScripts
+        : options.stepScriptConfig;
+      this.stepScriptRunner = options.stepScriptRunner === undefined
+        ? SharedTutorialStepScriptRunner?.create?.()
+        : options.stepScriptRunner;
       const changeEventBus = options.changeEventBus
         || (typeof window !== 'undefined'
           ? SharedChangeEventBus
@@ -1186,13 +1268,96 @@
         );
       }
 
-    refreshCurrentHighlight() {
+    hasStepScript(stepKey = this.getCurrentStep()) {
+      return Boolean(
+        this.stepScriptConfig
+        && Object.prototype.hasOwnProperty.call(this.stepScriptConfig, stepKey),
+      );
+    }
+
+    evaluateStepScript(stepKey = this.getCurrentStep()) {
+      if (!this.stepScriptRunner?.evaluate || !this.hasStepScript(stepKey)) return null;
+      const projection = this.stepScriptRunner.evaluate({
+        stepKey,
+        config: this.stepScriptConfig,
+        ctx: this,
+      });
+      recordStepScriptTrace(projection?.trace || { stepKey });
+      return projection;
+    }
+
+    renderStepScriptHighlight(instruction = {}) {
+      const target = String(instruction.target || '');
+      const message = t(instruction.messageKey || '');
+      if (target === 'openTaskCenter') {
+        return this.requestAction(
+          'showHighlight',
+          'openTaskCenter',
+          (action) => !isVisuallyDisabled(action) && (action.tab || 'main') === 'main',
+          message,
+          { type: 'openTaskCenter' },
+        );
+      }
+      if (target.startsWith('claimTaskReward:')) {
+        const taskId = target.slice('claimTaskReward:'.length);
+        if (!taskId) throw new TypeError('Tutorial StepScript claimTaskReward target is missing task id');
+        return this.requestAction(
+          'showHighlight',
+          'claimTaskReward',
+          (action) => !isVisuallyDisabled(action) && action.taskId === taskId,
+          message,
+          { type: 'claimTaskReward', taskId, category: 'main' },
+        );
+      }
+      throw new TypeError(`Tutorial StepScript unknown highlight target: ${target}`);
+    }
+
+    renderStepScriptInstruction(instruction = {}) {
+      if (instruction.type === 'highlightActionWait') {
+        return this.renderStepScriptHighlight(instruction);
+      }
+      if (instruction.type === 'ensureSurfaceThenHighlight') {
+        const panel = String(instruction.panel || '');
+        if (instruction.target !== 'openCommandPanel' || !panel) {
+          throw new TypeError('Tutorial StepScript ensureSurfaceThenHighlight target is invalid');
+        }
+        this.requestAction('prepareCommandPanelGuide', panel);
+        return this.requestAction(
+          'showHighlight',
+          'openCommandPanel',
+          (action) => !isVisuallyDisabled(action) && action.panel === panel,
+          t(instruction.messageKey || ''),
+          { type: 'openCommandPanel', panel },
+        );
+      }
+      if (instruction.type === 'waitEventThenNext') {
+        this.requestAction('hideTutorialHighlight');
+        return false;
+      }
+      throw new TypeError(`Tutorial StepScript unknown instruction: ${instruction.type || ''}`);
+    }
+
+    isLegacyOverlayActive() {
+      return Boolean(this.isAdvisorOpen?.() || this.isRewardRevealOpen?.());
+    }
+
+    refreshLegacyHighlight() {
       if (!this.flowRegistry && SharedTutorialGuideFlowRegistry?.create) {
         this.flowRegistry = SharedTutorialGuideFlowRegistry.create({
           steps: TutorialHostContext.TUTORIAL_STEPS || {},
         });
       }
       return this.flowRegistry?.refresh?.(this) || false;
+    }
+
+    refreshCurrentHighlight() {
+      const stepKey = this.getCurrentStep();
+      if (!this.hasStepScript(stepKey)) return this.refreshLegacyHighlight();
+      const projection = this.evaluateStepScript(stepKey);
+      if (this.isLegacyOverlayActive()) return this.refreshLegacyHighlight();
+      const instruction = projection?.instructions?.[0] || null;
+      if (!instruction) return this.refreshLegacyHighlight();
+      return this.renderStepScriptInstruction(instruction) || false;
     }
 }
 
@@ -1209,6 +1374,8 @@
     witness.traces.length = 0;
     return TutorialHostContext.getDivergenceWitness();
   };
+  TutorialHostContext.getStepScriptTrace = getStepScriptTraceSnapshot;
+  TutorialHostContext.resetStepScriptTrace = resetStepScriptTrace;
   if (
     typeof process !== 'undefined'
     && process?.env?.TUTORIAL_WITNESS_ASSERT_ZERO === '1'

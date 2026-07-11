@@ -123,10 +123,14 @@ test('TutorialHostContext exposes six interfaces and divergence witness preserve
   assert.equal(equalContext.getDivergenceWitness().count, 0);
 });
 
-test('tutorial flow and event registries own tutorial step branching', () => {
+test('TutorialHostContext owns StepScript division while registries retain residual branching', () => {
+  const contextSource = readSource('TutorialHostContext.js');
   const flowSource = readSource('TutorialGuideFlowRegistry.js');
   const eventSource = readSource('TutorialGuideEventRegistry.js');
 
+  assert.match(contextSource, /hasStepScript\(/);
+  assert.match(contextSource, /evaluateStepScript\(/);
+  assert.match(contextSource, /refreshLegacyHighlight\(/);
   assert.match(flowSource, /function createDefaultRules/);
   assert.match(eventSource, /function createDefaultHandlers/);
   assert.match(flowSource, /formationPanelOpened/);

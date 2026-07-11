@@ -261,29 +261,54 @@ function buildInventory() {
   };
 }
 
+function inventoryText(inventory) {
+  return `${JSON.stringify(inventory, null, 2)}\n`;
+}
+
 function writeInventory(output = DEFAULT_OUTPUT) {
   const absolute = path.resolve(REPO_ROOT, output);
   const inventory = buildInventory();
   fs.mkdirSync(path.dirname(absolute), { recursive: true });
-  fs.writeFileSync(absolute, `${JSON.stringify(inventory, null, 2)}\n`);
+  fs.writeFileSync(absolute, inventoryText(inventory));
   return { absolute, inventory };
+}
+
+function checkInventory(output = DEFAULT_OUTPUT) {
+  const absolute = path.resolve(REPO_ROOT, output);
+  const inventory = buildInventory();
+  const actual = fs.existsSync(absolute)
+    ? fs.readFileSync(absolute, 'utf8').replace(/\r\n/g, '\n')
+    : '';
+  return {
+    absolute,
+    inventory,
+    fresh: actual === inventoryText(inventory),
+  };
 }
 
 if (require.main === module) {
   const outputArg = process.argv.find((arg) => arg.startsWith('--output='));
   const output = outputArg ? outputArg.slice('--output='.length) : DEFAULT_OUTPUT;
-  const result = writeInventory(output);
+  const checkOnly = process.argv.includes('--check');
+  const result = checkOnly ? checkInventory(output) : writeInventory(output);
   console.log(JSON.stringify({
     output: normalizePath(path.relative(REPO_ROOT, result.absolute)),
+    checked: checkOnly,
     ...result.inventory.counts,
   }));
+  if (checkOnly && !result.fresh) {
+    console.error(`Tutorial rule inventory is stale: ${output}`);
+    process.exitCode = 1;
+  }
 }
 
 module.exports = {
   DEFAULT_OUTPUT,
   buildInventory,
+  checkInventory,
   extractEventSourceEntries,
   extractFlowSourceEntries,
+  inventoryText,
   parseSource,
   writeInventory,
 };

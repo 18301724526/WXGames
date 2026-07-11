@@ -92,10 +92,6 @@
     return (host) => host.isCommandPanelOpen?.(panelId);
   }
 
-  function isTaskCenterOpen(host) {
-    return host.isTaskCenterOpen?.();
-  }
-
   function isFamousPersonsOpen(host) {
     return host.isFamousPersonsOpen?.();
   }
@@ -130,24 +126,6 @@
     return host.showHighlight('advanceEra', (action) => !isVisuallyDisabled(action), message, {
       type: 'advanceEra',
     });
-  }
-
-  function renderOpenTaskCenter(host, message, allowedAction = { type: 'openTaskCenter' }) {
-    return host.showHighlight(
-      'openTaskCenter',
-      (action) => !isVisuallyDisabled(action) && (action.tab || 'main') === 'main',
-      message,
-      allowedAction,
-    );
-  }
-
-  function renderClaimTaskReward(host, taskId, message) {
-    return host.showHighlight(
-      'claimTaskReward',
-      (action) => !isVisuallyDisabled(action) && action.taskId === taskId,
-      message,
-      { type: 'claimTaskReward', taskId, category: 'main' },
-    );
   }
 
   function renderScoutFamousPersonOpen(host) {
@@ -349,16 +327,6 @@
     return typeof message === 'function' ? message(host) : message;
   }
 
-  // Standard-rule factories. `message` may be a string or a () => string thunk
-  // (kept lazy so LocaleText lookups still happen at render time).
-  function makeTabOpenRule({ id, steps, panel, message }) {
-    return {
-      id,
-      matches: all(stepIs(...steps), not(isCommandPanelOpen(panel))),
-      render: (host) => renderOpenCommandPanel(host, panel, resolveMessage(message, host)),
-    };
-  }
-
   function makeBuildRule({ id, matches, buildingId, message, render }) {
     return {
       id,
@@ -367,24 +335,6 @@
         render ||
         ((host) => host.showBuildingGuide?.(buildingId, resolveMessage(message, host)) || false),
     };
-  }
-
-  function makeTaskClaimPairRules({ openId, claimId, step, taskId, openMessage, claimMessage }) {
-    return [
-      {
-        id: openId,
-        matches: all(stepIs(step), not(isTaskCenterOpen)),
-        render: (host) =>
-          renderOpenTaskCenter(host, resolveMessage(openMessage, host), {
-            type: 'openTaskCenter',
-          }),
-      },
-      {
-        id: claimId,
-        matches: all(stepIs(step), isTaskCenterOpen),
-        render: (host) => renderClaimTaskReward(host, taskId, resolveMessage(claimMessage, host)),
-      },
-    ];
   }
 
   function createDefaultRules(steps = {}) {
@@ -460,37 +410,17 @@
         matches: stepIs(steps.civilizationTabOpened),
         render: (host) => renderAdvanceEra(host, t('tutorial.highlight.advanceEra')),
       },
-      ...makeTaskClaimPairRules({
-        openId: 'first-era-open-task-center',
-        claimId: 'first-era-claim-supplies',
-        step: steps.eraAdvancedTo1,
-        taskId: 'main_first_supplies',
-        openMessage: () => t('tutorial.highlight.openTaskCenter'),
-        claimMessage: () => t('tutorial.highlight.claimFirstSupplies'),
-      }),
       makeBuildRule({
         id: 'farm-build',
         matches: (host) => host.isFarmGuideActive?.(),
         buildingId: 'farm',
         message: () => t('tutorial.guide.buildFirstFarm'),
       }),
-      makeTabOpenRule({
-        id: 'era2-open-civilization',
-        steps: [steps.era2AdvanceReady],
-        panel: 'civilization',
-        message: () => t('tutorial.guide.openCivilizationForEra2'),
-      }),
       {
         id: 'era2-advance',
         matches: all(stepIs(steps.era2AdvanceReady), isCommandPanelOpen('civilization')),
         render: (host) => renderAdvanceEra(host, t('tutorial.guide.advanceToEra2')),
       },
-      makeTabOpenRule({
-        id: 'era2-open-events',
-        steps: [steps.eraAdvancedTo2],
-        panel: 'events',
-        message: () => t('tutorial.guide.openEventsForForest'),
-      }),
       {
         id: 'era2-open-forest-event',
         matches: eventPanelOpen,
@@ -529,20 +459,6 @@
         buildingId: 'lumbermill',
         message: () => t('tutorial.guide.buildLumbermill'),
       }),
-      ...makeTaskClaimPairRules({
-        openId: 'lumbermill-open-task-center',
-        claimId: 'lumbermill-claim-task',
-        step: steps.lumbermillBuilt,
-        taskId: 'main_lumbermill_supplies',
-        openMessage: () => t('tutorial.guide.openLumbermillTask'),
-        claimMessage: () => t('tutorial.guide.claimLumbermillReward'),
-      }),
-      makeTabOpenRule({
-        id: 'era3-open-civilization',
-        steps: [steps.era3AdvanceReady],
-        panel: 'civilization',
-        message: () => t('tutorial.guide.openCivilizationForEra3'),
-      }),
       {
         id: 'era3-advance',
         matches: all(stepIs(steps.era3AdvanceReady), isCommandPanelOpen('civilization')),
@@ -550,14 +466,6 @@
       },
       // Barracks segment: claim supplies, open the buildings tab, build the
       // barracks, claim the first army, then recruit the scout officer.
-      ...makeTaskClaimPairRules({
-        openId: 'barracks-open-task-center',
-        claimId: 'barracks-claim-supplies',
-        step: steps.era3Advanced,
-        taskId: 'main_barracks_supplies',
-        openMessage: () => t('tutorial.highlight.openBarracksTask'),
-        claimMessage: () => t('tutorial.highlight.claimBarracksSupplies'),
-      }),
       // house-style: showBuildingGuide force-opens city management on the
       // buildings tab from ANY surface (the claim leaves the player on the
       // world-map home, where a command-panel highlight has no target), so
@@ -572,22 +480,6 @@
         ),
         buildingId: 'barracks',
         message: () => t('tutorial.highlight.buildBarracks'),
-      }),
-      ...makeTaskClaimPairRules({
-        openId: 'first-army-open-task-center',
-        claimId: 'first-army-claim',
-        step: steps.barracksBuilt,
-        taskId: 'main_first_army',
-        openMessage: () => t('tutorial.highlight.openFirstArmyTask'),
-        claimMessage: () => t('tutorial.highlight.claimFirstArmy'),
-      }),
-      ...makeTaskClaimPairRules({
-        openId: 'scout-officer-open-task-center',
-        claimId: 'scout-officer-claim',
-        step: steps.firstArmyClaimed,
-        taskId: 'main_scout_officer',
-        openMessage: () => t('tutorial.highlight.openScoutOfficerTask'),
-        claimMessage: () => t('tutorial.highlight.claimScoutOfficer'),
       }),
       {
         id: 'scout-open-famous',
@@ -838,12 +730,6 @@
             { type: 'seekFamousPerson' },
           ),
       },
-      makeTabOpenRule({
-        id: 'final-tech-open',
-        steps: [steps.famousSeekCompleted, steps.finalTechOpened],
-        panel: 'tech',
-        message: () => t('tutorial.guide.openTechFinal'),
-      }),
       {
         id: 'final-tech-soft-guide',
         matches: stepIs(steps.famousSeekCompleted, steps.finalTechOpened),
@@ -885,9 +771,7 @@
     TutorialGuideFlowRegistry,
     create,
     createDefaultRules,
-    makeTabOpenRule,
     makeBuildRule,
-    makeTaskClaimPairRules,
   };
 
   global.TutorialGuideFlowRegistry = api;
