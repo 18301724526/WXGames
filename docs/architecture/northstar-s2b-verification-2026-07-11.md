@@ -61,3 +61,44 @@ git status --short
 - 未修改 harness。
 - 未重录转录基线。
 - 未执行 S3 或后续路线图内容。
+
+## W2|产品侧修复
+
+修复侧与 W1 定责一致，仅修改产品 UI 运行时所有权和编队打开的真实分发路径，未修改 harness，未在教程模块增加游戏状态特判。
+
+逐文件说明:
+
+- `frontend/js/platform/ArmyFormationEditorController.js`:控制器行为统一读写 `UiRuntimeStateStore` 的 `armyFormationEditor`，删除控制器私有第二状态源。
+- `frontend/js/platform/CanvasGameApp.js`:`openArmyFormation()` 在完成打开后向真实状态宿主的教程控制器发送 `onArmyFormationOpened()`；dispatcher-first 的 Shell 路径与 fallback 路径共用该生命周期入口。
+- `frontend/js/platform/CanvasActionController.js`:删除已下沉到产品方法的重复教程通知。
+- `frontend/js/platform/ArmyFormationEditorController.test.js`:把遗留直写断言收敛为 store 规范化语义。
+- `frontend/js/platform/CanvasGameApp.test.js`:用真实 `CanvasGameShell -> CanvasActionDispatcher -> CanvasGameApp` 路径钉死公开访问器、控制器与 store 同源，并验证只触发一次编队打开通知。
+
+定向测试:
+
+```powershell
+node --test `
+  frontend/js/platform/ArmyFormationEditorController.test.js `
+  frontend/js/platform/CanvasGameApp.test.js `
+  frontend/js/platform/CanvasActionController.test.js `
+  frontend/js/platform/CanvasActionDispatcher.test.js `
+  frontend/js/state/UiRuntimeStateStore.test.js
+node scripts/check-ui-runtime-field-ownership.js
+```
+
+结果:99/99 通过；所有权扫描 5 个 store、36 个字段，violations=0、warnings=0。
+
+真实本地 harness 证据:
+
+- 环境:隔离 SQLite、`active-release-bundle`、后端 `127.0.0.1:3211`、预览 `127.0.0.1:8181`。
+- 运行目录:`%TEMP%\wxgames-s2b-w2-20260711182211\playtest-resume2\2026-07-11T10-29-20-870Z`。
+- `openArmyFormation` 后从 `famousCardViewed` 推进到 `formationPanelOpened`。
+- 随后完成 `toggleArmyFormationMember`、`autoReplenishArmyFormation`、`saveArmyFormation`，继续推进到 `scoutExploreStarted`。
+- 15 个动作，verificationFailures=0、badResponses=0、requestFailures=0、pageErrors=0。
+
+### W2 未做
+
+- 未修改 `scripts/playtest-online-tutorial.js`。
+- 未修改任何 `frontend/js/tutorial/*` 文件。
+- 未重录转录基线。
+- 未执行 S3 或后续路线图内容。

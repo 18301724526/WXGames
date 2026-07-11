@@ -3071,7 +3071,17 @@
           }
 
     openArmyFormation(action = {}) {
-            return this.getArmyFormationEditorController().open(action);
+            const opened = this.getArmyFormationEditorController().open(action) !== false;
+            if (opened) {
+              const owner = this.getStateHost() || this;
+              const tutorialController = owner.tutorialController || this.tutorialController;
+              const result = tutorialController?.onArmyFormationOpened?.();
+              tutorialController?.refreshCurrentHighlight?.();
+              const scheduler = owner.runtime || this.runtime || global;
+              scheduler?.setTimeout?.(() => tutorialController?.refreshCurrentHighlight?.(), 0);
+              if (result?.catch) result.catch((error) => owner.log?.(error));
+            }
+            return opened;
           }
 
     closeArmyFormationEditor(options = {}) {

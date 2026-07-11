@@ -1674,15 +1674,7 @@
             const game = this.getGameHost();
             const target = game && game !== this.host ? game : this.host;
             if (typeof target?.openArmyFormation === 'function') {
-              const opened = target.openArmyFormation({ ...action, slot }) !== false;
-              if (opened) {
-                const result = game?.tutorialController?.onArmyFormationOpened?.();
-                game?.tutorialController?.refreshCurrentHighlight?.();
-                const scheduler = this.host?.runtime || game?.runtime || global;
-                scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
-                if (result?.catch) result.catch((error) => this.log?.(error));
-              }
-              return opened;
+              return target.openArmyFormation({ ...action, slot }) !== false;
             }
             const message = t('formation.slotPending', { slot });
             if (typeof this.host?.showFloatingText === 'function') this.host.showFloatingText(message);

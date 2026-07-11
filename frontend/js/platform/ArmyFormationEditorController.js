@@ -2,15 +2,11 @@
 // army-formation editor blob, extracted from CanvasGameApp (god-file re-decomposition
 // slice 6).
 //
-// Single-owner rule: exactly ONE controller instance holds the editor state, and it
-// lives on the state host (StateWriter.getStateHost -- the mounted game for a shell,
-// the app itself otherwise). CanvasGameApp exposes a prototype accessor named after
-// the legacy field that reads/writes this controller through the state host, so every
-// legacy call site (App, Shell, CanvasActionController's panel sweep,
-// CanvasModeOwnershipRuntime.getFormationEditor/closeFormationEditor, the tutorial
-// layer) observes the same store. This retires BOTH legacy mirrors: the app's forward
-// copy into its canvasShell and the shell wrappers' copy-back after delegating to the
-// mounted game.
+// Single-owner rule: UiRuntimeStateStore owns the editor state on the state host
+// (StateWriter.getStateHost -- the mounted game for a shell, the app itself otherwise).
+// The controller owns the editor behavior and reads/writes that store, so App, Shell,
+// CanvasActionController, CanvasModeOwnershipRuntime and the tutorial layer observe
+// the same value.
 //
 // The controller reaches its host only through explicit facilities: getState(),
 // renderCanvasSurface(), showFloatingText(), log(), getGameApi(), applyApiState(),
@@ -28,6 +24,10 @@
   var ArmyFormationQueries = global.ArmyFormationQueries;
   if (typeof module !== 'undefined' && module.exports && !ArmyFormationQueries) {
     ArmyFormationQueries = require('./ArmyFormationQueries');
+  }
+  var UiRuntimeStateStore = global.UiRuntimeStateStore;
+  if (typeof module !== 'undefined' && module.exports && !UiRuntimeStateStore) {
+    UiRuntimeStateStore = require('../state/UiRuntimeStateStore');
   }
 
   function t(key = '', params = {}) {
@@ -69,13 +69,19 @@
   class ArmyFormationEditorController {
     constructor({ host } = {}) {
       this.host = host || null;
-      this.editor = createArmyFormationEditorState();
+      UiRuntimeStateStore?.ensure?.(this.host);
     }
 
-    // Verbatim replacement semantics for the legacy direct-assignment write sites
-    // (constructor defaults, tab-switch resets, the action controller's non-panel
-    // sweep which assigns literal `false`): store the value as given, no
-    // normalization. Normalized writes go through setEditor.
+    get editor() {
+      return UiRuntimeStateStore?.getFormationEditor?.(this.host)
+        || createArmyFormationEditorState();
+    }
+
+    set editor(value) {
+      UiRuntimeStateStore?.setField?.(this.host, 'armyFormationEditor', value);
+    }
+
+    // Legacy direct assignments are normalized by the canonical UI runtime store.
     replaceEditor(value) {
       this.editor = value;
       return true;

@@ -6,6 +6,7 @@ const path = require('node:path');
 const CanvasGameApp = require('./CanvasGameApp');
 const BattleStore = require('../state/BattleStore');
 const TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
+const UiRuntimeStateStore = require('../state/UiRuntimeStateStore');
 const CanvasGameShell = require('./CanvasGameShell');
 
 const RETIRED_APP_MODULES = [
@@ -466,6 +467,54 @@ test('openArmyFormation seeds the editor from the city formation and normalizes 
     saving: false,
   });
   assert.equal(calls.length, 1);
+});
+
+test('openArmyFormation writes the UiRuntimeStateStore authority on a real app instance', () => {
+  const tutorialCalls = [];
+  const shell = new CanvasGameShell({
+    previewEnabled: false,
+    inputEnabled: false,
+  });
+  const app = new CanvasGameApp({
+    runtimeRequired: false,
+    apiRequired: false,
+    rendererRequired: false,
+    useWorldMapRuntime: false,
+    canvasShell: shell,
+    tutorialController: {
+      onArmyFormationOpened() {
+        tutorialCalls.push('opened');
+        return Promise.resolve(true);
+      },
+      refreshCurrentHighlight() {
+        tutorialCalls.push('refresh');
+      },
+    },
+    initialState: {
+      activeCityId: 'capital',
+      currentTab: 'military',
+      military: { formations: {} },
+    },
+  });
+  shell.lastGame = app;
+  app.renderCanvasSurface = () => true;
+  app.runtime = {
+    setTimeout(callback, delay) {
+      tutorialCalls.push(`scheduled:${delay}`);
+      callback();
+    },
+  };
+
+  assert.equal(shell.dispatchCanvasAction({ type: 'openArmyFormation', cityId: 'capital', slot: 1 }), true);
+  assert.equal(app.armyFormationEditor.open, true);
+  assert.equal(shell.armyFormationEditor.open, true);
+  assert.equal(app.getArmyFormationEditorController().editor.open, true);
+  assert.equal(UiRuntimeStateStore.getFormationEditor(app).open, true);
+  assert.equal(
+    app.getArmyFormationEditorController().editor,
+    UiRuntimeStateStore.getFormationEditor(app),
+  );
+  assert.deepEqual(tutorialCalls, ['opened', 'refresh', 'scheduled:0', 'refresh']);
 });
 
 test('toggleArmyFormationMember adds with zeroed assignments, removes, and enforces the 5-member cap', () => {

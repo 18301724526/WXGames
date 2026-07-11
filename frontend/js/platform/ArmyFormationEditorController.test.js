@@ -234,13 +234,31 @@ test('save failure resets saving, surfaces the message, and re-renders', async (
   );
 });
 
-test('replaceEditor keeps legacy direct-assignment semantics verbatim', () => {
+test('replaceEditor normalizes legacy direct assignments through the UI runtime store', () => {
   const controller = new ArmyFormationEditorController({ host: makeAppLikeHost({}) });
   assert.equal(controller.replaceEditor(false), true);
-  assert.equal(controller.editor, false);
+  assert.deepEqual(controller.editor, {
+    open: false,
+    cityId: '',
+    slot: 1,
+    memberIds: [],
+    soldierAssignments: {},
+    soldierDraftAssignments: {},
+    page: 0,
+    saving: false,
+  });
   const blob = { open: true, cityId: 'x' };
   controller.replaceEditor(blob);
-  assert.equal(controller.editor, blob);
+  assert.deepEqual(controller.editor, {
+    open: true,
+    cityId: 'x',
+    slot: 1,
+    memberIds: [],
+    soldierAssignments: {},
+    soldierDraftAssignments: {},
+    page: 0,
+    saving: false,
+  });
 });
 
 test('close resets to the closed default and honours render:false', () => {
