@@ -1130,9 +1130,12 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
   assert.equal(calls.some((call) => call.options?.allowedAction?.type === 'openCityManagement'), false);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'assignJob', job: 'scholar', delta: 1 });
 
-  controller.onManualTalentAssigned({
-    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.manualTalentAssigned },
-  });
+  const manualTalentAssignedTutorial = {
+    completed: false,
+    currentStep: TutorialGuideController.TUTORIAL_STEPS.manualTalentAssigned,
+  };
+  game.state.tutorial = manualTalentAssignedTutorial;
+  controller.onManualTalentAssigned({ tutorial: manualTalentAssignedTutorial });
   assert.equal(controller.canOpenTab('famousPersons'), true);
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openFamousPersons' });
@@ -1143,9 +1146,12 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'seekFamousPerson' });
 
-  controller.onFamousPersonSought({
-    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.famousSeekCompleted },
-  });
+  const famousSeekCompletedTutorial = {
+    completed: false,
+    currentStep: TutorialGuideController.TUTORIAL_STEPS.famousSeekCompleted,
+  };
+  game.state.tutorial = famousSeekCompletedTutorial;
+  controller.onFamousPersonSought({ tutorial: famousSeekCompletedTutorial });
   assert.equal(game.isBlockingPanelSnapshotOpen('showFamousPersons'), false);
   assert.equal(shell.isBlockingPanelSnapshotOpen('showFamousPersons'), false);
   assert.deepEqual(

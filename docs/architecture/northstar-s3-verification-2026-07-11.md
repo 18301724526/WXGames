@@ -193,3 +193,102 @@ node scripts/check-ui-runtime-field-ownership.js
 
 - 两个新脚本及测试已加入 `scripts/run-architecture-smoke.js` 的语法检查、合同测试和阻塞执行段。
 - `node scripts/run-architecture-smoke.js`:exit 0，最终输出 `[architecture-smoke] passed`。
+
+## V4|零行为验证
+
+### 见证器强制读证
+
+- `TutorialHostContext` 在 `TUTORIAL_WITNESS_ASSERT_ZERO=1` 时安装测试进程退出门；非 0 会打印 count 与前 10 条 trace 并令进程失败。
+- `scripts/playtest-online-tutorial.js` 把页面内 `tutorialHostContextWitness` 写入 summary；`PLAYTEST_ASSERT_TUTORIAL_WITNESS_ZERO=1` 时非 0 直接判 playtest 失败。
+
+前置探针曾发现一次非产品分歧，未掩盖:
+
+- 首次强制执行 `npm test` 时，`TutorialGuideController.test.js` 报 `witness=164`。
+- trace 全部指向同一测试夹具:夹具直接调用 `onManualTalentAssigned/onFamousPersonSought`，但没有像真实产品 `applyApiState` 路径一样同步 `game.state.tutorial`，因此后续重复读取持续观察到陈旧镜像。
+- 修正仅让测试夹具在发事件前同步同一结果对象到 `game.state.tutorial`；未修改产品读取顺序、同步实现或返回值。
+- 修正后该测试 18/18 通过且退出见证为 0；随后正式全测试与两次真实 playtest 均为 0。该前置失败定性为测试环境未复现产品同步前提，不构成产品行为差异。
+
+### 受控环境
+
+- 临时根目录:`%TEMP%\wxgames-s3-v4-20260711-ctx`。
+- 后端:`http://127.0.0.1:3211`，隔离 SQLite。
+- 前端:`http://127.0.0.1:8181`，API 代理到隔离后端。
+- worker:`backend/world-worker.js`，`WORLD_WORKER_INTERVAL_MS=1000`。
+- 配置发布:`20260711T120313328Z-212257e0a698-4ee915f0`；健康检查 `gameplay.source=active-release-bundle`、`bundleReady=true`、任务定义可用。
+- 共同参数:`PLAYTEST_STRICT_VISUAL=0`、`PLAYTEST_MAX_ACTIONS=120`、`PLAYTEST_ASSERT_TUTORIAL_WITNESS_ZERO=1`、`--target=local`。
+
+### 双跑结果
+
+Run 1:
+
+- runId:`2026-07-11T12-04-15-573Z`。
+- `stopReason=tutorial-completed`、`finalStepName=completed`、62 动作、64 条投影。
+- 0 verification failure、0 bad response、0 request failure、0 page error。
+- `tutorialHostContextWitness.count=0`。
+
+Run 2:
+
+- runId:`2026-07-11T12-07-51-273Z`。
+- `stopReason=tutorial-completed`、`finalStepName=completed`、62 动作、64 条投影。
+- 0 verification failure、0 bad response、0 request failure、0 page error。
+- `tutorialHostContextWitness.count=0`。
+
+三份投影 SHA-256 完全一致:
+
+```text
+16862F819B0EE78ACBD8C358CB964FC1307646BD122BA4BA6EC9C270E79D605F
+```
+
+对应文件:
+
+- 仓库基线:`docs/architecture/artifacts/northstar-s2-tutorial-transcript.json`
+- Run 1:`%TEMP%\wxgames-s3-v4-20260711-ctx\transcript-run1.json`
+- Run 2:`%TEMP%\wxgames-s3-v4-20260711-ctx\transcript-run2.json`
+
+逐字节比较:
+
+```powershell
+git diff --no-index --exit-code -- `
+  docs/architecture/artifacts/northstar-s2-tutorial-transcript.json `
+  $env:TEMP\wxgames-s3-v4-20260711-ctx\transcript-run1.json
+git diff --no-index --exit-code -- `
+  docs/architecture/artifacts/northstar-s2-tutorial-transcript.json `
+  $env:TEMP\wxgames-s3-v4-20260711-ctx\transcript-run2.json
+git diff --no-index --exit-code -- `
+  $env:TEMP\wxgames-s3-v4-20260711-ctx\transcript-run1.json `
+  $env:TEMP\wxgames-s3-v4-20260711-ctx\transcript-run2.json
+```
+
+结果:三条命令均 exit 0，逐字节 diff 为空；仓库 64 条基线未重录、未修改。
+
+本地仍复现 S2b 已申报的金色像素 warning；`PLAYTEST_STRICT_VISUAL=0` 下不影响目标可见性、语义链、投影或见证判决，本任务未调整视觉阈值。
+
+### 全量门禁
+
+```powershell
+$env:TUTORIAL_WITNESS_ASSERT_ZERO='1'
+npm test
+node scripts/run-architecture-smoke.js
+```
+
+结果:
+
+- `npm test`:297 个测试文件，2394/2394 通过，0 fail；见证退出门通过，即全测试最终 `witness=0`。
+- architecture smoke:exit 0，最终输出 `[architecture-smoke] passed`；烟测子测试同样继承见证退出门。
+- command-owner inventory drift=0；`git diff --check` 通过。
+- 教程测试清单已重生成，仍为 143 条:`可复用=95`、`退役候选=47`、`反特征=1`。
+
+### 行为判决
+
+投影与 64 条基线逐字节 diff 为空，双跑和最终全测试 witness 均为 0。因此 V4 判决为**零行为变更**，不触发 §1-9 基线重录或 L2 行为变更流程。
+
+### 未做
+
+- 未重录或修改 S2/S2b 64 条转录基线。
+- 未建立事件总线(S4)。
+- 未修改 target/action/query 映射表(S5)。
+- 未迁移任何教程规则(S7)。
+- 未删除任何 hook。
+- 未修改冻结三件套。
+- 未修改监督者署名的裁决、清查、路线图或任务单。
+- 未修改、暂存或提交 `.claude/launch.json` 与新出现的 `AGENTS.md`。

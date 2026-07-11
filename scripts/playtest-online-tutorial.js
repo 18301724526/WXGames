@@ -61,6 +61,7 @@ const CONFIG = {
   viewportHeight: Number(process.env.PLAYTEST_VIEWPORT_HEIGHT || 768),
   outputRoot: process.env.PLAYTEST_OUTPUT_DIR || path.join('.local-logs', 'online-tutorial'),
   strictVisual: process.env.PLAYTEST_STRICT_VISUAL !== '0',
+  assertTutorialWitnessZero: process.env.PLAYTEST_ASSERT_TUTORIAL_WITNESS_ZERO === '1',
   minVisibleTargetRatio: Number(process.env.PLAYTEST_MIN_VISIBLE_TARGET_RATIO || 0.72),
   minTargetLumaStdDev: Number(process.env.PLAYTEST_MIN_TARGET_LUMA_STDDEV || 5),
   minTargetUniqueColors: Number(process.env.PLAYTEST_MIN_TARGET_UNIQUE_COLORS || 18),
@@ -2007,6 +2008,11 @@ async function main() {
   if (!stopReason) stopReason = 'max-actions-reached';
 
   const finalState = await getState(page);
+  const tutorialHostContextWitness = await page.evaluate(() => (
+    globalThis.TutorialHostContext?.getDivergenceWitness?.()
+      || globalThis.__tutorialHostContextWitness
+      || { count: 0, traces: [] }
+  ));
   const manualReviewIndex = createManualReviewIndex();
   await writeSnapshot(page, 'zz-final', finalState, {
     actions,
@@ -2038,6 +2044,7 @@ async function main() {
     pageErrors,
     apiCallCount: Array.isArray(finalState.apiCalls) ? finalState.apiCalls.length : 0,
     eventCount: events.length,
+    tutorialHostContextWitness,
   };
   if (CONFIG.transcript) {
     const transcriptPath = CONFIG.transcriptOutput || path.join(outDir, 'transcript.json');
@@ -2056,7 +2063,8 @@ async function main() {
     || verificationFailures.length > 0
     || badResponses.length > 0
     || requestFailures.length > 0
-    || pageErrors.length > 0;
+    || pageErrors.length > 0
+    || (CONFIG.assertTutorialWitnessZero && tutorialHostContextWitness.count !== 0);
   fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify({
     ...summary,
     actions,
