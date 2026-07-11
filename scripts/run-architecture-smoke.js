@@ -515,6 +515,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/build-config-tables.test.js',
   'scripts/generate-tutorial-event-contracts.js',
   'scripts/generate-tutorial-event-contracts.test.js',
+  'scripts/generate-tutorial-hit-target-types.js',
+  'scripts/generate-tutorial-hit-target-types.test.js',
   'scripts/check-client-command-block-reasons.js',
   'scripts/check-client-command-block-reasons.test.js',
 ]);
@@ -924,6 +926,10 @@ function main() {
   ]);
   run('tutorial event contract freshness guard', process.execPath, [
     'scripts/generate-tutorial-event-contracts.js',
+    '--check',
+  ]);
+  run('tutorial hit-target type freshness guard', process.execPath, [
+    'scripts/generate-tutorial-hit-target-types.js',
     '--check',
   ]);
   run('source encoding blocking guard', process.execPath, [

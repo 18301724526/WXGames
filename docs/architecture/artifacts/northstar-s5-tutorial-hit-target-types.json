@@ -1,0 +1,1234 @@
+{
+  "schema": "northstar-s5-tutorial-hit-target-types/v1",
+  "generatedBy": "scripts/generate-tutorial-hit-target-types.js",
+  "enumeration": {
+    "rendererRoots": [
+      "frontend/js/platform",
+      "frontend/js/state/presenters"
+    ],
+    "tutorialRoot": "frontend/js/tutorial",
+    "rendererSignal": "literal type action objects in addHitTarget renderer sources plus their state/presenters action sources; forwarding wrappers add no type",
+    "tutorialSignal": "showHighlight('<literal>', ...) or getCanvasTarget('<literal>', ...)"
+  },
+  "sources": [
+    {
+      "file": "frontend/js/platform/ArmyFormationEditorController.js",
+      "sha256": "54d80d9878d271215fae4c27a0979585a2bedc5aa510cf12455e9d4e7afed4e0"
+    },
+    {
+      "file": "frontend/js/platform/ArmyFormationQueries.js",
+      "sha256": "0d4c003dc167c39f5cf2af16ae0af9f80ee4df52b419f6947846265cbec309e0"
+    },
+    {
+      "file": "frontend/js/platform/BattleSceneController.js",
+      "sha256": "724d9875ebf115d17cfaf620a8c9d6963ca17db9d211ccd868e87d391b95ff25"
+    },
+    {
+      "file": "frontend/js/platform/CanvasActionController.js",
+      "sha256": "11a831fda54b1a6b62deeb7e0d4f29a426f92d8ff8240bdf7f59cd14c6107b10"
+    },
+    {
+      "file": "frontend/js/platform/CanvasActionDescriptorRegistry.js",
+      "sha256": "4c75f1d77faee6eba7a2633f42ff10e62d1a57e66848090287f2ecba1351b987"
+    },
+    {
+      "file": "frontend/js/platform/CanvasActionDispatchRegistry.js",
+      "sha256": "24df83327feccfd37df0b204637752003364e31840ef074fed379f9b213d71b4"
+    },
+    {
+      "file": "frontend/js/platform/CanvasActionDispatcher.js",
+      "sha256": "3c6c1854283342de361fd3ad626261b1cd001246e6beac35cce16ed888a4c3d9"
+    },
+    {
+      "file": "frontend/js/platform/CanvasGameApp.js",
+      "sha256": "0272f70378ff2eba50648cdcf98924da226c3eabb08048f7cf0ec8c39cf01260"
+    },
+    {
+      "file": "frontend/js/platform/CanvasGameAppRenderPolicy.js",
+      "sha256": "f3d8ed59960adead2ba56cafae799475591a7bc2dbadf7b00e61485f051bd369"
+    },
+    {
+      "file": "frontend/js/platform/CanvasGameAppRenderScheduler.js",
+      "sha256": "e5fa54d404d96c4c0fc11d16c435d633d60a3cc45449c791245f0c56b3cc5ae5"
+    },
+    {
+      "file": "frontend/js/platform/CanvasGameRenderer.js",
+      "sha256": "9b20983c6fea9c7a3b657ef0230c7d97f14bfbc5c5b74d66541c799d9fea8bc9"
+    },
+    {
+      "file": "frontend/js/platform/CanvasGameRendererCompositionFactory.js",
+      "sha256": "62a4470b434d23f3ff3ac82c4c82745d0aa2d2bc0effa2fb6d9825d9bbe59eb6"
+    },
+    {
+      "file": "frontend/js/platform/CanvasGameShell.js",
+      "sha256": "1166d02989f1d854e11699567ffb6fa85e73a13c3260210aff01b309ddb6f66b"
+    },
+    {
+      "file": "frontend/js/platform/CanvasLayerRegistry.js",
+      "sha256": "529fecd5a071feba3e84c69ef26200ea14844c3c303e433fa898f7dc9eb40808"
+    },
+    {
+      "file": "frontend/js/platform/CanvasLayoutService.js",
+      "sha256": "29864749eafde3a2fa24c7fc71e64e77c819cab1819351447da564ca2bf49d64"
+    },
+    {
+      "file": "frontend/js/platform/CanvasModalSnapshotAdapter.js",
+      "sha256": "698fe6b4e3f9621ee39b4ef57b0a8523fff08213f48508ceabbef15041680bde"
+    },
+    {
+      "file": "frontend/js/platform/CanvasModeOwnershipRuntime.js",
+      "sha256": "0b375bc9f89dcff097a65844943624567ee9440f07ae18c8ed75c4cad2a80ace"
+    },
+    {
+      "file": "frontend/js/platform/CanvasPanelActionContextAdapter.js",
+      "sha256": "b3cda3f98471ebf2e2ec10f81029a093e252ab9fa2b243f1270cb84238b846de"
+    },
+    {
+      "file": "frontend/js/platform/CanvasPanelActionRegistry.js",
+      "sha256": "1bca9c5751076528322f5f22ded6bc6aca75c8e8ab622862dc4fcb3933c5c768"
+    },
+    {
+      "file": "frontend/js/platform/CanvasPanelActionRunner.js",
+      "sha256": "868bdeaf9c651a9d3afe55c178ad16c73e808a741692c6e7f75eccb1479ae42b"
+    },
+    {
+      "file": "frontend/js/platform/CanvasPanelSurfaceManager.js",
+      "sha256": "ac6e5c2830d5caeda3669ff953a1b0e9d8328d6f8b7dbfcc7f4d25ed412e7185"
+    },
+    {
+      "file": "frontend/js/platform/CanvasRuntimeContract.js",
+      "sha256": "c07a396c60c5ea3c3d00ef9444464f75ca94e3fc1d86591dd9a6109bf41b6ad9"
+    },
+    {
+      "file": "frontend/js/platform/CanvasStageScheduler.js",
+      "sha256": "37da9d94071dd356a07e1dc81ab8f2c59e54968ad2d0cc327eecb41830b84f52"
+    },
+    {
+      "file": "frontend/js/platform/ClientCommandSemantics.js",
+      "sha256": "57e45649727ef72af4e3828f250bf40f82c104f0fa0ca3afcaa55784ab10d2c7"
+    },
+    {
+      "file": "frontend/js/platform/DebugOverlayRegistry.js",
+      "sha256": "2484a7e362e98c35f4317f93a6132d0db23b9e3e6f542d4be8562af396cd08bf"
+    },
+    {
+      "file": "frontend/js/platform/EntityBattleController.js",
+      "sha256": "0b51ac03443fe1f5586e58efa56e9629551812951c41cc875bb655f5af8bca45"
+    },
+    {
+      "file": "frontend/js/platform/GameCommandService.js",
+      "sha256": "c52e2867fd36f337a5a4a38851b6245a479a656b8fecd50113b8113e973e289a"
+    },
+    {
+      "file": "frontend/js/platform/H5CanvasAppShell.js",
+      "sha256": "02f0f7cec1d0cf72386da2b66d9a6a4c84028c778ec80d382500b3cd352dc277"
+    },
+    {
+      "file": "frontend/js/platform/H5CanvasGameRenderer.js",
+      "sha256": "ab598acd9e6cd3db862c77e0054aca85efb674b8dbf64ce0203ba461236fbe05"
+    },
+    {
+      "file": "frontend/js/platform/H5CanvasInputController.js",
+      "sha256": "2d811d90abe94cfa1c6cba4b99e9c18b73b6a785285fb402ba3e1762e3ff8af4"
+    },
+    {
+      "file": "frontend/js/platform/H5CanvasRuntime.js",
+      "sha256": "3880c1213d7a31959d83fd2731592ef49ceac07b2557549e0309f5bdc07d1468"
+    },
+    {
+      "file": "frontend/js/platform/H5CanvasViewport.js",
+      "sha256": "85d3ea81af753c10a58baf2ff49111cd9a07cd7d34b19eca7df4c939efc16087"
+    },
+    {
+      "file": "frontend/js/platform/HitTargetManager.js",
+      "sha256": "365dad47a3d0e1559e6d98bcac72da055bbfeca69b4ca2e2255df3374558e517"
+    },
+    {
+      "file": "frontend/js/platform/MiniGameApp.js",
+      "sha256": "7e047bb668d9050410e0965acab33924d668227a780d41125a66a7430879ed81"
+    },
+    {
+      "file": "frontend/js/platform/MiniGameCanvasRenderer.js",
+      "sha256": "6a1cb19a6788d04b900cfa7ce47d19bcd8de2f4be6de3cdb005d9fc4120d99d7"
+    },
+    {
+      "file": "frontend/js/platform/ModalCallbackRegistry.js",
+      "sha256": "c7f20604a5a5d7c958e630cf6b03ef9d222d22ddb7e1e176b30a9e716a301c43"
+    },
+    {
+      "file": "frontend/js/platform/PlatformRuntime.js",
+      "sha256": "247a6a0e5bce081572e189b752f74e02d58d79d3f901197a587846d89f7d3071"
+    },
+    {
+      "file": "frontend/js/platform/ScoutCountdownTimer.js",
+      "sha256": "61a06e983ec0580532e360917b8edf22d8422336cfde929ed0a1b4eb4918a87d"
+    },
+    {
+      "file": "frontend/js/platform/SpineWebglPlayer.js",
+      "sha256": "3adf5ca096da4c6ac4760507ef2be65acf628b3971ac3fc38fcda36144aa0dfa"
+    },
+    {
+      "file": "frontend/js/platform/TargetPickerActionHandler.js",
+      "sha256": "241ae532bd2bc2e94f54f32ce620c88b808236b10b17bea1cec36396599932a3"
+    },
+    {
+      "file": "frontend/js/platform/TileMapWaterAnimationTimer.js",
+      "sha256": "4eb43c4e608515bf8c317322d2ef517877503c3111ef40ed033ab5a788be2c06"
+    },
+    {
+      "file": "frontend/js/platform/TutorialGuideUiController.js",
+      "sha256": "b321f864f78c15ce331f082427910867e05ab1430a7b8f9913c8e825b1d82632"
+    },
+    {
+      "file": "frontend/js/platform/WorldClockTimingModule.js",
+      "sha256": "43fc0ebd9f34807df5f848060ffb1cf3efdc5079b898fd332cb72554aeda2f04"
+    },
+    {
+      "file": "frontend/js/platform/WorldMapInputState.js",
+      "sha256": "2aeba8c872b66ce85b99b3f404c9ddad226777b88e325ea0d9a5fab6585c2864"
+    },
+    {
+      "file": "frontend/js/platform/WorldMapRuntime.js",
+      "sha256": "8273d2f8c20f95f038a74933ae1b4cfc5302efa46e9d71e89238f07afa4c509c"
+    },
+    {
+      "file": "frontend/js/platform/WorldMapRuntimeBakePolicy.js",
+      "sha256": "00166d0711b95631ba917db4ef3a8f24ce88b3e3690e8aba4409edceca8d5cf0"
+    },
+    {
+      "file": "frontend/js/platform/WorldMapRuntimeCameraPolicy.js",
+      "sha256": "2c9854c81526477a30b6a58c8b42e202a6208ddd67c4fd9f859b71b86d2e81ef"
+    },
+    {
+      "file": "frontend/js/platform/WorldMapRuntimeCoordinator.js",
+      "sha256": "4b5c6b31e3e373231cb84db46529f178550b3c448d9e612fe9e32f051615a5fd"
+    },
+    {
+      "file": "frontend/js/platform/WorldMapRuntimeFrameState.js",
+      "sha256": "dea76376de0f676aeb2928faa745c91d3cd275840615e78ce3c36005b8312e2e"
+    },
+    {
+      "file": "frontend/js/platform/WorldMapRuntimeHitTargetPolicy.js",
+      "sha256": "4e8dc67f352362949da997ec06116e1667f2b52c81f865520aa488bf23a62047"
+    },
+    {
+      "file": "frontend/js/platform/WorldMapRuntimeInputPolicy.js",
+      "sha256": "754b787c545779ba9e009d81694e16bcfd82d9bd0d28c43d638cbc2a4101dd6e"
+    },
+    {
+      "file": "frontend/js/platform/WorldMapRuntimePolicy.js",
+      "sha256": "94d59f607588525f2c7d3bb3f09edb610935796fc97fa53218e4a02d69a50ca9"
+    },
+    {
+      "file": "frontend/js/platform/WorldMapRuntimeRenderPipeline.js",
+      "sha256": "e32e3e6e2f6cba15ffd64dffc776b694cfcde45ecd6f5a8e4b00de1af1aacec3"
+    },
+    {
+      "file": "frontend/js/platform/WorldMapRuntimeRenderPolicy.js",
+      "sha256": "abb4985d51529367554076828f4497773ba3563d8267aa2f5062eac5f136a04c"
+    },
+    {
+      "file": "frontend/js/platform/WorldMarchActionHandler.js",
+      "sha256": "96d57a00739274d341e405741bc6ee4da9edb1643e3bfc03846f5103f5959680"
+    },
+    {
+      "file": "frontend/js/platform/WorldTileMapCacheCoordinator.js",
+      "sha256": "1cda597491072e698dc231f8978baafeeda1a061e16409dc929e40dbba952cee"
+    },
+    {
+      "file": "frontend/js/platform/interactions/TechTreeInteractionModel.js",
+      "sha256": "260044680b387bef1336a365ee5282dadf4f9cf108ed64603c53fef3871725d3"
+    },
+    {
+      "file": "frontend/js/platform/panels/CanvasPanelRegistry.js",
+      "sha256": "6f92061af49e637f2e0a6ba5e8ad1fcbf903dbd5167139faccc410c791cde5b4"
+    },
+    {
+      "file": "frontend/js/platform/panels/FamousPersonsPanel.js",
+      "sha256": "f4c4ea3fd877294cd22aa72a0409d6c236fffb261d3fdd9c6dfdf6b1c2bc9ccd"
+    },
+    {
+      "file": "frontend/js/platform/renderers/AdvisorCanvasRenderer.js",
+      "sha256": "6e2c14bb1c0c6af14d06c8a6079c50d30474592267268b3e8476290c5b1a1a66"
+    },
+    {
+      "file": "frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.js",
+      "sha256": "0af225b6165b989dcca257dd75f70f60fc699ba4a32ce45f5994c94a4124ec91"
+    },
+    {
+      "file": "frontend/js/platform/renderers/BattleCanvasModel.js",
+      "sha256": "b19ee93a1da76666c10040b69bf012d94750ec68cc3e83d6fe18e822d2b83008"
+    },
+    {
+      "file": "frontend/js/platform/renderers/BattleCanvasRenderer.js",
+      "sha256": "33bd51cfeb6aa43aca173983713d3944c014f6c6d708b13baefe840f8b200f19"
+    },
+    {
+      "file": "frontend/js/platform/renderers/BattleEffectRenderer.js",
+      "sha256": "c0cc61779656ec83480f5f865eb6e6ac7b01fc9226e0798eea7a27ac2b3845b2"
+    },
+    {
+      "file": "frontend/js/platform/renderers/BattleFloatingTextRenderer.js",
+      "sha256": "1fd2962d29b23b577586a8399222bf8f5e75baa3f3e7f5fb102838e2b1a8bf9e"
+    },
+    {
+      "file": "frontend/js/platform/renderers/BuildingCanvasRenderer.js",
+      "sha256": "2908fdb04b7773d689aac10ec3dca3a36991c31fd8fe8186ad91226300abb220"
+    },
+    {
+      "file": "frontend/js/platform/renderers/CanvasAssetRenderer.js",
+      "sha256": "0eaf39b96da1c073bf99c5fd5cd557f580a23e4c4ccbee79324e11d604837c1c"
+    },
+    {
+      "file": "frontend/js/platform/renderers/CanvasFrameRenderer.js",
+      "sha256": "ae78b13be77e21a6d43d022706d834fdc93d6ba2f6b1b05beb7f3e87cdef0cff"
+    },
+    {
+      "file": "frontend/js/platform/renderers/CanvasPreloadAssetManifest.js",
+      "sha256": "e3952f3c684f834b92af5ae287a544a0793577ac20471c07cd733e0dcc969456"
+    },
+    {
+      "file": "frontend/js/platform/renderers/CanvasSurfaceFrameClock.js",
+      "sha256": "cccef397c43a1d5fdb3a93f65c53b4b6ae876cd3e3da3e403809062df13cba59"
+    },
+    {
+      "file": "frontend/js/platform/renderers/CanvasSurfaceHitTargets.js",
+      "sha256": "f3bfd15ca4080245df9b6194554314673e82d9d0d50f206198df787911c8a82c"
+    },
+    {
+      "file": "frontend/js/platform/renderers/CanvasSurfaceRenderer.js",
+      "sha256": "a960ba2849756cc899f23e346cbd476df33d7bf4d198658e2933c6fd54014714"
+    },
+    {
+      "file": "frontend/js/platform/renderers/CanvasSurfaceState.js",
+      "sha256": "18986f0578d883d334726a1cd05992c2778c84a8635c547e1a1f88c10e202f4f"
+    },
+    {
+      "file": "frontend/js/platform/renderers/CanvasSurfaceTextLayout.js",
+      "sha256": "e0933a69a159673a5e2fe5cb28f6f40a679dff3e2086427f990921b0f30f0779"
+    },
+    {
+      "file": "frontend/js/platform/renderers/CaptureCanvasRenderer.js",
+      "sha256": "b149bf66ea2d2927f7dc2c454180bb35271eb6a3bfab147c117705846d70d829"
+    },
+    {
+      "file": "frontend/js/platform/renderers/CityCanvasRenderer.js",
+      "sha256": "a4db049c90a6d5f9891d8c149b6f02716dae91b80308042743d2e30cbd4b5233"
+    },
+    {
+      "file": "frontend/js/platform/renderers/CityPeopleCanvasRenderer.js",
+      "sha256": "21a0fcdd735fde312108055ad158d87652d891e7bc4c9c30d29b0e56102c0b0c"
+    },
+    {
+      "file": "frontend/js/platform/renderers/CivilizationCanvasRenderer.js",
+      "sha256": "8f4cee4054fec265cf68c87fd7b30a4237488123e89213b874a474d98d860fcf"
+    },
+    {
+      "file": "frontend/js/platform/renderers/EventCanvasRenderer.js",
+      "sha256": "654e5b32726be5843a8ae4bde47591fcb0ffa0c0e715bc1b262c7fdc9fd59c10"
+    },
+    {
+      "file": "frontend/js/platform/renderers/FamousCanvasModel.js",
+      "sha256": "453d64fe298ca7de75f86fae60b31e686aa62816a3e3880fb08734d0e7d08cdf"
+    },
+    {
+      "file": "frontend/js/platform/renderers/FamousCanvasRenderer.js",
+      "sha256": "1b72fb8171d6e560be518a5b3b0e769538d7b004d3d3b17e4e90629be88bdc16"
+    },
+    {
+      "file": "frontend/js/platform/renderers/FamousPanelCanvasRenderer.js",
+      "sha256": "33bf24e1a620103caec7e3ab54340fe65c7cc7a4013560dc425b2b86baba0297"
+    },
+    {
+      "file": "frontend/js/platform/renderers/FamousPortraitCanvasRenderer.js",
+      "sha256": "13219ba87bdb65cd3d124708703e4cf492ff8ea20dd75a98bec875f0486f06a8"
+    },
+    {
+      "file": "frontend/js/platform/renderers/FamousSkillCanvasRenderer.js",
+      "sha256": "a11cd32ed9fd15682e49b05e5754c4d542c5cb932e87e9db2b0c89092e30b39b"
+    },
+    {
+      "file": "frontend/js/platform/renderers/GuideTaskCanvasRenderer.js",
+      "sha256": "413ec758bb68d7b89332242f64649393c49a7b8a9fc4d39715dda4296946e724"
+    },
+    {
+      "file": "frontend/js/platform/renderers/HudOverlayCanvasRenderer.js",
+      "sha256": "2c7df83e34d9286c03782f55dc702e1bae79ff077796f2cf3b7063c97c9c1569"
+    },
+    {
+      "file": "frontend/js/platform/renderers/HudTabPageCanvasRenderer.js",
+      "sha256": "27f579a246777871f5a68cbc419d5b9f12059291b696f15ef40ee5e4ec314e5f"
+    },
+    {
+      "file": "frontend/js/platform/renderers/MapCommandCanvasRenderer.js",
+      "sha256": "8f340f0056405b2499522f63f2cbd0365b223f5d48b5a4e9bd362bf4e8d895e4"
+    },
+    {
+      "file": "frontend/js/platform/renderers/MilitaryCanvasRenderer.js",
+      "sha256": "9c7abc14f712913ecfa2399c35f4406de565fb12c5eaa244964643e4a34f251b"
+    },
+    {
+      "file": "frontend/js/platform/renderers/ModalPlateRenderer.js",
+      "sha256": "0d4272e27df743cc0bd7158eb530d52778c06976177069c291f2b487e5254580"
+    },
+    {
+      "file": "frontend/js/platform/renderers/OverlayCanvasRenderer.js",
+      "sha256": "65dbd87d7bebd621aa01cbb88a5b440ea5e8030081128107f7051db1fd58074c"
+    },
+    {
+      "file": "frontend/js/platform/renderers/ResourceTopBarCanvasRenderer.js",
+      "sha256": "cd13a4adf12cc3ef52bbf82c4ed10c2c5060f07af01b202affa513965e025058"
+    },
+    {
+      "file": "frontend/js/platform/renderers/SystemCanvasRenderer.js",
+      "sha256": "69b205d9af99263c2b191ce4d0953bf66c950cfde0d64c092e0fd664caae26f8"
+    },
+    {
+      "file": "frontend/js/platform/renderers/TabBarCanvasRenderer.js",
+      "sha256": "75e26da826230d5ce687b14dac8ac161f1cc22040984a58d23c481fe3cff3006"
+    },
+    {
+      "file": "frontend/js/platform/renderers/TechCanvasRenderer.js",
+      "sha256": "1ef4b460d6150360a097b1f937ce0fc08d29eceba22dc73843911492ac917e1a"
+    },
+    {
+      "file": "frontend/js/platform/renderers/TechTreeCanvasRenderer.js",
+      "sha256": "d3ca2b677055e67e3c67e92b7a514253586786e58bf927ca889b3c9b670244bd"
+    },
+    {
+      "file": "frontend/js/platform/renderers/TechTreeLayoutModel.js",
+      "sha256": "cce63fa8c3b0435c0f6a53ae5ef52ff9e21f0a78651eb75ce738d483149ab863"
+    },
+    {
+      "file": "frontend/js/platform/renderers/TutorialAdvisorCanvasRenderer.js",
+      "sha256": "da62f5c382311dc0b8e0fc5a78a25c05f08c534260be103ae5660f5aa6ff965c"
+    },
+    {
+      "file": "frontend/js/platform/renderers/TutorialAdvisorDialogueRenderer.js",
+      "sha256": "98dbb5bc0fde1327a5d22823fa20de8512bef1d9d27cf8f0cfcbdf8c2a387baa"
+    },
+    {
+      "file": "frontend/js/platform/renderers/TutorialAdvisorSpineLayoutConfig.js",
+      "sha256": "227eedd3b44faa7ca6d8583ba47c4a4655addf8b05e8392de281e8a4668c0237"
+    },
+    {
+      "file": "frontend/js/platform/renderers/TutorialCanvasRenderer.js",
+      "sha256": "47ea8546784e0a3dddf38b354c59a34ebd8103e2f06b23f457eabc7476676f24"
+    },
+    {
+      "file": "frontend/js/platform/renderers/TutorialDialogueLayer.js",
+      "sha256": "3c32dc0fea0fde3b3ec648fd4efc530276bfa68cd0a274d640dfb2a3f5acd8ee"
+    },
+    {
+      "file": "frontend/js/platform/renderers/TutorialIntroDialogueLayout.js",
+      "sha256": "0062322a2ac48170992082d6898ebf32df04650966c1818ebb0aab0cc590e8bc"
+    },
+    {
+      "file": "frontend/js/platform/renderers/TutorialIntroMarchModel.js",
+      "sha256": "846ef7ae56f567d93350a2ef619e01cc83db294295a0e439df5470cbf157e6a7"
+    },
+    {
+      "file": "frontend/js/platform/renderers/TutorialIntroUnitRenderer.js",
+      "sha256": "24048c8e2adc6f32feb435d5fe7f2281822592fc547af99ae1cc2fddc2a9b4a6"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldActorCanvasRenderer.js",
+      "sha256": "1687ed99c76b0750404ced79df658fa71a005dad24e799817cf7808c6efb0573"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldActorSpineRenderer.js",
+      "sha256": "0ca98c2c2e386d7a8ed919c036cb56b438d6b3f789d5ecaf167756a2c29eff8c"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldFogCanvasRenderer.js",
+      "sha256": "050d8b80e3ffc7e9a188b302c555fb42feb95d3eba4e34bb8e3cb9a5a88c53df"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldFogMaskGenerator.js",
+      "sha256": "d74f6f3d2e5f1a562f4a6d4c90c4a0a0ac299946c675e0abaa43ea218aabb463"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapActorHudRenderer.js",
+      "sha256": "ea69822b9c52c74df94b69bbe7e032ca84bc1cb9d0ca93b2557925bdb135e1b3"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapCachePolicy.js",
+      "sha256": "78cf8e4dae879692efa8fe416f7c02bfb881618aa289dd263f6b16f1221de7cc"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapCacheState.js",
+      "sha256": "1a1c285e4894049699bf9ea3d85336d3f627b9ac22448a91a87d2ec6525f7634"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapCanvasRenderer.js",
+      "sha256": "5af0549fe987fc87cbce776a650a5a875b778bde8a0af69e9541a55ca42f32ab"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapFastDragCompositeRenderer.js",
+      "sha256": "28ada5202350f2157e3ab4f93a94681d17d923f2225d32f04671276b21b6fc3d"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapHitTargetModel.js",
+      "sha256": "2e5c3a38902e93ed15160abcaae2879f43b9cf2ab9a9499856941795ea6a54a3"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapLayerCacheStore.js",
+      "sha256": "8cc37d7935a1b08ff5d74306fcfe4b6b2a41e76f551f320d9bc2355267e1b61f"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.js",
+      "sha256": "e8937f6657dd7cd6e7ec67c45d8862ee636c337d398a3eec5c9b76a3a5013489"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapLayoutModel.js",
+      "sha256": "41a94760960e925944418907be944db64c80940cb5ac7c97883d8a6ef86ad4a2"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapMilitaryViewRenderer.js",
+      "sha256": "42e5219581a8ea8c7aa1aec8f277021550d29c58b366570b86ffe1e9c1848781"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapRenderState.js",
+      "sha256": "26ab29cedae86659f78aa16bb630663f75460b7b442840b484fdd749322ae54b"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapRendererCompositionFactory.js",
+      "sha256": "9931a16353b2ac9769de27207f5f2b51abc2e6d70a7fe551c97babef80f06467"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapRendererDependencyRegistry.js",
+      "sha256": "1ac1614b058d4d8e62a9fa8219b736da3fa251b182159d77739ad5c3cccdd7b2"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapScoutRenderer.js",
+      "sha256": "2a78d75123b4596a4398494feec763d7e3cafd5fff4815cf60241ecd218281e5"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapSiteOverlayRenderer.js",
+      "sha256": "b4461af1343b7dbf7f789e85637003bd99221b30978064a54ef3c46eb882c04c"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapSnapshotCacheRenderer.js",
+      "sha256": "bdd05aeed400e00ad241b793a2dc2ab934ea4f30fcbe2546090029b93189463f"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapStaticChunkRenderer.js",
+      "sha256": "245152e4bdffc2f58e260b4de744bc4bbb82686f782531efb9ef6f22572ceca0"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapStaticEntryRenderer.js",
+      "sha256": "9dbf2e2d9b4a64bb7c801eebbc143cb29a9043f7437f60f3294a8c28092a1a9a"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapStaticLayerRenderer.js",
+      "sha256": "ecb07febc0cddef69c7dc2f7d000150b2c4f748f36374856bad890ae6e18b5e3"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapTileMapRenderer.js",
+      "sha256": "4fb3fe164b21fef1df6d0cfb57e432584680135432466bb42af3b5fb8e37437f"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapWaterEntryRenderer.js",
+      "sha256": "ad0d08639bc5837633628238cc4ca57185f8e2817c7c5d68eaa7338e40284808"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMapWaterLayerRenderer.js",
+      "sha256": "00f761249f9f9adf186f213b5150b0da4f5e57b480fa4d6ead69d91e58c41ba4"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldMarchHudCanvasRenderer.js",
+      "sha256": "c1e08a1f1460df282a2296b5d754a0e7c9aec8288cd62689a1632f46b151b1ff"
+    },
+    {
+      "file": "frontend/js/platform/renderers/WorldTileWaterCanvasRenderer.js",
+      "sha256": "dc31bb9b1d3c14be872a8313c3f71f935bd60fc62ab17b2b38b1c0156a332164"
+    },
+    {
+      "file": "frontend/js/state/presenters/BattleScenePresenter.js",
+      "sha256": "f24cf5171ad78176f4d0724d47136968c01a1fc11c8acdaebc80386fc4f34028"
+    },
+    {
+      "file": "frontend/js/state/presenters/BuildingPresenter.js",
+      "sha256": "17d3fdfd5e65d0b4a916ed161c518638a15e3be551b63557b129896ecba6fae6"
+    },
+    {
+      "file": "frontend/js/state/presenters/CapturePresenter.js",
+      "sha256": "7c4355dadabfde499e15776bf7c4c09ee21acc3e8829bd15e5c3a5b659a95d57"
+    },
+    {
+      "file": "frontend/js/state/presenters/CivilizationPresenter.js",
+      "sha256": "be879eb424f66a366511ea75c7be0511e199d5a61e6bc53bece6ceee9eb595e9"
+    },
+    {
+      "file": "frontend/js/state/presenters/EventPresenter.js",
+      "sha256": "d010ccbc4d10d611f195d17216791a232abfa3462f880af99d95c6fc9fc78dcc"
+    },
+    {
+      "file": "frontend/js/state/presenters/FamousPersonPresenter.js",
+      "sha256": "a10840977540aaf2e715c45692a2d5b53bb6ba74ac38837c15ab0d83eed4b570"
+    },
+    {
+      "file": "frontend/js/state/presenters/HomePresenter.js",
+      "sha256": "ac03be52a0e696a58b6d01220b702de9218cc85f492f3e9bb545159999991c72"
+    },
+    {
+      "file": "frontend/js/state/presenters/MilitaryPresenter.js",
+      "sha256": "7c216eb452a68b0eb25cda6ef0f8fbab9a23696c8ed83b7f15843fa1d6020cf1"
+    },
+    {
+      "file": "frontend/js/state/presenters/ShellPresenter.js",
+      "sha256": "01fb61ed699cf412ede738ca240a639f8622675950b674bbdfca5e38788966d2"
+    },
+    {
+      "file": "frontend/js/state/presenters/TalentPolicyPresenter.js",
+      "sha256": "4227f1e7e6ac9b6eabd20dcfaf048ce3253aad3b0259656e879817a01a5f47c6"
+    },
+    {
+      "file": "frontend/js/state/presenters/TaskGuidePresenter.js",
+      "sha256": "e33126a155c90f0e2bf49f9feccf8e3f03ef8f70ef8c7586bd6e12888844101f"
+    },
+    {
+      "file": "frontend/js/state/presenters/TechPresenter.js",
+      "sha256": "84881175625548cb82ff32048dbd98b046b54bdbce1f3192137be1b7f65b9901"
+    },
+    {
+      "file": "frontend/js/state/presenters/WorldSitePresenter.js",
+      "sha256": "3a1a9f4dacb70e0d04007707453b9828aa57f87452eda612e613b0810154269f"
+    },
+    {
+      "file": "frontend/js/state/presenters/WorldTileMapExplorerNormalizer.js",
+      "sha256": "6e97407577801d7040fd0ccb4128b3b5f6984f0e7e90adfe1427266d94f9ff2e"
+    },
+    {
+      "file": "frontend/js/state/presenters/WorldTileMapPresenter.js",
+      "sha256": "0d96cdac5d8b324e4ec481a6dda776259413bc83160cb8621a7b974f25c5b48b"
+    },
+    {
+      "file": "frontend/js/state/presenters/WorldTileMapRenderDiagnostics.js",
+      "sha256": "52f9e4d0af62ff7d105679d191a080e51d32175abe2aa6ea4c680e943d0509ec"
+    },
+    {
+      "file": "frontend/js/state/presenters/WorldTileMapTileNormalizer.js",
+      "sha256": "9cece8cd86c243fad7ef2c74153095a9477e4dd246504f64e18949920300c865"
+    },
+    {
+      "file": "frontend/js/tutorial/TutorialGuideController.js",
+      "sha256": "8d34b075a8861b26f020a4497a7fb9907e9526fdacd6616712643337f687b52f"
+    },
+    {
+      "file": "frontend/js/tutorial/TutorialGuideEventRegistry.js",
+      "sha256": "27eb1df18706ff92882663fcf2f69e26cf973a634d846ef190f200f79e768d20"
+    },
+    {
+      "file": "frontend/js/tutorial/TutorialGuideFlowRegistry.js",
+      "sha256": "60ae8b1e0472ba3879eaff5afb2e4c86cc679bc0aa88029bbbc245c9841c933a"
+    },
+    {
+      "file": "frontend/js/tutorial/TutorialGuideStepPolicy.js",
+      "sha256": "a2f1d8b318ec3826c931d874c9c34cda99968e694aae86b42856368dd0d8dbcb"
+    },
+    {
+      "file": "frontend/js/tutorial/TutorialGuideTargetResolver.js",
+      "sha256": "84a2a3ba34b6c84803c31729087d12feb859874dee7517b12a4133be4538111b"
+    },
+    {
+      "file": "frontend/js/tutorial/TutorialHostContext.js",
+      "sha256": "5ce0639cef2239d7753366eb1223b2215b2366f3dc5eca54d0d55790798fc39c"
+    },
+    {
+      "file": "frontend/js/tutorial/TutorialIntroOverlay.js",
+      "sha256": "a31867429587ef3a35d6dc8ab42843bf762002079212c4b62e3721487fa38e24"
+    }
+  ],
+  "counts": {
+    "rendererFiles": 150,
+    "tutorialFiles": 7,
+    "registrationSites": 204,
+    "registeredTypes": 114,
+    "tutorialReferenceSites": 39,
+    "tutorialTypes": 29,
+    "missingTypes": 0
+  },
+  "tutorialTypes": [
+    {
+      "type": "advanceEra",
+      "references": [
+        {
+          "type": "advanceEra",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:130"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "advanceEra",
+          "location": "frontend/js/platform/renderers/CivilizationCanvasRenderer.js:212"
+        }
+      ]
+    },
+    {
+      "type": "assignJob",
+      "references": [
+        {
+          "type": "assignJob",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:324"
+        },
+        {
+          "type": "assignJob",
+          "via": "getCanvasTarget",
+          "location": "frontend/js/tutorial/TutorialHostContext.js:899"
+        },
+        {
+          "type": "assignJob",
+          "via": "getCanvasTarget",
+          "location": "frontend/js/tutorial/TutorialHostContext.js:901"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "assignJob",
+          "location": "frontend/js/platform/renderers/CityPeopleCanvasRenderer.js:168"
+        },
+        {
+          "type": "assignJob",
+          "location": "frontend/js/platform/renderers/CityPeopleCanvasRenderer.js:169"
+        }
+      ]
+    },
+    {
+      "type": "autoReplenishArmyFormation",
+      "references": [
+        {
+          "type": "autoReplenishArmyFormation",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:193"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "autoReplenishArmyFormation",
+          "location": "frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.js:214"
+        }
+      ]
+    },
+    {
+      "type": "buildBuilding",
+      "references": [
+        {
+          "type": "buildBuilding",
+          "via": "getCanvasTarget",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:335"
+        },
+        {
+          "type": "buildBuilding",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialHostContext.js:1141"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "buildBuilding",
+          "location": "frontend/js/platform/renderers/BuildingCanvasRenderer.js:184"
+        }
+      ]
+    },
+    {
+      "type": "chooseWorldTarget",
+      "references": [
+        {
+          "type": "chooseWorldTarget",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:217"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "chooseWorldTarget",
+          "location": "frontend/js/platform/renderers/WorldMarchHudCanvasRenderer.js:285"
+        }
+      ]
+    },
+    {
+      "type": "claimConquest",
+      "references": [
+        {
+          "type": "claimConquest",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:752"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "claimConquest",
+          "location": "frontend/js/platform/renderers/WorldMapSiteOverlayRenderer.js:308"
+        }
+      ]
+    },
+    {
+      "type": "claimEvent",
+      "references": [
+        {
+          "type": "claimEvent",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:509"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "claimEvent",
+          "location": "frontend/js/platform/renderers/EventCanvasRenderer.js:377"
+        }
+      ]
+    },
+    {
+      "type": "claimTaskReward",
+      "references": [
+        {
+          "type": "claimTaskReward",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:145"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "claimTaskReward",
+          "location": "frontend/js/state/presenters/TaskGuidePresenter.js:72"
+        }
+      ]
+    },
+    {
+      "type": "closeFamousPersonDetail",
+      "references": [
+        {
+          "type": "closeFamousPersonDetail",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:606"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "closeFamousPersonDetail",
+          "location": "frontend/js/platform/renderers/FamousPanelCanvasRenderer.js:369"
+        }
+      ]
+    },
+    {
+      "type": "closeFamousPersons",
+      "references": [
+        {
+          "type": "closeFamousPersons",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:617"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "closeFamousPersons",
+          "location": "frontend/js/platform/renderers/FamousPanelCanvasRenderer.js:369"
+        }
+      ]
+    },
+    {
+      "type": "conquer",
+      "references": [
+        {
+          "type": "conquer",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:236"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "conquer",
+          "location": "frontend/js/platform/renderers/WorldMapSiteOverlayRenderer.js:308"
+        }
+      ]
+    },
+    {
+      "type": "enterCity",
+      "references": [
+        {
+          "type": "enterCity",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialHostContext.js:953"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "enterCity",
+          "location": "frontend/js/platform/renderers/WorldMapSiteOverlayRenderer.js:272"
+        },
+        {
+          "type": "enterCity",
+          "location": "frontend/js/platform/renderers/WorldMapSiteOverlayRenderer.js:308"
+        },
+        {
+          "type": "enterCity",
+          "location": "frontend/js/platform/renderers/WorldMapSiteOverlayRenderer.js:308"
+        },
+        {
+          "type": "enterCity",
+          "location": "frontend/js/platform/renderers/WorldMapSiteOverlayRenderer.js:735"
+        },
+        {
+          "type": "enterCity",
+          "location": "frontend/js/platform/renderers/WorldMapSiteOverlayRenderer.js:735"
+        }
+      ]
+    },
+    {
+      "type": "openArmyFormation",
+      "references": [
+        {
+          "type": "openArmyFormation",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:660"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "openArmyFormation",
+          "location": "frontend/js/platform/renderers/CityCanvasRenderer.js:296"
+        },
+        {
+          "type": "openArmyFormation",
+          "location": "frontend/js/platform/renderers/MilitaryCanvasRenderer.js:282"
+        },
+        {
+          "type": "openArmyFormation",
+          "location": "frontend/js/state/presenters/MilitaryPresenter.js:262"
+        }
+      ]
+    },
+    {
+      "type": "openCommandPanel",
+      "references": [
+        {
+          "type": "openCommandPanel",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:121"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "openCommandPanel",
+          "location": "frontend/js/platform/renderers/MapCommandCanvasRenderer.js:121"
+        },
+        {
+          "type": "openCommandPanel",
+          "location": "frontend/js/platform/renderers/MapCommandCanvasRenderer.js:122"
+        },
+        {
+          "type": "openCommandPanel",
+          "location": "frontend/js/platform/renderers/MapCommandCanvasRenderer.js:440"
+        }
+      ]
+    },
+    {
+      "type": "openEvent",
+      "references": [
+        {
+          "type": "openEvent",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:498"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "openEvent",
+          "location": "frontend/js/platform/renderers/EventCanvasRenderer.js:199"
+        }
+      ]
+    },
+    {
+      "type": "openFamousPersonDetail",
+      "references": [
+        {
+          "type": "openFamousPersonDetail",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:164"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "openFamousPersonDetail",
+          "location": "frontend/js/platform/renderers/FamousPanelCanvasRenderer.js:90"
+        },
+        {
+          "type": "openFamousPersonDetail",
+          "location": "frontend/js/state/presenters/FamousPersonPresenter.js:381"
+        }
+      ]
+    },
+    {
+      "type": "openFamousPersons",
+      "references": [
+        {
+          "type": "openFamousPersons",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:154"
+        },
+        {
+          "type": "openFamousPersons",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:812"
+        },
+        {
+          "type": "openFamousPersons",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:823"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "openFamousPersons",
+          "location": "frontend/js/platform/renderers/MapCommandCanvasRenderer.js:123"
+        },
+        {
+          "type": "openFamousPersons",
+          "location": "frontend/js/platform/renderers/TabBarCanvasRenderer.js:127"
+        }
+      ]
+    },
+    {
+      "type": "openTaskCenter",
+      "references": [
+        {
+          "type": "openTaskCenter",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:136"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "openTaskCenter",
+          "location": "frontend/js/platform/renderers/MapCommandCanvasRenderer.js:118"
+        }
+      ]
+    },
+    {
+      "type": "openWorldMarchFormationPicker",
+      "references": [
+        {
+          "type": "openWorldMarchFormationPicker",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:714"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "openWorldMarchFormationPicker",
+          "location": "frontend/js/platform/renderers/WorldMarchHudCanvasRenderer.js:468"
+        },
+        {
+          "type": "openWorldMarchFormationPicker",
+          "location": "frontend/js/platform/renderers/WorldMarchHudCanvasRenderer.js:519"
+        }
+      ]
+    },
+    {
+      "type": "openWorldSite",
+      "references": [
+        {
+          "type": "openWorldSite",
+          "via": "getCanvasTarget",
+          "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:142"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "openWorldSite",
+          "location": "frontend/js/platform/renderers/MapCommandCanvasRenderer.js:112"
+        },
+        {
+          "type": "openWorldSite",
+          "location": "frontend/js/platform/renderers/TutorialCanvasRenderer.js:145"
+        },
+        {
+          "type": "openWorldSite",
+          "location": "frontend/js/platform/renderers/WorldMapCanvasRenderer.js:1101"
+        },
+        {
+          "type": "openWorldSite",
+          "location": "frontend/js/platform/renderers/WorldMapStaticEntryRenderer.js:338"
+        }
+      ]
+    },
+    {
+      "type": "renameCity",
+      "references": [
+        {
+          "type": "renameCity",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:249"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "renameCity",
+          "location": "frontend/js/platform/renderers/WorldMapSiteOverlayRenderer.js:308"
+        },
+        {
+          "type": "renameCity",
+          "location": "frontend/js/platform/renderers/WorldMapSiteOverlayRenderer.js:735"
+        }
+      ]
+    },
+    {
+      "type": "requestNamingInput",
+      "references": [
+        {
+          "type": "requestNamingInput",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:261"
+        },
+        {
+          "type": "requestNamingInput",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:285"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "requestNamingInput",
+          "location": "frontend/js/platform/renderers/OverlayCanvasRenderer.js:196"
+        }
+      ]
+    },
+    {
+      "type": "saveArmyFormation",
+      "references": [
+        {
+          "type": "saveArmyFormation",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:200"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "saveArmyFormation",
+          "location": "frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.js:298"
+        }
+      ]
+    },
+    {
+      "type": "seekFamousPerson",
+      "references": [
+        {
+          "type": "seekFamousPerson",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:834"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "seekFamousPerson",
+          "location": "frontend/js/state/presenters/FamousPersonPresenter.js:414"
+        }
+      ]
+    },
+    {
+      "type": "selectWorldMarchTarget",
+      "references": [
+        {
+          "type": "selectWorldMarchTarget",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:687"
+        },
+        {
+          "type": "selectWorldMarchTarget",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:698"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "selectWorldMarchTarget",
+          "location": "frontend/js/platform/renderers/WorldMapCanvasRenderer.js:1146"
+        }
+      ]
+    },
+    {
+      "type": "startWorldMarch",
+      "references": [
+        {
+          "type": "startWorldMarch",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:728"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "startWorldMarch",
+          "location": "frontend/js/platform/renderers/WorldMarchHudCanvasRenderer.js:640"
+        }
+      ]
+    },
+    {
+      "type": "submitNaming",
+      "references": [
+        {
+          "type": "submitNaming",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:268"
+        },
+        {
+          "type": "submitNaming",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:292"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "submitNaming",
+          "location": "frontend/js/platform/renderers/OverlayCanvasRenderer.js:214"
+        }
+      ]
+    },
+    {
+      "type": "switchCityManagementTab",
+      "references": [
+        {
+          "type": "switchCityManagementTab",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:303"
+        },
+        {
+          "type": "switchCityManagementTab",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:644"
+        },
+        {
+          "type": "switchCityManagementTab",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:788"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "switchCityManagementTab",
+          "location": "frontend/js/platform/renderers/CityCanvasRenderer.js:196"
+        }
+      ]
+    },
+    {
+      "type": "toggleArmyFormationMember",
+      "references": [
+        {
+          "type": "toggleArmyFormationMember",
+          "via": "showHighlight",
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:177"
+        }
+      ],
+      "registrations": [
+        {
+          "type": "toggleArmyFormationMember",
+          "location": "frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.js:273"
+        }
+      ]
+    }
+  ],
+  "missingTypes": [],
+  "duplicateReferenceSitesRemoved": 0
+}
