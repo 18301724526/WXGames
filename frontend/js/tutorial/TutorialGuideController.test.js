@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+const TutorialHostContext = require('./TutorialHostContext');
 const TutorialGuideController = require('./TutorialGuideController');
 const TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
 const { makeModalOwnerHost } = require('../../test-support/CanvasOwnerTestHarness');
@@ -14,7 +15,7 @@ function linkGameShell(game, shell) {
   return game;
 }
 
-async function flushTutorialPromises(ticks = 12) {
+async function flushTutorialPromises(ticks = 16) {
   for (let index = 0; index < ticks; index += 1) {
     await Promise.resolve();
   }
@@ -127,6 +128,131 @@ test('TutorialGuideController deduplicates concurrent advance requests for the s
     ['advanceTutorial', TutorialGuideController.TUTORIAL_STEPS.talentPolicyApplied],
     ['applyApiState', TutorialGuideController.TUTORIAL_STEPS.talentPolicyApplied],
   ]);
+});
+
+test('TutorialGuideController releases and traces an advance request that never resolves', async (t) => {
+  TutorialHostContext.resetAdvanceWatchdogTrace();
+  const traceEvents = [];
+  const previousTrace = global.TutorialHostContextTrace;
+  global.TutorialHostContextTrace = {
+    log(eventName, detail) {
+      traceEvents.push({ eventName, detail });
+    },
+  };
+  t.after(() => {
+    global.TutorialHostContextTrace = previousTrace;
+  });
+
+  let now = 1000;
+  let nextTimerId = 1;
+  const timers = new Map();
+  const scheduler = {
+    now: () => now,
+    setTimeout(callback, delayMs) {
+      const timerId = nextTimerId;
+      nextTimerId += 1;
+      timers.set(timerId, { callback, at: now + delayMs });
+      return timerId;
+    },
+    clearTimeout(timerId) {
+      timers.delete(timerId);
+    },
+    advanceBy(delayMs) {
+      now += delayMs;
+      [...timers.entries()]
+        .filter(([, timer]) => timer.at <= now)
+        .sort((left, right) => left[1].at - right[1].at)
+        .forEach(([timerId, timer]) => {
+          timers.delete(timerId);
+          timer.callback();
+        });
+    },
+  };
+  const calls = [];
+  const targetStep = TutorialGuideController.TUTORIAL_STEPS.talentPolicyApplied;
+  const game = {
+    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.talentPolicyOpened },
+    applyApiState(result) {
+      this.tutorial = result.tutorial;
+    },
+  };
+  const api = {
+    timeoutMs: 20,
+    scheduler,
+    advanceTutorial(step) {
+      calls.push(step);
+      if (calls.length === 1) return new Promise(() => {});
+      return Promise.resolve({ tutorial: { completed: false, currentStep: step, phaseCompleted: {} } });
+    },
+  };
+  const controller = new TutorialGuideController({ game, api });
+  controller.sync(game.tutorial);
+
+  const stuck = controller.advanceTo(targetStep);
+  assert.equal(controller.pendingAdvanceByStep.size, 1);
+  scheduler.advanceBy(270);
+  await assert.rejects(stuck, { code: 'TUTORIAL_ADVANCE_WATCHDOG_TIMEOUT' });
+  assert.equal(controller.pendingAdvanceByStep.size, 0);
+
+  const retried = await controller.advanceTo(targetStep);
+  assert.equal(retried.currentStep, targetStep);
+  assert.equal(calls.length, 2);
+  assert.deepEqual(TutorialHostContext.getAdvanceWatchdogTrace(), {
+    schema: 'tutorial-advance-watchdog-trace/v1',
+    count: 1,
+    traces: [{
+      stepKey: targetStep,
+      startedAtMs: 1000,
+      expiredAtMs: 1270,
+      timeoutMs: 270,
+      reason: 'timer',
+    }],
+  });
+  assert.equal(traceEvents[0].eventName, 'tutorial-advance-watchdog-timeout');
+  assert.equal(timers.size, 0);
+});
+
+test('TutorialGuideController fast advance clears its watchdog without tracing', async () => {
+  TutorialHostContext.resetAdvanceWatchdogTrace();
+  const timers = new Map();
+  let nextTimerId = 1;
+  const scheduler = {
+    now: () => 500,
+    setTimeout(callback, delayMs) {
+      const timerId = nextTimerId;
+      nextTimerId += 1;
+      timers.set(timerId, { callback, delayMs });
+      return timerId;
+    },
+    clearTimeout(timerId) {
+      timers.delete(timerId);
+    },
+  };
+  const targetStep = TutorialGuideController.TUTORIAL_STEPS.talentPolicyApplied;
+  const game = {
+    tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.talentPolicyOpened },
+    applyApiState(result) {
+      this.tutorial = result.tutorial;
+    },
+  };
+  const controller = new TutorialGuideController({
+    game,
+    api: {
+      timeoutMs: 20,
+      scheduler,
+      async advanceTutorial(step) {
+        return { tutorial: { completed: false, currentStep: step, phaseCompleted: {} } };
+      },
+    },
+  });
+  controller.sync(game.tutorial);
+
+  const result = await controller.advanceTo(targetStep);
+
+  assert.equal(result.currentStep, targetStep);
+  assert.equal(controller.pendingAdvanceByStep.size, 0);
+  assert.equal(timers.size, 0);
+  assert.equal(TutorialHostContext.getAdvanceWatchdogTrace().count, 0);
 });
 
 test('TutorialGuideController prepares the house surface before projecting its highlight', async () => {

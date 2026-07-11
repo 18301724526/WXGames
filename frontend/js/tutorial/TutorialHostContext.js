@@ -152,6 +152,8 @@
   }
 
   const TUTORIAL_STEPS = TutorialGuideStepPolicy.TUTORIAL_STEPS;
+  const DEFAULT_API_TIMEOUT_MS = 10000;
+  const ADVANCE_WATCHDOG_JITTER_MS = 250;
 
   function stableSerialize(value, seen = new WeakSet()) {
     if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -272,6 +274,48 @@
     return getRefreshReentryTraceSnapshot();
   }
 
+  function getGlobalAdvanceWatchdogTrace() {
+    if (!global.__tutorialAdvanceWatchdogTrace) {
+      global.__tutorialAdvanceWatchdogTrace = {
+        schema: 'tutorial-advance-watchdog-trace/v1',
+        count: 0,
+        traces: [],
+      };
+    }
+    return global.__tutorialAdvanceWatchdogTrace;
+  }
+
+  function recordAdvanceWatchdogTrace(trace = {}) {
+    const ledger = getGlobalAdvanceWatchdogTrace();
+    const snapshot = {
+      stepKey: String(trace.stepKey || ''),
+      startedAtMs: Number(trace.startedAtMs) || 0,
+      expiredAtMs: Number(trace.expiredAtMs) || 0,
+      timeoutMs: Math.max(0, Number(trace.timeoutMs) || 0),
+      reason: String(trace.reason || 'timer'),
+    };
+    ledger.count += 1;
+    ledger.traces.push(snapshot);
+    global.TutorialHostContextTrace?.log?.('tutorial-advance-watchdog-timeout', snapshot);
+    return snapshot;
+  }
+
+  function getAdvanceWatchdogTraceSnapshot() {
+    const ledger = getGlobalAdvanceWatchdogTrace();
+    return {
+      schema: ledger.schema,
+      count: ledger.count,
+      traces: ledger.traces.map((trace) => ({ ...trace })),
+    };
+  }
+
+  function resetAdvanceWatchdogTrace() {
+    const ledger = getGlobalAdvanceWatchdogTrace();
+    ledger.count = 0;
+    ledger.traces.length = 0;
+    return getAdvanceWatchdogTraceSnapshot();
+  }
+
   class TutorialHostContext {
     constructor(options = {}) {
       this.game = options.game || null;
@@ -279,6 +323,10 @@
       this.state = options.state || null;
       this.focusedFirstCitySiteId = '';
       this.pendingAdvanceByStep = new Map();
+      this.advanceWatchdogJitterMs = Math.max(
+        0,
+        Number(options.advanceWatchdogJitterMs ?? ADVANCE_WATCHDOG_JITTER_MS) || 0,
+      );
       this.highlightRefreshActive = false;
       this.highlightRefreshPending = false;
       this.highlightRefreshTrailing = false;
@@ -632,19 +680,77 @@
       // Accepts step names and legacy numbers; the API is called with the NAME.
       const nextStep = TutorialFlowShared.stepName(step);
       if (!nextStep || TutorialFlowShared.compareSteps(nextStep, this.getCurrentStep()) <= 0) return this.state;
-      if (this.pendingAdvanceByStep.has(nextStep)) return this.pendingAdvanceByStep.get(nextStep);
       const api = this.getApi();
       if (!api?.advanceTutorial) return this.sync({ ...(this.state || {}), currentStep: nextStep });
-      const pending = (async () => {
+      const scheduler = api.scheduler || this.game?.runtime || global;
+      const now = () => {
+        const value = scheduler?.now?.();
+        return Number.isFinite(Number(value)) ? Number(value) : Date.now();
+      };
+      const existing = this.pendingAdvanceByStep.get(nextStep);
+      if (existing) {
+        if (now() < existing.expiresAtMs) return existing.promise;
+        this.expirePendingAdvance(nextStep, existing, now(), 'short-circuit');
+      }
+      const apiTimeoutMs = Number(api.timeoutMs);
+      const timeoutMs = (Number.isFinite(apiTimeoutMs) && apiTimeoutMs > 0
+        ? apiTimeoutMs
+        : DEFAULT_API_TIMEOUT_MS) + this.advanceWatchdogJitterMs;
+      let rejectWatchdog;
+      const watchdog = new Promise((_resolve, reject) => {
+        rejectWatchdog = reject;
+      });
+      const entry = {
+        startedAtMs: now(),
+        expiresAtMs: 0,
+        timeoutMs,
+        timeoutId: null,
+        rejectWatchdog,
+        expired: false,
+        promise: null,
+      };
+      entry.expiresAtMs = entry.startedAtMs + timeoutMs;
+      const request = (async () => {
         const result = await api.advanceTutorial(nextStep);
+        if (entry.expired) return this.state;
         this.game?.applyApiState?.(result);
         return this.sync(result?.tutorial || this.game?.tutorial || this.state);
-      })()
+      })();
+      entry.promise = Promise.race([request, watchdog])
         .finally(() => {
-          this.pendingAdvanceByStep.delete(nextStep);
+          if (this.pendingAdvanceByStep.get(nextStep) === entry) {
+            this.pendingAdvanceByStep.delete(nextStep);
+          }
+          if (entry.timeoutId !== null && typeof scheduler?.clearTimeout === 'function') {
+            scheduler.clearTimeout(entry.timeoutId);
+          }
         });
-      this.pendingAdvanceByStep.set(nextStep, pending);
-      return pending;
+      this.pendingAdvanceByStep.set(nextStep, entry);
+      if (typeof scheduler?.setTimeout === 'function') {
+        entry.timeoutId = scheduler.setTimeout(() => {
+          this.expirePendingAdvance(nextStep, entry, now(), 'timer');
+        }, timeoutMs);
+      }
+      return entry.promise;
+    }
+
+    expirePendingAdvance(nextStep, entry, expiredAtMs, reason = 'timer') {
+      if (!entry || entry.expired || this.pendingAdvanceByStep.get(nextStep) !== entry) return false;
+      entry.expired = true;
+      this.pendingAdvanceByStep.delete(nextStep);
+      const error = new Error(`Tutorial advance timed out after ${entry.timeoutMs}ms`);
+      error.code = 'TUTORIAL_ADVANCE_WATCHDOG_TIMEOUT';
+      error.step = nextStep;
+      error.timeoutMs = entry.timeoutMs;
+      recordAdvanceWatchdogTrace({
+        stepKey: nextStep,
+        startedAtMs: entry.startedAtMs,
+        expiredAtMs,
+        timeoutMs: entry.timeoutMs,
+        reason,
+      });
+      entry.rejectWatchdog(error);
+      return true;
     }
 
     async markCityEntered() {
@@ -1460,6 +1566,8 @@
   TutorialHostContext.resetStepScriptTrace = resetStepScriptTrace;
   TutorialHostContext.getRefreshReentryTrace = getRefreshReentryTraceSnapshot;
   TutorialHostContext.resetRefreshReentryTrace = resetRefreshReentryTrace;
+  TutorialHostContext.getAdvanceWatchdogTrace = getAdvanceWatchdogTraceSnapshot;
+  TutorialHostContext.resetAdvanceWatchdogTrace = resetAdvanceWatchdogTrace;
   if (
     typeof process !== 'undefined'
     && process?.env?.TUTORIAL_WITNESS_ASSERT_ZERO === '1'
