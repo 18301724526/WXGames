@@ -231,7 +231,7 @@ test('reentry during a trailing refresh schedules one more non-recursive refresh
   context.disconnectChangeEventBus();
 });
 
-test('cityEntered prepares the house surface before refreshing its pure projection', async () => {
+test('cityEntered advances before refreshing its pure projection', async () => {
   const steps = TutorialFlowShared.TUTORIAL_STEPS;
   const calls = [];
   let step = steps.initial;
@@ -246,10 +246,6 @@ test('cityEntered prepares the house surface before refreshing its pure projecti
       this.state = { currentStep: nextStep };
       return this.state;
     },
-    ensureHouseGuideVisible() {
-      calls.push('ensureHouseGuideVisible');
-      return true;
-    },
     refreshCurrentHighlight() {
       calls.push('refreshCurrentHighlight');
       return true;
@@ -261,7 +257,6 @@ test('cityEntered prepares the house surface before refreshing its pure projecti
 
   assert.deepEqual(calls, [
     `advance:${steps.cityEntered}`,
-    'ensureHouseGuideVisible',
     'refreshCurrentHighlight',
   ]);
   assert.equal(result.currentStep, steps.cityEntered);
@@ -271,16 +266,12 @@ test('house-build residual rule projects the highlight without mutating panel st
   const steps = TutorialFlowShared.TUTORIAL_STEPS;
   const rule = TutorialGuideFlowRegistry.createDefaultRules(steps)
     .find((entry) => entry.id === 'house-build');
-  let ensureCalls = 0;
   let shown = null;
   const target = { action: { type: 'buildBuilding', buildingId: 'house' } };
   const host = {
     constructor: { TUTORIAL_STEPS: steps },
     getCurrentStep: () => steps.cityEntered,
     isHouseGuideActive: () => true,
-    ensureHouseGuideVisible: () => {
-      ensureCalls += 1;
-    },
     getCanvasTarget: () => target,
     showTutorialHighlight(actualTarget, _message, options) {
       shown = { actualTarget, options };
@@ -290,7 +281,6 @@ test('house-build residual rule projects the highlight without mutating panel st
 
   assert.equal(rule.matches(host), true);
   assert.equal(rule.render(host), true);
-  assert.equal(ensureCalls, 0);
   assert.equal(shown.actualTarget, target);
   assert.deepEqual(shown.options.allowedAction, { type: 'buildBuilding', buildingId: 'house' });
 });

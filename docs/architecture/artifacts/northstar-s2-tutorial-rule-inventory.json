@@ -7,7 +7,7 @@
     },
     {
       "file": "frontend/js/tutorial/TutorialGuideEventRegistry.js",
-      "sha256": "4ad8dd52142ede32227c027c7d4344b6b184b633671ca8c04acff41dd930c0d7"
+      "sha256": "31efa2a2b73e4c875b99f41b25c446bf540d39adca811381a3788c4296e11319"
     }
   ],
   "counts": {
@@ -398,7 +398,7 @@
       "stepNames": [],
       "kind": "event-handler",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:174"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:173"
     },
     {
       "eventName": "eraAdvanced",
@@ -411,7 +411,7 @@
       ],
       "kind": "state-sync",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:184"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:183"
     },
     {
       "eventName": "taskRewardClaimed",
@@ -420,7 +420,7 @@
       ],
       "kind": "state-sync",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:217"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:216"
     },
     {
       "eventName": "famousPersonsOpened",
@@ -432,7 +432,7 @@
       ],
       "kind": "step-transition",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:222"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:221"
     },
     {
       "eventName": "talentPolicyOpened",
@@ -443,7 +443,7 @@
       ],
       "kind": "step-transition",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:232"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:231"
     },
     {
       "eventName": "tutorialStateChanged",
@@ -452,7 +452,7 @@
       ],
       "kind": "state-sync",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:242"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:241"
     },
     {
       "eventName": "famousPersonDetailOpened",
@@ -462,7 +462,7 @@
       ],
       "kind": "step-transition",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:251"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:250"
     },
     {
       "eventName": "armyFormationOpened",
@@ -472,7 +472,7 @@
       ],
       "kind": "step-transition",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:263"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:262"
     },
     {
       "eventName": "armyFormationSaved",
@@ -482,7 +482,7 @@
       ],
       "kind": "state-sync",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:270"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:269"
     },
     {
       "eventName": "militaryViewSwitched",
@@ -492,21 +492,21 @@
       ],
       "kind": "step-transition",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:287"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:286"
     },
     {
       "eventName": "famousPersonsClosed",
       "stepNames": [],
       "kind": "projection-refresh",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:296"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:295"
     },
     {
       "eventName": "cityManagementOpened",
       "stepNames": [],
       "kind": "projection-refresh",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:302"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:301"
     },
     {
       "eventName": "worldMarchTargetSelected",
@@ -516,14 +516,14 @@
       ],
       "kind": "step-transition",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:311"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:310"
     },
     {
       "eventName": "exploreStarted",
       "stepNames": [],
       "kind": "state-sync",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:318"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:317"
     },
     {
       "eventName": "advisorClosed",
@@ -533,7 +533,7 @@
       ],
       "kind": "step-transition",
       "source": "factory:createDefaultHandlers",
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:324"
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:323"
     }
   ]
 }

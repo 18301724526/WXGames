@@ -1306,17 +1306,6 @@
         return changed;
       }
 
-    ensureHouseGuideVisible() {
-        if (!this.isHouseGuideActive()) return false;
-        const game = this.game || {};
-        CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(game, 'showCityManagement', true);
-        game.activeCityManagementTab = 'buildings';
-        CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, 'showSubcityList');
-        CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, 'activeCommandPanel');
-        game.closeEventSnapshot?.();
-        return true;
-      }
-
     ensureBuildingGuideVisible() {
         const game = this.game || {};
         CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, 'showCityManagement');

@@ -166,7 +166,6 @@
         if (TutorialFlowShared.stepBefore(getStep(host), steps.cityEntered)) {
           result = await (host.advanceTo?.(steps.cityEntered) || host.state);
         }
-        host.ensureHouseGuideVisible?.();
         host.refreshCurrentHighlight?.();
         return result;
       },

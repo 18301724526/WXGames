@@ -255,7 +255,7 @@ test('TutorialGuideController fast advance clears its watchdog without tracing',
   assert.equal(TutorialHostContext.getAdvanceWatchdogTrace().count, 0);
 });
 
-test('TutorialGuideController prepares the house surface before projecting its highlight', async () => {
+test('TutorialGuideController projects the house highlight on the surface prepared by city entry', async () => {
   const calls = [];
   const shell = makeModalHost({
     activeCityManagementTab: '',
@@ -277,6 +277,8 @@ test('TutorialGuideController prepares the house surface before projecting its h
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.cityEntered },
   });
   linkGameShell(game, shell);
+  game.openBlockingPanelSnapshot('showCityManagement', true);
+  game.activeCityManagementTab = 'buildings';
   const controller = new TutorialGuideController({ game });
   controller.sync(game.tutorial);
 

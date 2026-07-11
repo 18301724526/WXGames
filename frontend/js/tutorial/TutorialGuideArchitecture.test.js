@@ -36,7 +36,7 @@ test('TutorialGuideController is a thin facade over TutorialHostContext', () => 
   assert.match(controllerSource, /class TutorialGuideController extends TutorialHostContext \{\}/);
   assert.doesNotMatch(controllerSource, /this\.game|\bgame\s*\.|\bcanvasShell\s*\./);
   assert.match(contextSource, /refreshCurrentHighlight\(/);
-  assert.match(contextSource, /ensureHouseGuideVisible\(/);
+  assert.doesNotMatch(contextSource, /ensureHouseGuideVisible\(/);
   assert.match(contextSource, /ensureCityPeopleGuideVisible\(/);
   assert.match(contextSource, /TutorialGuideFlowRegistry/);
 });
