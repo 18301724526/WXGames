@@ -41,7 +41,7 @@
     },
     {
       "file": "frontend/js/platform/CanvasGameApp.js",
-      "sha256": "0272f70378ff2eba50648cdcf98924da226c3eabb08048f7cf0ec8c39cf01260"
+      "sha256": "44c180ad99e397fe5ac33cab6c2d01197b54bbad5a85e16ebe6312049f26326e"
     },
     {
       "file": "frontend/js/platform/CanvasGameAppRenderPolicy.js",
@@ -629,7 +629,7 @@
     },
     {
       "file": "frontend/js/tutorial/TutorialGuideTargetResolver.js",
-      "sha256": "84a2a3ba34b6c84803c31729087d12feb859874dee7517b12a4133be4538111b"
+      "sha256": "f1b9698f9d3585a75ac77984278c0e2a7b66456e17876188e7b0b97e48659f7e"
     },
     {
       "file": "frontend/js/tutorial/TutorialHostContext.js",
@@ -1033,7 +1033,7 @@
         {
           "type": "openWorldSite",
           "via": "getCanvasTarget",
-          "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:142"
+          "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:207"
         }
       ],
       "registrations": [

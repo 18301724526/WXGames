@@ -1,7 +1,91 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const TutorialGuideTargetResolver = require('./TutorialGuideTargetResolver');
+
+const S2_HIGHLIGHT_PANEL_EXPECTATIONS = Object.freeze({
+  buildBuilding: '',
+  claimConquest: '',
+  claimEvent: '',
+  claimTaskReward: '',
+  closeFamousPersonDetail: 'famousPersons',
+  closeFamousPersons: 'famousPersons',
+  openArmyFormation: '',
+  openCommandPanel: '',
+  openEvent: '',
+  openFamousPersons: '',
+  openTaskCenter: '',
+  openWorldMarchFormationPicker: '',
+  seekFamousPerson: 'famousPersons',
+  selectWorldMarchTarget: '',
+  startWorldMarch: '',
+  switchCityManagementTab: '',
+});
+
+test('S2 highlight rule inventory has an explicit panel coverage decision for every type', () => {
+  const inventory = require('../../../docs/architecture/artifacts/northstar-s2-tutorial-rule-inventory.json');
+  const highlightTypes = [...new Set(inventory.flowRules
+    .filter((rule) => rule.kind.startsWith('highlight:'))
+    .map((rule) => rule.kind.slice('highlight:'.length)))].sort();
+  assert.deepEqual(Object.keys(S2_HIGHLIGHT_PANEL_EXPECTATIONS).sort(), highlightTypes);
+  const panelTable = TutorialGuideTargetResolver.MODAL_TARGET_PANEL_BY_ACTION_TYPE;
+  Object.entries(S2_HIGHLIGHT_PANEL_EXPECTATIONS).forEach(([type, panelKey]) => {
+    assert.equal(panelTable[type] || '', panelKey, `${type} panel coverage drift`);
+  });
+  assert.equal(panelTable.assignFamousAttributePoint, 'famousPersons');
+});
+
+test('resolveTarget declares hitTarget, worldSiteAnchor, and softGuideId kinds', () => {
+  const kinds = TutorialGuideTargetResolver.TARGET_RESOLVER_KINDS;
+  let anchorTick = 0;
+  const resolver = new TutorialGuideTargetResolver({
+    context: {
+      queryCanvasTarget(type) {
+        return type === 'openTaskCenter' ? { action: { type } } : null;
+      },
+      resolveWorldSiteAnchorTarget() {
+        anchorTick += 1;
+        return { available: true, target: anchorTick === 1 ? { frame: 1 } : null };
+      },
+    },
+  });
+
+  assert.equal(resolver.resolveTarget({ kind: kinds.HIT_TARGET, type: 'openTaskCenter' }).target.action.type, 'openTaskCenter');
+  assert.deepEqual(resolver.resolveTarget({ kind: kinds.WORLD_SITE_ANCHOR, siteId: 'capital' }), {
+    kind: 'worldSiteAnchor',
+    available: true,
+    target: { frame: 1 },
+  });
+  assert.deepEqual(resolver.resolveTarget({ kind: kinds.WORLD_SITE_ANCHOR, siteId: 'capital' }), {
+    kind: 'worldSiteAnchor',
+    available: true,
+    target: null,
+  });
+  assert.deepEqual(resolver.resolveTarget({ kind: kinds.SOFT_GUIDE_ID, id: 'task-center-main-claim' }).target.action, {
+    type: 'openTaskCenter',
+    tab: 'main',
+    source: 'advisor',
+  });
+});
+
+test('softGuideId resolver preserves legacy advisor navigation without DOM id branches in CanvasGameApp', () => {
+  assert.deepEqual(TutorialGuideTargetResolver.resolveSoftGuideId('btn-advance-era'), {
+    kind: 'tab', id: 'btn-advance-era', tabId: 'civilization',
+  });
+  assert.deepEqual(TutorialGuideTargetResolver.resolveSoftGuideId('card-house'), {
+    kind: 'tab', id: 'card-house', tabId: 'buildings',
+  });
+  assert.deepEqual(TutorialGuideTargetResolver.resolveSoftGuideId('scout-action-first'), {
+    kind: 'guideTask',
+    id: 'scout-action-first',
+    nextAction: { type: 'switchMilitaryView', view: 'scout' },
+  });
+  const appSource = fs.readFileSync(path.resolve(__dirname, '../platform/CanvasGameApp.js'), 'utf8');
+  assert.doesNotMatch(appSource, /getFallbackGuideTarget\s*\(/);
+  assert.doesNotMatch(appSource, /target\s*===\s*['"](?:task-center-button|scout-action-first)['"]/);
+});
 
 test('TutorialGuideTargetResolver retries target lookup after render and shows highlight', () => {
   const calls = [];

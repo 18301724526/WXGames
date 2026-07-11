@@ -15,6 +15,10 @@
       TutorialGuideControllerBase = null;
     }
   }
+  var TutorialGuideTargetResolverBase = global.TutorialGuideTargetResolver;
+  if (typeof module !== 'undefined' && module.exports && !TutorialGuideTargetResolverBase) {
+    TutorialGuideTargetResolverBase = require('../tutorial/TutorialGuideTargetResolver');
+  }
   var CanvasGameAppRenderPolicy = global.CanvasGameAppRenderPolicy;
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppRenderPolicy) {
     CanvasGameAppRenderPolicy = require('./CanvasGameAppRenderPolicy');
@@ -3398,16 +3402,6 @@
                 return false;
               }
 
-    getFallbackGuideTarget(target) {
-                if (target === 'btn-advance-era') return 'tab-civilization';
-                if (target === 'card-craftsman') return 'tab-resources';
-                if (target === 'event-card-special' || target === 'btn-claim-event') return 'tab-events';
-                if (target === 'scout-action-first') return 'tab-military';
-                if (target === 'task-center-main-claim') return 'task-center-button';
-                if (typeof target === 'string' && target.startsWith('card-')) return 'tab-buildings';
-                return null;
-              }
-
     updateAdvisor(guide, options = {}) {
                 const view = this.presenter?.buildAdvisorViewState?.(guide) || {};
                 this.activeAdvisor = view.activeAdvisor;
@@ -3416,8 +3410,9 @@
 
     goToAdvisorTarget() {
                 const target = this.activeAdvisor?.target || this.state?.softGuide?.target || null;
-                if (target === 'task-center-button') {
-                  const action = { type: 'openTaskCenter', tab: 'main', source: 'advisor' };
+                const resolution = TutorialGuideTargetResolverBase?.resolveSoftGuideId?.(target) || null;
+                if (resolution?.kind === 'action') {
+                  const action = { ...resolution.action };
                   CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showAdvisor');
                   this.canvasShell?.hideTutorialHighlight?.();
                   if (this.canvasShell?.actionController?.handle_openTaskCenter) {
@@ -3435,13 +3430,13 @@
                   this.tutorialController?.refreshCurrentHighlight?.();
                   return true;
                 }
-                if (target === 'scout-action-first') {
+                if (resolution?.kind === 'guideTask') {
                   return this.canvasShell?.goToGuideTaskTarget?.({
                     target,
-                    nextAction: { type: 'switchMilitaryView', view: 'scout' },
+                    nextAction: { ...resolution.nextAction },
                   });
                 }
-                const tabId = this.presenter?.getAdvisorTargetTab?.(target);
+                const tabId = resolution?.kind === 'tab' ? resolution.tabId : null;
                 if (tabId) this.switchTab(tabId);
                 return Boolean(tabId);
               }

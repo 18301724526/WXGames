@@ -20,7 +20,7 @@
     },
     {
       "file": "frontend/js/tutorial/TutorialGuideTargetResolver.js",
-      "sha256": "84a2a3ba34b6c84803c31729087d12feb859874dee7517b12a4133be4538111b"
+      "sha256": "f1b9698f9d3585a75ac77984278c0e2a7b66456e17876188e7b0b97e48659f7e"
     },
     {
       "file": "frontend/js/tutorial/TutorialIntroOverlay.js",
@@ -28,12 +28,12 @@
     }
   ],
   "counts": {
-    "total": 205,
+    "total": 200,
     "categories": {
       "effects": 47,
       "waitFor": 0,
       "requestAction": 0,
-      "resolveTarget": 55,
+      "resolveTarget": 50,
       "queries": 87,
       "next": 16
     }
@@ -1138,136 +1138,106 @@
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:46",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:82",
       "accessShape": "this.host.retryingHighlightAfterRender",
       "category": "resolveTarget",
       "note": "write; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:53",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:89",
       "accessShape": "this.host.getTargetActiveRenderTab",
       "category": "resolveTarget",
       "note": "call; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:57",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:93",
       "accessShape": "this.host.queryCanvasTarget",
       "category": "resolveTarget",
       "note": "call; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:68",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:104",
       "accessShape": "this.host.refreshTargetSurface",
       "category": "resolveTarget",
       "note": "call; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:72",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:108",
       "accessShape": "this.host.getTargetState",
       "category": "resolveTarget",
       "note": "call; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:76",
-      "accessShape": "this.host.resolveWorldSiteAnchorTarget",
-      "category": "resolveTarget",
-      "note": "call; root=this.host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:76",
-      "accessShape": "this.host.resolveWorldSiteAnchorTarget().target",
-      "category": "resolveTarget",
-      "note": "read; root=this.host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:84",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:118",
       "accessShape": "this.host.retryingHighlightAfterRender",
       "category": "resolveTarget",
       "note": "read; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:91",
-      "accessShape": "this.host.hideTutorialHighlight",
-      "category": "resolveTarget",
-      "note": "call; root=this.host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:94",
-      "accessShape": "this.host.showTutorialHighlight",
-      "category": "resolveTarget",
-      "note": "call; root=this.host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:102",
-      "accessShape": "target.getRect",
-      "category": "resolveTarget",
-      "note": "read; root=this.host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:103",
-      "accessShape": "target.getRect",
-      "category": "resolveTarget",
-      "note": "call; root=this.host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:104",
-      "accessShape": "target.getBoundingClientRect",
-      "category": "resolveTarget",
-      "note": "read; root=this.host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:104",
-      "accessShape": "target.getBoundingClientRect",
-      "category": "resolveTarget",
-      "note": "call; root=this.host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:123",
-      "accessShape": "this.host.getTutorialCanvasSize",
-      "category": "resolveTarget",
-      "note": "call; root=this.host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:135",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:127",
       "accessShape": "this.host.resolveWorldSiteAnchorTarget",
       "category": "resolveTarget",
       "note": "call; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:137",
-      "accessShape": "anchorResolution.target",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:131",
+      "accessShape": "resolution.available",
       "category": "resolveTarget",
       "note": "read; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:138",
-      "accessShape": "anchorResolution.available",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:132",
+      "accessShape": "resolution.target",
       "category": "resolveTarget",
       "note": "read; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:139",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:143",
+      "accessShape": "this.host.resolveWorldSiteAnchorTarget",
+      "category": "resolveTarget",
+      "note": "call; root=this.host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:143",
+      "accessShape": "this.host.resolveWorldSiteAnchorTarget().target",
+      "category": "resolveTarget",
+      "note": "read; root=this.host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:154",
       "accessShape": "this.host.hideTutorialHighlight",
       "category": "resolveTarget",
       "note": "call; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:147",
-      "accessShape": "this.host.hideTutorialHighlight",
-      "category": "resolveTarget",
-      "note": "call; root=this.host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:150",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:157",
       "accessShape": "this.host.showTutorialHighlight",
       "category": "resolveTarget",
       "note": "call; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:155",
-      "accessShape": "target.action",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:186",
+      "accessShape": "this.host.getTutorialCanvasSize",
       "category": "resolveTarget",
-      "note": "read; root=this.host; direct host member access"
+      "note": "call; root=this.host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:204",
+      "accessShape": "this.host.hideTutorialHighlight",
+      "category": "resolveTarget",
+      "note": "call; root=this.host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:212",
+      "accessShape": "this.host.hideTutorialHighlight",
+      "category": "resolveTarget",
+      "note": "call; root=this.host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:215",
+      "accessShape": "this.host.showTutorialHighlight",
+      "category": "resolveTarget",
+      "note": "call; root=this.host; direct host member access"
     }
   ]
 }
