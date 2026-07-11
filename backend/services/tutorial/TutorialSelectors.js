@@ -89,7 +89,8 @@ function hasTutorialScoutFormation(gameState = {}, payload = {}) {
 function getFirstArmyReserveFloor(gameState = {}) {
   const tutorial = normalizeTutorialState(gameState.tutorial);
   if (tutorial.completed || tutorial.disabled) return 0;
-  const soldiers = Math.max(0, Math.floor(Number(tutorial.grants?.[FIRST_ARMY_GRANT_KEY]?.soldiers) || 0));
+  const grant = TaskRewardGrantLedger.getSoldierGrant(gameState, FIRST_ARMY_GRANT_KEY);
+  const soldiers = Math.max(0, Math.floor(Number(grant?.soldiers) || 0));
   if (!soldiers) return 0;
   if (!stepBefore(tutorial.currentStep, TUTORIAL_STEPS.scoutFormationSaved)) return 0;
   return soldiers;

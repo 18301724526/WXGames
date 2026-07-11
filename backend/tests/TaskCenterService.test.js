@@ -117,8 +117,13 @@ test('claiming the first-army task pays soldiers into the city military with the
   // Soldiers are NOT a city resource: they land in the city military.
   assert.equal(gameState.cities.capital.resources.soldiers, undefined);
   assert.equal(gameState.cities.capital.military.soldiers, 1000);
-  assert.equal(gameState.tutorial.grants.firstArmy.soldiers, 1000);
-  assert.equal(typeof gameState.tutorial.grants.firstArmy.grantedAt, 'string');
+  const grant = TaskRewardGrantLedger.getSoldierGrant(
+    gameState,
+    TaskRewardGrantLedger.FIRST_ARMY_GRANT_KEY,
+  );
+  assert.equal(grant.soldiers, 1000);
+  assert.equal(typeof grant.grantedAt, 'string');
+  assert.equal(gameState.tutorial.grants.firstArmy, undefined);
   assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstArmyClaimed);
 
   const duplicate = TaskCenterService.claimTask(gameState, 'main_first_army', 'main');

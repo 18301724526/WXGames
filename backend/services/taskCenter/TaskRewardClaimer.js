@@ -17,13 +17,17 @@ function addResources(target, source = {}) {
 
 // Soldier rewards land in the active city military, not in city resources.
 // Mechanics mirror the EventService {type:'soldiers'} effect: normalize with a
-// city-scoped context, then refresh derived city stats. The first-army grant is
-// recorded BEFORE the normalize so the reserve floor is already active and the
-// barracks cap cannot clamp the grant away in this same mutation.
+// city-scoped context, then refresh derived city stats. The first-army task
+// grant is recorded BEFORE the normalize so the reserve floor is already active
+// and the barracks cap cannot clamp the grant away in this same mutation.
 function applySoldierReward(gameState, city, soldiers) {
   const amount = Math.max(0, Math.floor(Number(soldiers) || 0));
   if (!amount) return;
-  TutorialGrantService.recordFirstArmyGrant(gameState, amount);
+  TaskRewardGrantLedger.recordSoldierGrant(
+    gameState,
+    TaskRewardGrantLedger.FIRST_ARMY_GRANT_KEY,
+    { soldiers: amount },
+  );
   const current = Number(city.military?.soldiers) || 0;
   city.military = MilitaryService.normalizeMilitaryState(
     {

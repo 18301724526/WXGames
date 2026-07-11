@@ -70,6 +70,19 @@ function getFamousPersonGrant(gameState, key) {
   return null;
 }
 
+function getSoldierGrant(gameState, key) {
+  if (!gameState || typeof gameState !== 'object') return null;
+  const ledger = ensureTaskRewardGrants(gameState);
+  const existing = normalizeSoldierGrant(ledger.soldiers[key]);
+  if (existing) return existing;
+  const legacy = normalizeSoldierGrant(readLegacyTutorialGrant(gameState, key));
+  if (legacy) {
+    ledger.soldiers[key] = legacy;
+    return legacy;
+  }
+  return null;
+}
+
 function recordFamousPersonGrant(gameState, key, rawGrant = {}) {
   if (!gameState || typeof gameState !== 'object') return null;
   const ledger = ensureTaskRewardGrants(gameState);
@@ -81,12 +94,25 @@ function recordFamousPersonGrant(gameState, key, rawGrant = {}) {
   return grant;
 }
 
+function recordSoldierGrant(gameState, key, rawGrant = {}) {
+  if (!gameState || typeof gameState !== 'object') return null;
+  const ledger = ensureTaskRewardGrants(gameState);
+  const existing = normalizeSoldierGrant(ledger.soldiers[key]);
+  if (existing) return existing;
+  const grant = normalizeSoldierGrant(rawGrant);
+  if (!grant) return null;
+  ledger.soldiers[key] = grant;
+  return grant;
+}
+
 module.exports = {
   SCOUT_FAMOUS_GRANT_KEY,
   FIRST_ARMY_GRANT_KEY,
   createInitialTaskRewardGrants,
   ensureTaskRewardGrants,
   getFamousPersonGrant,
+  getSoldierGrant,
   normalizeTaskRewardGrants,
   recordFamousPersonGrant,
+  recordSoldierGrant,
 };

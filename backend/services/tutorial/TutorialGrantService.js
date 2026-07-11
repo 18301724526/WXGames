@@ -63,26 +63,16 @@ function grantScoutFamousPerson(gameState) {
   return person ? { person: { ...person }, grantedAt: grant.grantedAt, created: false } : null;
 }
 
-// Records the first-army grant BEFORE the soldier write so the reserve floor in
-// MilitaryService.normalizeMilitaryState is already active when the granted
-// soldiers are normalized (barracks L1 cap would otherwise clamp them away).
+// Compatibility shell only. TaskRewardClaimer writes first-army bookkeeping to
+// taskRewardGrants before normalizing the soldier reward.
 function recordFirstArmyGrant(gameState, soldiers) {
   if (!gameState || typeof gameState !== 'object') return null;
   const amount = Math.max(0, Math.floor(Number(soldiers) || 0));
   if (!amount) return null;
-  const tutorial = normalizeTutorialState(gameState.tutorial);
-  const existing = tutorial.grants?.[FIRST_ARMY_GRANT_KEY];
-  if (existing) return existing;
-  const grant = { soldiers: amount, grantedAt: nowIso() };
-  gameState.tutorial = {
-    ...tutorial,
-    grants: {
-      ...(tutorial.grants || {}),
-      [FIRST_ARMY_GRANT_KEY]: grant,
-    },
-    updatedAt: nowIso(),
-  };
-  return grant;
+  return TaskRewardGrantLedger.recordSoldierGrant(gameState, FIRST_ARMY_GRANT_KEY, {
+    soldiers: amount,
+    grantedAt: nowIso(),
+  });
 }
 
 module.exports = {

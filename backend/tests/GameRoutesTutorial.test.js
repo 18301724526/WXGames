@@ -765,7 +765,11 @@ test('game routes walk the barracks, first-army, and scout-officer chain into fo
   assert.equal(firstArmyRes.payload.success, true);
   assert.equal(firstArmyRes.payload.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstArmyClaimed);
   assert.equal(savedStates.at(-1).cities.capital.military.soldiers, 1000);
-  assert.equal(savedStates.at(-1).tutorial.grants.firstArmy.soldiers, 1000);
+  assert.equal(
+    TaskRewardGrantLedger.getSoldierGrant(savedStates.at(-1), TaskRewardGrantLedger.FIRST_ARMY_GRANT_KEY).soldiers,
+    1000,
+  );
+  assert.equal(savedStates.at(-1).tutorial.grants.firstArmy, undefined);
 
   // 6) Claim the scout-officer task: the tutorial scout famous person joins.
   const officerRes = runClaim('main_scout_officer');

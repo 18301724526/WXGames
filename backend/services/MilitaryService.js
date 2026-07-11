@@ -240,10 +240,10 @@ function pickCityFormationsSource(rawFormations, cityId = 'capital') {
 
 function normalizeMilitaryState(rawMilitary, gameState) {
   const stats = getTrainingStats(gameState?.buildings || {});
-  // Tutorial first-army grant floor: while the formation guide runs, the
-  // granted reserve must survive the barracks cap clamp (cap AND soldiers are
-  // floored at the granted amount; after scoutFormationSaved the floor is 0 and
-  // the residual reserve re-clamps to the barracks cap).
+  // First-army task reward floor: while the formation guide runs, the granted
+  // reserve must survive the barracks cap clamp (cap AND soldiers are floored
+  // at the granted amount; after scoutFormationSaved the floor is 0 and the
+  // residual reserve re-clamps to the barracks cap).
   const reserveFloor = getFirstArmyReserveFloor(gameState || {});
   const cap = Math.max(0, Math.floor(stats.soldierCap || 0), reserveFloor);
   const interval = Math.max(0, Number(stats.trainingIntervalSeconds || 0));
