@@ -6,6 +6,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8741", "--bind", "127.0.0.1"],
       "port": 8741
+    },
+    {
+      "name": "codex-token-monitor",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["F:/AI Project/codex-watch/token-monitor.js"],
+      "port": 8788
     }
   ]
 }
