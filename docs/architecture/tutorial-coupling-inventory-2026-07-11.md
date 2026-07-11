@@ -51,3 +51,6 @@
 ## 与 step5 的关系(监督者建议)
 
 独立立项 **step6**:体量(后端 45 + 前端 ~15 文件)和前置依赖(领域事件总线,step5 不建)超出 step5 tranche 粒度;排在 step5 descriptor 路由稳定之后;step5 后续 tranche 应把教程门禁统一走 descriptor 层作为 step6 接缝预备。当前 TUTORIAL_ENABLED 开关是止血,与两种路线兼容。
+
+---
+**监督者进度记账(2026-07-11,S2b 后)**:C-1 簇(教程当导演)新增 1 实例——TutorialGuideEventRegistry.js tutorialStateChanged 在 famousSeekCompleted 关闭 famousPersons 面板并直写 game.famousPersonsPage/selectedFamousPersonId(S2b W3 引入,已申报,理由=残留 modal 命中面遮挡后续高亮)。属既有 ensure*/follow-through 表面修复家族,随 S7/S9 家族性退役;S3 门禁上线后该写法将被适配器豁免机制显式圈住。
