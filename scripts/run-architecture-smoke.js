@@ -90,6 +90,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-step4-final-audit.test.js',
   'scripts/check-ui-runtime-field-ownership.js',
   'scripts/check-ui-runtime-field-ownership.test.js',
+  'scripts/check-tutorial-host-context-boundary.js',
+  'scripts/check-tutorial-host-context-boundary.test.js',
   'scripts/check-step5-action-descriptor-coverage.js',
   'scripts/check-step5-action-descriptor-coverage.test.js',
   'scripts/verify-step4-phase3-real-server.js',
@@ -240,6 +242,7 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/tutorial/TutorialGuideTargetResolver.js',
   'frontend/js/tutorial/TutorialGuideTargetResolver.test.js',
   'frontend/js/tutorial/TutorialGuideArchitecture.test.js',
+  'frontend/js/tutorial/TutorialHostContext.js',
   'frontend/js/tutorial/TutorialGuideController.js',
   'frontend/js/tutorial/TutorialGuideController.test.js',
   'frontend/js/platform/CanvasGameAppRenderPolicy.js',
@@ -725,6 +728,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-step4-blocking-map.test.js',
   'scripts/check-step4-final-audit.test.js',
   'scripts/check-ui-runtime-field-ownership.test.js',
+  'scripts/check-tutorial-host-context-boundary.test.js',
   'scripts/check-step5-action-descriptor-coverage.test.js',
   'scripts/verify-step4-phase3-real-server.test.js',
 ]);
@@ -858,6 +862,9 @@ function main() {
   ]);
   run('ui runtime field ownership blocking guard', process.execPath, [
     'scripts/check-ui-runtime-field-ownership.js',
+  ]);
+  run('tutorial host context boundary blocking guard', process.execPath, [
+    'scripts/check-tutorial-host-context-boundary.js',
   ]);
   run('Step5 action descriptor coverage blocking guard', process.execPath, [
     'scripts/check-step5-action-descriptor-coverage.js',

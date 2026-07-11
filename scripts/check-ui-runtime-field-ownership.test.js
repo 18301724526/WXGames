@@ -134,6 +134,41 @@ test('ui runtime field ownership FIRE: unapproved direct host field access is bl
   );
 });
 
+test('ui runtime field ownership FIRE: TutorialGuideController historical setIfChanged shape is blocked', () => {
+  const root = createFixture({
+    extraSource: {
+      'frontend/js/tutorial/TutorialGuideController.js': [
+        'function update(game) {',
+        '  const setIfChanged = (host, key, value) => {',
+        '    if (!host || host[key] === value) return;',
+        '    host[key] = value;',
+        '  };',
+        "  setIfChanged(game, 'activeTab', 'military');",
+        "  setIfChanged(game.state, 'militaryView', 'world');",
+        '}',
+      ].join('\n'),
+    },
+  });
+  const report = inspectUiRuntimeOwnership({ repoRoot: root });
+
+  assert.equal(
+    report.violations.some((violation) => (
+      violation.includes('TutorialGuideController.js')
+      && violation.includes('activeTab')
+      && violation.includes('setIfChanged')
+    )),
+    true,
+  );
+  assert.equal(
+    report.violations.some((violation) => (
+      violation.includes('TutorialGuideController.js')
+      && violation.includes('militaryView')
+      && violation.includes('setIfChanged')
+    )),
+    true,
+  );
+});
+
 test('ui runtime field ownership FIRE: bypass scan covers the existing store family', () => {
   const root = createFixture({
     extraSource: {

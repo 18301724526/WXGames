@@ -16,9 +16,10 @@
       ],
       "approvedCompatibilityFiles": [
         "frontend/js/platform/CanvasGameApp.js",
-        "frontend/js/platform/CanvasGameShell.js",
-        "frontend/js/platform/CanvasModeOwnershipRuntime.js",
-        "frontend/js/platform/CanvasActionController.js"
+      "frontend/js/platform/CanvasGameShell.js",
+      "frontend/js/platform/CanvasModeOwnershipRuntime.js",
+      "frontend/js/platform/CanvasActionController.js",
+      "frontend/js/tutorial/TutorialHostContext.js"
       ]
     },
     {

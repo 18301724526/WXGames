@@ -115,3 +115,81 @@ node scripts/report-command-owner-step1.js
 3. 新增适配器外宿主直访为 0 的源码断言，豁免仅 `TutorialHostContext.js`。
 4. 新增六接口存在性、Controller/EventRegistry 不同回退顺序、分歧计数与等值不计数的合成探针。
 5. Registry 拥有步骤分支的原断言原样保留。
+
+## V3|阻塞门禁
+
+### 教程宿主边界门禁
+
+新增 `scripts/check-tutorial-host-context-boundary.js`，语法树扫描 `frontend/js/tutorial/` 下非测试产品脚本，阻塞:
+
+- `game.*` / `game?.*`
+- `canvasShell.*` / `canvasShell?.*`
+- `host.game.*` / `this.game.*`
+- `host.canvasShell.*` / `this.canvasShell.*`
+
+唯一豁免:`frontend/js/tutorial/TutorialHostContext.js`。
+
+真实仓库:
+
+```powershell
+node scripts/check-tutorial-host-context-boundary.js
+```
+
+结果:扫描 6 个非豁免产品脚本，`violations=0`。
+
+FIRE 探针:
+
+```powershell
+node --test --test-name-pattern="direct game and canvasShell access is blocked" `
+  scripts/check-tutorial-host-context-boundary.test.js
+```
+
+探针同时放入 `game.renderCanvasSurface()`、`canvasShell.hideTutorialHighlight()`、`host.game.state.tutorial`、`host.canvasShell.tutorialHighlight`，扫描器命中 4/4；测试通过表示门禁确实 FIRE。
+
+### UI 字段所有权动态写门禁
+
+扩展 `scripts/check-ui-runtime-field-ownership.js`，除直接点访问和静态中括号访问外，新增以下间接写识别:
+
+- `setIfChanged(hostExpr, 'field', value)`
+- `writeIfChanged/setHostField/setRuntimeField` 同形调用
+- `Reflect.set(hostExpr, 'field', value)`
+- `Object.defineProperty(hostExpr, 'field', descriptor)`
+
+历史形态 FIRE 探针:
+
+```powershell
+node --test --test-name-pattern="historical setIfChanged shape is blocked" `
+  scripts/check-ui-runtime-field-ownership.test.js
+```
+
+探针复现原 `TutorialGuideController.js:541` 形态:
+
+```js
+const setIfChanged = (host, key, value) => {
+  if (!host || host[key] === value) return;
+  host[key] = value;
+};
+setIfChanged(game, 'activeTab', 'military');
+setIfChanged(game.state, 'militaryView', 'world');
+```
+
+结果:`activeTab` 与 `militaryView` 两处均命中 `outside UiRuntimeStateStore`，门禁 FIRE。
+
+真实仓库:
+
+```powershell
+node scripts/check-ui-runtime-field-ownership.js
+```
+
+结果:5 个 store、36 个字段，`violations=0`、`warnings=0`。
+
+显式白名单与烧毁计划:
+
+- 白名单仅新增 `frontend/js/tutorial/TutorialHostContext.js` 到 `UiRuntimeStateStore` 兼容文件；`TutorialRuntimeStore` 兼容白名单已在 V2 从三个旧教程文件收敛为同一 context 文件。
+- 理由:V2 保留旧调用点的镜像写和回退语义，所有兼容访问已集中到唯一适配器。
+- 烧毁计划:路线图 S9c 旧引擎退役时，随 context 内镜像字段写入一起删除该白名单；本任务不提前改变镜像语义。
+
+烟测接入:
+
+- 两个新脚本及测试已加入 `scripts/run-architecture-smoke.js` 的语法检查、合同测试和阻塞执行段。
+- `node scripts/run-architecture-smoke.js`:exit 0，最终输出 `[architecture-smoke] passed`。

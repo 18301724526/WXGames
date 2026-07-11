@@ -63,6 +63,17 @@ function fieldAccessPattern(field) {
   );
 }
 
+function indirectFieldWritePattern(field) {
+  const receiver = HOST_RECEIVERS.join('|');
+  const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const hostExpression = `(?:${receiver})(?:\\s*(?:\\?\\.|\\.)\\s*[A-Za-z_$][\\w$]*)*`;
+  return new RegExp(
+    `\\b(?:setIfChanged|writeIfChanged|setHostField|setRuntimeField)\\s*\\(\\s*${hostExpression}\\s*,\\s*['"\`]${escaped}['"\`]`
+      + `|\\bReflect\\.set\\s*\\(\\s*${hostExpression}\\s*,\\s*['"\`]${escaped}['"\`]`
+      + `|\\bObject\\.defineProperty\\s*\\(\\s*${hostExpression}\\s*,\\s*['"\`]${escaped}['"\`]`,
+  );
+}
+
 function lineIsSkippable(line = '') {
   return /^\s*(?:\/\/|\*)/.test(line);
 }
@@ -77,14 +88,18 @@ function findBypassAccesses(repoRoot, manifestStore) {
     .map((file) => normalizePath(path.relative(repoRoot, file)))
     .filter(isProductionFrontendFile)
     .filter((file) => !approved.has(file));
-  const patterns = manifestStore.fields.map((field) => [field, fieldAccessPattern(field)]);
+  const patterns = manifestStore.fields.map((field) => [
+    field,
+    fieldAccessPattern(field),
+    indirectFieldWritePattern(field),
+  ]);
   const findings = [];
   files.forEach((file) => {
     const lines = fs.readFileSync(resolveRepoPath(repoRoot, file), 'utf8').split(/\r?\n/);
     lines.forEach((line, index) => {
       if (lineIsSkippable(line)) return;
-      patterns.forEach(([field, pattern]) => {
-        if (!pattern.test(line)) return;
+      patterns.forEach(([field, directPattern, indirectPattern]) => {
+        if (!directPattern.test(line) && !indirectPattern.test(line)) return;
         findings.push({
           file,
           line: index + 1,
@@ -210,4 +225,5 @@ module.exports = {
   DEFAULT_MANIFEST,
   inspectUiRuntimeOwnership,
   fieldAccessPattern,
+  indirectFieldWritePattern,
 };
