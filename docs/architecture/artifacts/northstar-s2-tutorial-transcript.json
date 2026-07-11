@@ -1,0 +1,260 @@
+[
+  {
+    "stepKey": "initial",
+    "actionType": "openWorldSite",
+    "targetType": "openWorldSite",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "initial",
+    "actionType": "enterCity",
+    "targetType": "enterCity",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "cityEntered",
+    "actionType": "wait",
+    "targetType": "wait",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "cityEntered",
+    "actionType": "buildBuilding",
+    "targetType": "buildBuilding",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "houseBuilt",
+    "actionType": "closeAdvisor",
+    "targetType": "closeAdvisor",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "houseBuilt",
+    "actionType": "openCommandPanel",
+    "targetType": "openCommandPanel",
+    "panelKey": "civilization"
+  },
+  {
+    "stepKey": "civilizationTabOpened",
+    "actionType": "advanceEra",
+    "targetType": "advanceEra",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "eraAdvancedTo1",
+    "actionType": "closeAdvisor",
+    "targetType": "closeAdvisor",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "eraAdvancedTo1",
+    "actionType": "openTaskCenter",
+    "targetType": "openTaskCenter",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "eraAdvancedTo1",
+    "actionType": "claimTaskReward",
+    "targetType": "claimTaskReward",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "farmPrepReserved",
+    "actionType": "closeRewardReveal",
+    "targetType": "closeRewardReveal",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "farmPrepReserved",
+    "actionType": "buildBuilding",
+    "targetType": "buildBuilding",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "era2AdvanceReady",
+    "actionType": "openCommandPanel",
+    "targetType": "openCommandPanel",
+    "panelKey": "civilization"
+  },
+  {
+    "stepKey": "era2AdvanceReady",
+    "actionType": "advanceEra",
+    "targetType": "advanceEra",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "eraAdvancedTo2",
+    "actionType": "closeAdvisor",
+    "targetType": "closeAdvisor",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "eraAdvancedTo2",
+    "actionType": "openCommandPanel",
+    "targetType": "openCommandPanel",
+    "panelKey": "events"
+  },
+  {
+    "stepKey": "specialEventTabOpened",
+    "actionType": "openEvent",
+    "targetType": "openEvent",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "specialEventTabOpened",
+    "actionType": "claimEvent",
+    "targetType": "claimEvent",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "specialEventClaimed",
+    "actionType": "buildBuilding",
+    "targetType": "buildBuilding",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "lumbermillBuilt",
+    "actionType": "openTaskCenter",
+    "targetType": "openTaskCenter",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "lumbermillBuilt",
+    "actionType": "claimTaskReward",
+    "targetType": "claimTaskReward",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "era3AdvanceReady",
+    "actionType": "closeRewardReveal",
+    "targetType": "closeRewardReveal",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "era3AdvanceReady",
+    "actionType": "openCommandPanel",
+    "targetType": "openCommandPanel",
+    "panelKey": "civilization"
+  },
+  {
+    "stepKey": "era3AdvanceReady",
+    "actionType": "advanceEra",
+    "targetType": "advanceEra",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "era3Advanced",
+    "actionType": "closeAdvisor",
+    "targetType": "closeAdvisor",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "era3Advanced",
+    "actionType": "openTaskCenter",
+    "targetType": "openTaskCenter",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "era3Advanced",
+    "actionType": "claimTaskReward",
+    "targetType": "claimTaskReward",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "barracksSuppliesClaimed",
+    "actionType": "closeRewardReveal",
+    "targetType": "closeRewardReveal",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "barracksSuppliesClaimed",
+    "actionType": "buildBuilding",
+    "targetType": "buildBuilding",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "barracksBuilt",
+    "actionType": "openTaskCenter",
+    "targetType": "openTaskCenter",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "barracksBuilt",
+    "actionType": "claimTaskReward",
+    "targetType": "claimTaskReward",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "firstArmyClaimed",
+    "actionType": "closeRewardReveal",
+    "targetType": "closeRewardReveal",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "firstArmyClaimed",
+    "actionType": "openTaskCenter",
+    "targetType": "openTaskCenter",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "firstArmyClaimed",
+    "actionType": "claimTaskReward",
+    "targetType": "claimTaskReward",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "scoutFamousGranted",
+    "actionType": "closeRewardReveal",
+    "targetType": "closeRewardReveal",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "scoutFamousGranted",
+    "actionType": "openFamousPersons",
+    "targetType": "openFamousPersons",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "famousPanelOpened",
+    "actionType": "openFamousPersonDetail",
+    "targetType": "openFamousPersonDetail",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "famousCardViewed",
+    "actionType": "closeFamousPersonDetail",
+    "targetType": "closeFamousPersonDetail",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "famousCardViewed",
+    "actionType": "closeFamousPersons",
+    "targetType": "closeFamousPersons",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "famousCardViewed",
+    "actionType": "openWorldSite",
+    "targetType": "openWorldSite",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "famousCardViewed",
+    "actionType": "enterCity",
+    "targetType": "enterCity",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "famousCardViewed",
+    "actionType": "switchCityManagementTab",
+    "targetType": "switchCityManagementTab",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "famousCardViewed",
+    "actionType": "openArmyFormation",
+    "targetType": "openArmyFormation",
+    "panelKey": ""
+  }
+]

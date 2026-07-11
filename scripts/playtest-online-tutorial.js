@@ -2,14 +2,55 @@ const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
 const { PNG } = require('pngjs');
+const { writeTutorialTranscript } = require('./playtest-tutorial-transcript');
+
+function getArgValue(name, fallback = '') {
+  const exact = `--${name}`;
+  const prefix = `${exact}=`;
+  const index = process.argv.findIndex((arg) => arg === exact || arg.startsWith(prefix));
+  if (index < 0) return fallback;
+  const arg = process.argv[index];
+  if (arg.startsWith(prefix)) return arg.slice(prefix.length);
+  const next = process.argv[index + 1];
+  return next && !next.startsWith('--') ? next : '1';
+}
+
+function isLoopbackUrl(value) {
+  try {
+    return ['127.0.0.1', 'localhost', '::1'].includes(new URL(value).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function resolveTargetConfig() {
+  const targetEnvironment = getArgValue('target', process.env.PLAYTEST_TARGET || 'local');
+  if (!['local', 'wsl-local', 'remote'].includes(targetEnvironment)) {
+    throw new Error(`Unsupported playtest target: ${targetEnvironment}`);
+  }
+  const gameOverride = getArgValue('game-url', process.env.PLAYTEST_GAME_URL || '');
+  const apiOverride = getArgValue('api-base', process.env.PLAYTEST_API_BASE || '');
+  if (targetEnvironment === 'remote' && (!gameOverride || !apiOverride)) {
+    throw new Error('Remote playtest requires --target=remote plus explicit --game-url and --api-base values.');
+  }
+  if (targetEnvironment === 'wsl-local' && (!gameOverride || !apiOverride)) {
+    throw new Error('WSL-local playtest requires explicit --game-url and --api-base values.');
+  }
+  const gameUrl = gameOverride || 'http://127.0.0.1:8080/';
+  const apiBase = apiOverride || 'http://127.0.0.1:3000/api';
+  if (targetEnvironment === 'local' && (!isLoopbackUrl(gameUrl) || !isLoopbackUrl(apiBase))) {
+    throw new Error('The local playtest target only accepts loopback game and API URLs. Use --target=remote explicitly for remote hosts.');
+  }
+  return { targetEnvironment, gameUrl, apiBase };
+}
+
+const TARGET_CONFIG = resolveTargetConfig();
+const transcriptArg = getArgValue('transcript', process.env.PLAYTEST_TRANSCRIPT || '');
 
 const CONFIG = {
-  // Default to THIS branch's isolated deploy (docs/server_environment_refactor_tutorial_2026-06-25.md).
-  // The main-server '/wxgame/' + ':3000/api' pair runs main's OLD numeric step
-  // table: pointing the harness there mislabels every step and resets a
-  // production account. Override via env only for other refactor deploys.
-  gameUrl: process.env.PLAYTEST_GAME_URL || 'http://47.116.32.216/wxgame-refactor/',
-  apiBase: process.env.PLAYTEST_API_BASE || 'http://47.116.32.216/wxgame-refactor-api',
+  targetEnvironment: TARGET_CONFIG.targetEnvironment,
+  gameUrl: TARGET_CONFIG.gameUrl,
+  apiBase: TARGET_CONFIG.apiBase,
   username: process.env.PLAYTEST_USERNAME || 'codexqa',
   password: process.env.PLAYTEST_PASSWORD || '123456',
   resetAccount: process.env.PLAYTEST_RESET_ACCOUNT !== '0',
@@ -24,6 +65,10 @@ const CONFIG = {
   minTargetLumaStdDev: Number(process.env.PLAYTEST_MIN_TARGET_LUMA_STDDEV || 5),
   minTargetUniqueColors: Number(process.env.PLAYTEST_MIN_TARGET_UNIQUE_COLORS || 18),
   minHighlightGoldPixels: Number(process.env.PLAYTEST_MIN_HIGHLIGHT_GOLD_PIXELS || 24),
+  transcript: Boolean(transcriptArg),
+  transcriptOutput: transcriptArg && transcriptArg !== '1'
+    ? path.resolve(transcriptArg)
+    : '',
 };
 
 // Single source: shared/tutorialFlowConfig.js (index -> step name).
@@ -1402,7 +1447,7 @@ async function chooseNextAction(page, iteration) {
   const naming = await fillNamingIfOpen(page);
   if (naming) return naming;
 
-  const state = await getState(page);
+  let state = await getState(page);
   const introStep = state.tutorialIntro?.active ? state.tutorialIntro.step : '';
   if (introStep === 'march' || introStep === 'entering') {
     return recordWaitAction(page, `wait-intro-${introStep}-${iteration}`, state, { type: 'wait', introStep }, 700, 1600);
@@ -1432,7 +1477,15 @@ async function chooseNextAction(page, iteration) {
     ));
   }
 
-  const allowed = state.tutorialHighlight?.allowedAction || null;
+  let allowed = state.tutorialHighlight?.allowedAction || null;
+  const allowedAlreadySatisfied = allowed?.type === 'switchCityManagementTab'
+    && state.activeCityManagementTab === allowed.tab;
+  if (allowedAlreadySatisfied) {
+    await page.evaluate(() => window.Game?.tutorialController?.refreshCurrentHighlight?.());
+    await waitForRender(page, 100);
+    state = await getState(page);
+    allowed = state.tutorialHighlight?.allowedAction || null;
+  }
   // A guided openWorldSite towards the tutorial's first empty city races the exploration
   // march: the site cannot advance the step machine until the march goes idle. Wait the
   // whole march out in one action slot (minutes of real time), with a stall detector so
@@ -1471,8 +1524,7 @@ async function chooseNextAction(page, iteration) {
     }
   }
   if (allowed?.type) {
-    const target = findTarget(state, (action) => actionMatches(allowed, action))
-      || findTarget(state, (action) => action.type === allowed.type && !action.disabled);
+    const target = findTarget(state, (action) => actionCompatible(allowed, action));
     if (target) return clickTarget(page, `highlight-${allowed.type}-${iteration}`, state, target);
   }
 
@@ -1781,7 +1833,21 @@ async function main() {
     username: CONFIG.username,
     password: CONFIG.password,
   });
-  if (CONFIG.resetAccount) await postJson(`${CONFIG.apiBase}/player/reset`, {}, firstLogin.token);
+  if (CONFIG.resetAccount) {
+    const commandId = `cmd-tutorial-playtest-reset-${runId}`;
+    const idempotencyKey = `idem-tutorial-playtest-reset-${runId}`;
+    await postJson(`${CONFIG.apiBase}/player/reset`, {
+      commandId,
+      idempotencyKey,
+      clientCommand: {
+        schema: 'game-command-v1',
+        type: 'playerReset',
+        commandId,
+        idempotencyKey,
+        payload: {},
+      },
+    }, firstLogin.token);
+  }
   const login = await postJson(`${CONFIG.apiBase}/player/login`, {
     username: CONFIG.username,
     password: CONFIG.password,
@@ -1936,6 +2002,7 @@ async function main() {
   });
   const summary = {
     outputDir: outDir,
+    targetEnvironment: CONFIG.targetEnvironment,
     gameUrl: CONFIG.gameUrl,
     apiBase: CONFIG.apiBase,
     strictVisual: CONFIG.strictVisual,
@@ -1955,6 +2022,15 @@ async function main() {
     apiCallCount: Array.isArray(finalState.apiCalls) ? finalState.apiCalls.length : 0,
     eventCount: events.length,
   };
+  if (CONFIG.transcript) {
+    const transcriptPath = CONFIG.transcriptOutput || path.join(outDir, 'transcript.json');
+    const transcript = writeTutorialTranscript(transcriptPath, {
+      verificationReports,
+      actionEvidence,
+    });
+    summary.transcriptPath = transcriptPath;
+    summary.transcriptEntryCount = transcript.length;
+  }
   const failed = stopReason !== 'tutorial-completed'
     || !finalState.tutorialCompleted
     || visualFindings.some((finding) => finding.severity === 'error')

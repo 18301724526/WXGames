@@ -3,7 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
 
-const root = path.resolve(__dirname, '..', 'frontend');
+const repoRoot = path.resolve(__dirname, '..');
+const root = path.join(repoRoot, 'frontend');
 const port = Number(process.env.LOCAL_PREVIEW_PORT || process.env.PORT) || 8080;
 const apiBase = process.env.LOCAL_PREVIEW_API_BASE || 'http://127.0.0.1:3000';
 const mime = {
@@ -23,6 +24,14 @@ const mime = {
 function sendError(res, status, message) {
   res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8' });
   res.end(message);
+}
+
+function sendDeployStatus(res) {
+  res.writeHead(200, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store, no-cache, must-revalidate',
+  });
+  res.end(JSON.stringify({ status: 'ready', stage: 'local-preview' }));
 }
 
 function readRequestBody(req) {
@@ -70,8 +79,10 @@ async function proxyApi(req, res, reqUrl) {
 }
 
 function serveStatic(res, reqUrl) {
-  let filePath = path.join(root, decodeURIComponent(reqUrl.pathname === '/' ? '/index.html' : reqUrl.pathname));
-  if (!filePath.startsWith(root)) {
+  const pathname = decodeURIComponent(reqUrl.pathname === '/' ? '/index.html' : reqUrl.pathname);
+  const staticRoot = pathname.startsWith('/shared/') ? repoRoot : root;
+  let filePath = path.resolve(staticRoot, `.${pathname}`);
+  if (filePath !== staticRoot && !filePath.startsWith(`${staticRoot}${path.sep}`)) {
     sendError(res, 403, 'Forbidden');
     return;
   }
@@ -95,6 +106,10 @@ function serveStatic(res, reqUrl) {
 const server = http.createServer(async (req, res) => {
   try {
     const reqUrl = new URL(req.url, `http://127.0.0.1:${port}`);
+    if (reqUrl.pathname === '/.wxgame-deploy-status.json') {
+      sendDeployStatus(res);
+      return;
+    }
     if (reqUrl.pathname.startsWith('/api/')) {
       await proxyApi(req, res, reqUrl);
       return;
