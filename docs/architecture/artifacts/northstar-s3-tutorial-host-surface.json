@@ -3,6 +3,10 @@
   "generatedBy": "scripts/generate-tutorial-host-surface-inventory.js",
   "sources": [
     {
+      "file": "frontend/js/tutorial/TutorialEngineQueryTable.js",
+      "sha256": "326029824c4e20acffccb492e658b8780120d8b9a6d737b11c0700792abbd335"
+    },
+    {
       "file": "frontend/js/tutorial/TutorialGuideController.js",
       "sha256": "8d34b075a8861b26f020a4497a7fb9907e9526fdacd6616712643337f687b52f"
     },

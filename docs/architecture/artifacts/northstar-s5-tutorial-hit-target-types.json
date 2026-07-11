@@ -616,6 +616,10 @@
       "sha256": "9cece8cd86c243fad7ef2c74153095a9477e4dd246504f64e18949920300c865"
     },
     {
+      "file": "frontend/js/tutorial/TutorialEngineQueryTable.js",
+      "sha256": "326029824c4e20acffccb492e658b8780120d8b9a6d737b11c0700792abbd335"
+    },
+    {
       "file": "frontend/js/tutorial/TutorialGuideController.js",
       "sha256": "8d34b075a8861b26f020a4497a7fb9907e9526fdacd6616712643337f687b52f"
     },
@@ -637,7 +641,7 @@
     },
     {
       "file": "frontend/js/tutorial/TutorialHostContext.js",
-      "sha256": "b9e9dbc23988ecc9a308da8fbf13d0cb3b3ffc05b5fc7c0d29381fac5bf4014b"
+      "sha256": "6424d69636fc2cfba8e8cf9e336aaf31d19c7ef6124c115daec48379ece93cfc"
     },
     {
       "file": "frontend/js/tutorial/TutorialIntroOverlay.js",
@@ -646,7 +650,7 @@
   ],
   "counts": {
     "rendererFiles": 151,
-    "tutorialFiles": 7,
+    "tutorialFiles": 8,
     "registrationSites": 204,
     "registeredTypes": 114,
     "tutorialReferenceSites": 39,
@@ -681,12 +685,12 @@
         {
           "type": "assignJob",
           "via": "getCanvasTarget",
-          "location": "frontend/js/tutorial/TutorialHostContext.js:926"
+          "location": "frontend/js/tutorial/TutorialHostContext.js:939"
         },
         {
           "type": "assignJob",
           "via": "getCanvasTarget",
-          "location": "frontend/js/tutorial/TutorialHostContext.js:928"
+          "location": "frontend/js/tutorial/TutorialHostContext.js:941"
         }
       ],
       "registrations": [
@@ -727,7 +731,7 @@
         {
           "type": "buildBuilding",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialHostContext.js:1168"
+          "location": "frontend/js/tutorial/TutorialHostContext.js:1181"
         }
       ],
       "registrations": [
@@ -855,7 +859,7 @@
         {
           "type": "enterCity",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialHostContext.js:980"
+          "location": "frontend/js/tutorial/TutorialHostContext.js:993"
         }
       ],
       "registrations": [
