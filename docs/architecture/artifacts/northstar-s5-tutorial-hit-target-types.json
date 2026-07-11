@@ -621,7 +621,7 @@
     },
     {
       "file": "frontend/js/tutorial/TutorialGuideEventRegistry.js",
-      "sha256": "27eb1df18706ff92882663fcf2f69e26cf973a634d846ef190f200f79e768d20"
+      "sha256": "541ac4ab883618dc2cb8bbb0677df0be9cff5d15f374675dbb3299fb1324959e"
     },
     {
       "file": "frontend/js/tutorial/TutorialGuideFlowRegistry.js",
@@ -637,7 +637,7 @@
     },
     {
       "file": "frontend/js/tutorial/TutorialHostContext.js",
-      "sha256": "5ce0639cef2239d7753366eb1223b2215b2366f3dc5eca54d0d55790798fc39c"
+      "sha256": "82a3e97a0a7ad11fb071d5e021cc9d6ad0f234040129ff4e26e40587168d5dcc"
     },
     {
       "file": "frontend/js/tutorial/TutorialIntroOverlay.js",
@@ -681,12 +681,12 @@
         {
           "type": "assignJob",
           "via": "getCanvasTarget",
-          "location": "frontend/js/tutorial/TutorialHostContext.js:899"
+          "location": "frontend/js/tutorial/TutorialHostContext.js:922"
         },
         {
           "type": "assignJob",
           "via": "getCanvasTarget",
-          "location": "frontend/js/tutorial/TutorialHostContext.js:901"
+          "location": "frontend/js/tutorial/TutorialHostContext.js:924"
         }
       ],
       "registrations": [
@@ -727,7 +727,7 @@
         {
           "type": "buildBuilding",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialHostContext.js:1141"
+          "location": "frontend/js/tutorial/TutorialHostContext.js:1164"
         }
       ],
       "registrations": [
@@ -855,7 +855,7 @@
         {
           "type": "enterCity",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialHostContext.js:953"
+          "location": "frontend/js/tutorial/TutorialHostContext.js:976"
         }
       ],
       "registrations": [

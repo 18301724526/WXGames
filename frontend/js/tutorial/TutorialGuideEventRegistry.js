@@ -56,6 +56,57 @@
     StateWriter = require('../state/StateWriter');
   }
 
+  const EVENT_CONTRACTS = Object.freeze({
+    tabClicked: Object.freeze([{ name: 'tabId', aliases: ['panelId', 'tab'] }]),
+    commandPanelOpened: Object.freeze([{ name: 'panelId', aliases: ['tabId', 'panel'] }]),
+    cityEntered: Object.freeze([]),
+    buildingAction: Object.freeze([
+      { name: 'buildingId', aliases: [] },
+      { name: 'action', aliases: [] },
+    ]),
+    eraAdvanced: Object.freeze([{ name: 'result', aliases: [], object: true }]),
+    taskRewardClaimed: Object.freeze([{ name: 'result', aliases: [], object: true }]),
+    famousPersonsOpened: Object.freeze([]),
+    talentPolicyOpened: Object.freeze([]),
+    tutorialStateChanged: Object.freeze([{ name: 'result', aliases: [], object: true }]),
+    famousPersonDetailOpened: Object.freeze([{ name: 'personId', aliases: [] }]),
+    armyFormationOpened: Object.freeze([]),
+    armyFormationSaved: Object.freeze([{ name: 'result', aliases: [], object: true }]),
+    militaryViewSwitched: Object.freeze([{ name: 'view', aliases: [] }]),
+    famousPersonsClosed: Object.freeze([]),
+    cityManagementOpened: Object.freeze([{ name: 'tab', aliases: ['tabId'] }]),
+    worldMarchTargetSelected: Object.freeze([]),
+    exploreStarted: Object.freeze([{ name: 'result', aliases: [], object: true }]),
+    advisorClosed: Object.freeze([]),
+  });
+  const EVENT_NAMES = Object.freeze(Object.keys(EVENT_CONTRACTS));
+
+  function hasOwn(payload, field) {
+    return Object.prototype.hasOwnProperty.call(payload, field);
+  }
+
+  function validatePayload(eventName, payload) {
+    const fields = EVENT_CONTRACTS[eventName];
+    if (!fields || !payload || typeof payload !== 'object' || Array.isArray(payload)) return false;
+    return fields.every((field) => {
+      const candidate = [field.name, ...(field.aliases || [])].find((name) => hasOwn(payload, name));
+      if (!candidate) return false;
+      return !field.object || (payload[candidate] && typeof payload[candidate] === 'object');
+    });
+  }
+
+  function stableSerialize(value, seen = new Set()) {
+    if (value === null || typeof value !== 'object') return JSON.stringify(value);
+    if (seen.has(value)) return '"[Circular]"';
+    seen.add(value);
+    if (Array.isArray(value)) {
+      return `[${value.map((entry) => stableSerialize(entry, seen)).join(',')}]`;
+    }
+    return `{${Object.keys(value).sort().map((key) => (
+      `${JSON.stringify(key)}:${stableSerialize(value[key], seen)}`
+    )).join(',')}}`;
+  }
+
   function getStep(host) {
     return TutorialFlowShared.stepName(host?.getCurrentStep?.()) || 'initial';
   }
@@ -297,9 +348,24 @@
     constructor(options = {}) {
       this.steps = options.steps || TutorialGuideStepPolicy?.TUTORIAL_STEPS || {};
       this.handlers = options.handlers || createDefaultHandlers(this.steps);
+      this.recentDispatches = new WeakMap();
     }
 
-    handle(host, eventName, payload = {}) {
+    handle(host, eventName, payload = {}, options = {}) {
+      if (!validatePayload(eventName, payload)) return undefined;
+      const channel = options.channel || 'direct';
+      const key = `${eventName}:${stableSerialize(payload)}`;
+      const recent = this.recentDispatches.get(host) || new Map();
+      const previousChannel = recent.get(key);
+      if (previousChannel && previousChannel !== channel) return undefined;
+      recent.set(key, channel);
+      this.recentDispatches.set(host, recent);
+      const clear = () => {
+        if (recent.get(key) === channel) recent.delete(key);
+        if (recent.size === 0) this.recentDispatches.delete(host);
+      };
+      if (typeof setTimeout === 'function') setTimeout(clear, 0);
+      else Promise.resolve().then(clear);
       const steps = getSteps(host, this.steps);
       if (steps !== this.steps) {
         this.steps = steps;
@@ -310,9 +376,27 @@
 
     subscribeToBus(bus, host, topic = 'tutorial.event') {
       if (!bus || typeof bus.subscribe !== 'function') return () => false;
-      return bus.subscribe(topic, (event = {}) => (
-        this.handle(host, event.eventName, event.payload || {})
+      const unsubscribers = EVENT_NAMES.map((eventName) => (
+        bus.subscribe(eventName, (payload = {}) => (
+          this.handle(host, eventName, payload, { channel: 'bus' })
+        ))
       ));
+      unsubscribers.push(bus.subscribe(topic, (event = {}) => (
+        this.handle(host, event.eventName, event.payload || {}, { channel: 'bus' })
+      )));
+      ['state.changed', 'modal.changed'].forEach((eventName) => {
+        unsubscribers.push(bus.subscribe(eventName, (change = {}) => {
+          if (host?.isChangeEventRelevant?.(eventName, change) === false) return false;
+          return host?.refreshCurrentHighlight?.();
+        }));
+      });
+      let active = true;
+      return () => {
+        if (!active) return false;
+        active = false;
+        unsubscribers.forEach((unsubscribe) => unsubscribe?.());
+        return true;
+      };
     }
   }
 
@@ -321,9 +405,12 @@
   }
 
   const api = {
+    EVENT_CONTRACTS,
+    EVENT_NAMES,
     TutorialGuideEventRegistry,
     create,
     createDefaultHandlers,
+    validatePayload,
   };
 
   global.TutorialGuideEventRegistry = api;

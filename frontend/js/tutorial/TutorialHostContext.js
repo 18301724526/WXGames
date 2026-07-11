@@ -101,6 +101,14 @@
     return null;
   })();
 
+  const SharedChangeEventBus = (() => {
+    if (global.ChangeEventBus) return global.ChangeEventBus;
+    if (typeof module !== 'undefined' && module.exports) {
+      return require('../state/ChangeEventBus');
+    }
+    return null;
+  })();
+
   function t(key = '', params = {}) {
     return global.LocaleText ? global.LocaleText.t(key, params) : key;
   }
@@ -153,6 +161,21 @@
         || (SharedTutorialGuideFlowRegistry?.create ? SharedTutorialGuideFlowRegistry.create({ steps: TUTORIAL_STEPS }) : null);
       this.eventRegistry = options.eventRegistry
         || (SharedTutorialGuideEventRegistry?.create ? SharedTutorialGuideEventRegistry.create({ steps: TUTORIAL_STEPS }) : null);
+      const changeEventBus = options.changeEventBus
+        || (typeof window !== 'undefined' ? SharedChangeEventBus : null);
+      this.changeEventBusUnsubscribe = this.eventRegistry?.subscribeToBus?.(changeEventBus, this) || null;
+    }
+
+    disconnectChangeEventBus() {
+      const unsubscribe = this.changeEventBusUnsubscribe;
+      this.changeEventBusUnsubscribe = null;
+      return unsubscribe?.() || false;
+    }
+
+    isChangeEventRelevant(eventName, change = {}) {
+      if (eventName !== 'state.changed') return true;
+      const owner = change.owner;
+      return !owner || !this.game || owner === this.game || owner === this.game.lastGame;
     }
 
     getTutorialMirrorSources() {
