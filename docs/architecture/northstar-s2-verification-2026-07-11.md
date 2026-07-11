@@ -43,3 +43,44 @@ git diff --check
 
 - 两次受控运行都在同一真实行为点停止: `famousCardViewed` 下准确命中且输入盾允许 `openArmyFormation(cityId=capital, slot=1)`，但 `armyFormationEditor.open` 仍为 false，步骤未推进。该产品行为不属于 S2，本单未修改产品教程实现。
 - 名人详情与关闭按钮的金色像素门槛在本地截图中低于 24；正式转录使用 `PLAYTEST_STRICT_VISUAL=0` 保留 warning 而不让视觉判据中断语义轨迹。本单未调整视觉阈值或高亮实现。
+
+## U2|规则清单机器导出
+
+生成命令:
+
+```powershell
+node scripts/generate-tutorial-rule-inventory.js
+```
+
+产物: `docs/architecture/artifacts/northstar-s2-tutorial-rule-inventory.json`。
+
+- `TutorialGuideFlowRegistry.createDefaultRules()` 运行时产物 52 条，源码清单 52 条，ID 集合一致。
+- `TutorialGuideEventRegistry.createDefaultHandlers()` 运行时产物 18 条，源码清单 18 条，事件名集合一致。
+- Flow 清单逐条包含 `id`、`stepNames`、`kind`、`source`、`location`；事件清单逐条包含 `eventName`、`stepNames`、`kind`、`source`、`location`。
+- 工厂来源统计: 手写 34 条、`makeTaskClaimPairRules` 10 条、`makeBuildRule` 4 条、`makeTabOpenRule` 4 条。
+
+重生成零差异:
+
+```powershell
+git add -- docs/architecture/artifacts/northstar-s2-tutorial-rule-inventory.json
+node scripts/generate-tutorial-rule-inventory.js
+git diff --exit-code -- docs/architecture/artifacts/northstar-s2-tutorial-rule-inventory.json
+```
+
+结果: exit 0；重生成前后 SHA-256 均为 `27F501FA57DEF51D562187E2307A135425DB3C1CB7196E996746A3EC10EDAB9D`。
+
+人工抽查 3 条:
+
+- `era2-open-events`: 清单为 `stepNames=[eraAdvancedTo2]`、`kind=highlight:openCommandPanel`、`source=factory:makeTabOpenRule`、`TutorialGuideFlowRegistry.js:489`；源码该行确为 `makeTabOpenRule({`，参数中的 `id` 与步骤一致。
+- `barracks-open-task-center`: 清单为 `stepNames=[era3Advanced]`、`kind=highlight:openTaskCenter`、`source=factory:makeTaskClaimPairRules`、`TutorialGuideFlowRegistry.js:554`；源码该行确为 `...makeTaskClaimPairRules({`，`openId` 与步骤一致。
+- `scout-open-formation`: 清单为 `stepNames=[famousCardViewed]`、`kind=highlight:openArmyFormation`、`source=handwritten`、`TutorialGuideFlowRegistry.js:652`；源码该对象的 `id`、匹配步骤和高亮动作逐项一致。
+
+定向自验:
+
+```powershell
+node --check scripts/generate-tutorial-rule-inventory.js
+node --test scripts/generate-tutorial-rule-inventory.test.js
+git diff --check
+```
+
+结果: 2/2 通过；监督者署名文档、产品 Registry 与冻结三件套零差异。
