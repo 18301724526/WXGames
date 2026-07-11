@@ -1088,6 +1088,16 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
     renderCanvasSurface(tab) {
       calls.push({ render: tab });
     },
+    getPanelSurfaceManager() {
+      return {
+        closePanel(panelKey, options) {
+          calls.push({ closePanel: panelKey, render: options?.render });
+          game.closeBlockingPanelSnapshot('showFamousPersons');
+          shell.closeBlockingPanelSnapshot('showFamousPersons');
+          return true;
+        },
+      };
+    },
   });
   linkGameShell(game, shell);
   game.openBlockingPanelSnapshot('activeCommandPanel', 'military');
@@ -1136,6 +1146,12 @@ test('TutorialGuideController guides post-naming policy, manual talent, and famo
   controller.onFamousPersonSought({
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.famousSeekCompleted },
   });
+  assert.equal(game.isBlockingPanelSnapshotOpen('showFamousPersons'), false);
+  assert.equal(shell.isBlockingPanelSnapshotOpen('showFamousPersons'), false);
+  assert.deepEqual(
+    calls.find((call) => call.closePanel === 'famousPersons'),
+    { closePanel: 'famousPersons', render: true },
+  );
   assert.equal(controller.canOpenTab('tech'), true);
   assert.equal(controller.canOpenTab('resources'), false);
 });

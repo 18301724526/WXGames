@@ -256,5 +256,131 @@
     "actionType": "openArmyFormation",
     "targetType": "openArmyFormation",
     "panelKey": ""
+  },
+  {
+    "stepKey": "formationPanelOpened",
+    "actionType": "toggleArmyFormationMember",
+    "targetType": "toggleArmyFormationMember",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "formationPanelOpened",
+    "actionType": "autoReplenishArmyFormation",
+    "targetType": "autoReplenishArmyFormation",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "formationPanelOpened",
+    "actionType": "saveArmyFormation",
+    "targetType": "saveArmyFormation",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "scoutFormationSaved",
+    "actionType": "selectWorldMarchTarget",
+    "targetType": "selectWorldMarchTarget",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "scoutWorldPanelOpened",
+    "actionType": "openWorldMarchFormationPicker",
+    "targetType": "openWorldMarchFormationPicker",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "scoutWorldPanelOpened",
+    "actionType": "startWorldMarch",
+    "targetType": "startWorldMarch",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "scoutExploreStarted",
+    "actionType": "waitExplore",
+    "targetType": "waitExplore",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "firstCityDiscovered",
+    "actionType": "openWorldSite",
+    "targetType": "openWorldSite",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "firstCityDiscovered",
+    "actionType": "chooseWorldTarget",
+    "targetType": "chooseWorldTarget",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "firstCityDiscovered",
+    "actionType": "conquer",
+    "targetType": "conquer",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "firstCityConquestStarted",
+    "actionType": "claimConquest",
+    "targetType": "claimConquest",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "firstCityOccupied",
+    "actionType": "requestNamingInput",
+    "targetType": "requestNamingInput",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "firstCityOccupied",
+    "actionType": "submitNaming",
+    "targetType": "submitNaming",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "firstCityNamed",
+    "actionType": "requestNamingInput",
+    "targetType": "requestNamingInput",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "firstCityNamed",
+    "actionType": "submitNaming",
+    "targetType": "submitNaming",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "talentPolicyApplied",
+    "actionType": "assignJob",
+    "targetType": "assignJob",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "manualTalentAssigned",
+    "actionType": "openFamousPersons",
+    "targetType": "openFamousPersons",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "famousSeekOpened",
+    "actionType": "seekFamousPerson",
+    "targetType": "seekFamousPerson",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "famousSeekCompleted",
+    "actionType": "openCommandPanel",
+    "targetType": "openCommandPanel",
+    "panelKey": "tech"
+  },
+  {
+    "stepKey": "finalTechOpened",
+    "actionType": "closeAdvisor",
+    "targetType": "closeAdvisor",
+    "panelKey": ""
+  },
+  {
+    "stepKey": "completed",
+    "actionType": "",
+    "targetType": "",
+    "panelKey": ""
   }
 ]

@@ -1523,6 +1523,23 @@ async function chooseNextAction(page, iteration) {
       }, 200, 3000);
     }
   }
+  if (
+    state.tutorialStep === stepIndexOf(STEPS.famousSeekCompleted)
+    && (
+      state.showFamousPersons
+      || state.hitTargets.some((target) => (
+        target.action?.type === 'closeFamousPersons'
+        || (
+          target.action?.type === 'panelOutsideClick'
+          && target.action?.panelKey === 'famousPersons'
+        )
+      ))
+    )
+  ) {
+    return clickByPredicate(page, `close-famous-after-seek-${iteration}`, (action) => (
+      action.type === 'closeFamousPersons' && !action.disabled
+    ));
+  }
   if (allowed?.type) {
     const target = findTarget(state, (action) => actionCompatible(allowed, action));
     if (target) return clickTarget(page, `highlight-${allowed.type}-${iteration}`, state, target);
@@ -2027,6 +2044,8 @@ async function main() {
     const transcript = writeTutorialTranscript(transcriptPath, {
       verificationReports,
       actionEvidence,
+      finalStepName: summary.finalStepName,
+      tutorialCompleted: summary.tutorialCompleted,
     });
     summary.transcriptPath = transcriptPath;
     summary.transcriptEntryCount = transcript.length;

@@ -68,3 +68,56 @@ test('tutorial transcript projects ordered stable step and target facts', () => 
     },
   ]);
 });
+
+test('tutorial transcript appends the observed completed terminal state once', () => {
+  const transcript = buildTutorialTranscript({
+    verificationReports: [{
+      label: 'close-final-advisor',
+      beforeStepName: 'finalTechOpened',
+      action: { type: 'closeAdvisor' },
+    }],
+    actionEvidence: [],
+    finalStepName: 'completed',
+    tutorialCompleted: true,
+  });
+
+  assert.deepEqual(transcript, [
+    {
+      stepKey: 'finalTechOpened',
+      actionType: 'closeAdvisor',
+      targetType: 'closeAdvisor',
+      panelKey: '',
+    },
+    {
+      stepKey: 'completed',
+      actionType: '',
+      targetType: '',
+      panelKey: '',
+    },
+  ]);
+});
+
+test('tutorial transcript policy excludes timing-only march arrival reports', () => {
+  const transcript = buildTutorialTranscript({
+    verificationReports: [
+      {
+        label: 'march-arrived-51',
+        beforeStepName: 'firstCityDiscovered',
+        action: { type: 'wait', reason: 'guided march arrived', waitedMs: 3714 },
+      },
+      {
+        label: 'highlight-openWorldSite-52',
+        beforeStepName: 'firstCityDiscovered',
+        action: { type: 'openWorldSite' },
+      },
+    ],
+    actionEvidence: [],
+  });
+
+  assert.deepEqual(transcript, [{
+    stepKey: 'firstCityDiscovered',
+    actionType: 'openWorldSite',
+    targetType: 'openWorldSite',
+    panelKey: '',
+  }]);
+});

@@ -198,6 +198,13 @@
 
       tutorialStateChanged: (host, payload = {}) => {
         syncFromResult(host, payload.result || payload);
+        if (stepEquals(getStep(host), steps.famousSeekCompleted)) {
+          const game = host.game || {};
+          game.getPanelSurfaceManager?.()?.closePanel?.('famousPersons', { render: true });
+          CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(game, 'showFamousPersons');
+          game.famousPersonsPage = 0;
+          game.selectedFamousPersonId = '';
+        }
         host.refreshCurrentHighlight?.();
         return host.state;
       },

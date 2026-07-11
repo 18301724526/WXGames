@@ -48,5 +48,8 @@
     "(?:timestamp|durationMs|waitedMs)$",
     "(?:Pixel|Pixels|Ratio|Luma|Color|Colors|Saturation|Metric|Metrics)$",
     "(?:Coord|Coords|Coordinate|Coordinates)$"
+  ],
+  "reportLabelPatterns": [
+    "^march-arrived-"
   ]
 }

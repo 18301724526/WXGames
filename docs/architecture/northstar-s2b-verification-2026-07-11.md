@@ -102,3 +102,87 @@ node scripts/check-ui-runtime-field-ownership.js
 - 未修改任何 `frontend/js/tutorial/*` 文件。
 - 未重录转录基线。
 - 未执行 S3 或后续路线图内容。
+
+## W3|全程基线重录
+
+### 全程修复与投影收敛
+
+- 受控环境补齐真实 `backend/world-worker.js`，API、预览与 worker 共用隔离 SQLite；账号重置在 worker 停止时串行执行，避免 SQLite 写锁竞态。
+- harness 在 `famousSeekCompleted` 检测并关闭仍占据 modal 命中面的名人面板，防止直接点击被遮挡的最终科技入口。
+- 产品教程事件在寻访完成后关闭 `famousPersons` 并立即重投影 modal 层，清除旧 hit target，再刷新最终科技高亮；未增加游戏状态特判或教程命令绕过。
+- transcript 生成器基于真实 `tutorialCompleted + finalStepName` 追加唯一终态项，保证最后一项 `stepKey=completed`。
+- 独立排除策略文件新增 `^march-arrived-` 报告规则；实现读取该规则，排除 worker/客户端刷新竞态产生的 timing-only 记账动作。
+- command-owner 清单仅按扫描器实测机械同步 7 个既有直接提交调用点的行号，inventory drift 从 14 归零；未改变命令路径或所有权。
+
+### 双跑证据
+
+共同环境:
+
+- 后端:`http://127.0.0.1:3211`，`active-release-bundle`，隔离数据库。
+- 前端:`http://127.0.0.1:8181`。
+- worker:`backend/world-worker.js`，`WORLD_WORKER_INTERVAL_MS=1000`。
+- 参数:`PLAYTEST_STRICT_VISUAL=0`、`PLAYTEST_MAX_ACTIONS=120`、`--target=local`、显式 loopback URL。
+
+Run 1:
+
+- 原始运行:`%TEMP%\wxgames-s2b-w2-20260711182211\w3-official-run1e\2026-07-11T11-04-14-083Z`。
+- `stopReason=tutorial-completed`，`finalStepName=completed`，`tutorialCompleted=true`，61 动作，0 验证失败、0 请求失败、0 页面错误。
+- 最终投影:`%TEMP%\wxgames-s2b-w2-20260711182211\w3-official-transcript-run1-final.json`。
+
+Run 2:
+
+- 原始运行:`%TEMP%\wxgames-s2b-w2-20260711182211\w3-official-run2\2026-07-11T11-09-30-495Z`。
+- `stopReason=tutorial-completed`，`finalStepName=completed`，`tutorialCompleted=true`，62 动作，0 验证失败、0 请求失败、0 页面错误。
+- 最终投影:`%TEMP%\wxgames-s2b-w2-20260711182211\w3-official-transcript-run2-final.json`。
+
+双跑最终投影均为 64 条，最后一项为:
+
+```json
+{
+  "stepKey": "completed",
+  "actionType": "",
+  "targetType": "",
+  "panelKey": ""
+}
+```
+
+SHA-256 均为 `16862F819B0EE78ACBD8C358CB964FC1307646BD122BA4BA6EC9C270E79D605F`。
+
+```powershell
+git diff --no-index --exit-code -- `
+  $env:TEMP\wxgames-s2b-w2-20260711182211\w3-official-transcript-run1-final.json `
+  $env:TEMP\wxgames-s2b-w2-20260711182211\w3-official-transcript-run2-final.json
+```
+
+结果:exit 0，双跑 diff 为空。
+
+### Declared 基线重录
+
+- 旧基线:43 条，SHA-256 `B998FFD6853765A60B7E9A10AD8C0518BAE11B14162EA442CD29792EB818CDFC`，最后一项为 `famousCardViewed/openArmyFormation`，属于前缀。
+- 新基线:64 条，SHA-256 `16862F819B0EE78ACBD8C358CB964FC1307646BD122BA4BA6EC9C270E79D605F`，最后一项 `stepKey=completed`，覆盖全教程。
+- 差异性质:保留既有前缀语义，新增编队打开后的选人、补兵、保存、探索、发现、占领、命名、人才、寻访、最终科技与完成终点；同时由策略排除 timing-only `march-arrived` 记账，不删除产品教程动作。
+- 入库文件:`docs/architecture/artifacts/northstar-s2-tutorial-transcript.json`。
+
+### 全量门禁
+
+```powershell
+npm test
+node scripts/run-architecture-smoke.js
+```
+
+结果:
+
+- `npm test`:297 个测试文件，2392/2392 通过，0 fail。
+- architecture smoke:exit 0，最终输出 `[architecture-smoke] passed`；command-owner inventory drift=0，`git diff --check` 通过。
+
+### 金色像素阈值评估
+
+本单不修，移交后续视觉专项:本地 `PLAYTEST_STRICT_VISUAL=0` 下名人详情、关闭与寻访目标仍出现 gold pixel warning，但目标可见性与语义全链均通过，不影响本次判决器基线。
+
+### W3 未做
+
+- 未执行 S3 的 ctx 适配。
+- 未改 `FlowRegistry` 结构。
+- 未执行路线图 S3 及后续步骤。
+- 未修改监督者署名的裁决、清查、路线图或任务单。
+- 未修改、暂存或提交 `.claude/launch.json`。

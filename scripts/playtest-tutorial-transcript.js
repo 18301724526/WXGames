@@ -15,6 +15,7 @@ function loadExclusionPolicy(filePath = DEFAULT_EXCLUSION_POLICY_PATH) {
     ...parsed,
     exactFields: new Set(parsed.exactFields || []),
     fieldPatterns: (parsed.fieldPatterns || []).map((pattern) => new RegExp(pattern, 'i')),
+    reportLabelPatterns: (parsed.reportLabelPatterns || []).map((pattern) => new RegExp(pattern)),
   };
 }
 
@@ -49,13 +50,16 @@ function readPanelKey(...values) {
 
 function buildTutorialTranscript(input = {}, options = {}) {
   const policy = options.policy || loadExclusionPolicy(options.policyPath);
-  const reports = applyExclusionPolicy(input.verificationReports || [], policy);
+  const reports = applyExclusionPolicy(input.verificationReports || [], policy)
+    .filter((report) => !policy.reportLabelPatterns.some((pattern) => (
+      pattern.test(String(report?.label || ''))
+    )));
   const evidence = applyExclusionPolicy(input.actionEvidence || [], policy);
   const evidenceByLabel = new Map(
     evidence.map((entry) => [String(entry?.label || '').replace(/-before$/, ''), entry]),
   );
 
-  return reports.map((report) => {
+  const transcript = reports.map((report) => {
     const matchingEvidence = evidenceByLabel.get(String(report?.label || '')) || null;
     const allowedAction = matchingEvidence?.highlight?.allowedAction || null;
     const targetAction = matchingEvidence?.target?.action || report?.action || null;
@@ -66,6 +70,20 @@ function buildTutorialTranscript(input = {}, options = {}) {
       panelKey: readPanelKey(allowedAction, targetAction, report?.action),
     };
   });
+  const finalStepName = String(input.finalStepName || '');
+  if (
+    input.tutorialCompleted === true
+    && finalStepName
+    && transcript.at(-1)?.stepKey !== finalStepName
+  ) {
+    transcript.push({
+      stepKey: finalStepName,
+      actionType: '',
+      targetType: '',
+      panelKey: '',
+    });
+  }
+  return transcript;
 }
 
 function writeTutorialTranscript(filePath, input = {}, options = {}) {
