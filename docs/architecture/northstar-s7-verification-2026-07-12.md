@@ -107,3 +107,74 @@ freshness 随动:
 - `northstar-s3-tutorial-host-surface.json` 仅新增 query 表源文件指纹，总数与分类仍为 `202`、`48/0/0/50/88/16`。
 - `northstar-s5-tutorial-hit-target-types.json` 仅新增 query 表源文件指纹、刷新 `TutorialHostContext` 行号和哈希；注册点 `204`、已注册类型 `114`、教程类型 `29`、缺失类型 `0` 均不变。
 - `TutorialHostContext.advanceTutorial` 既有命令所有权清单坐标从 `:500` 刷新为 `:513`；分类和迁移目标未变，`inventoryDriftFindings=0`。
+
+## E3|本段配置
+
+配置文件:`frontend/js/tutorial-config/TaskPanelStepScripts.js`。
+
+- 步键数:**10**。
+- 唯一规则 ID 数:**14**；`final-tech-open` 同时服务于 `famousSeekCompleted` 与 `finalTechOpened`，规则 ID 出现总数为 **15**。
+- 配置只含冻结字面数据:`type`、E1 query 名、`ruleId`、`target`、`messageKey`、`eventName`、`panel` 与 query 参数；零内联谓词、零函数。
+
+对应关系:
+
+| S2 规则 ID | 配置项 |
+|---|---|
+| `first-era-open-task-center` | `eraAdvancedTo1.clauses[0]` |
+| `first-era-claim-supplies` | `eraAdvancedTo1.clauses[1]` |
+| `era2-open-civilization` | `era2AdvanceReady` |
+| `era2-open-events` | `eraAdvancedTo2` |
+| `lumbermill-open-task-center` | `lumbermillBuilt.clauses[0]` |
+| `lumbermill-claim-task` | `lumbermillBuilt.clauses[1]` |
+| `era3-open-civilization` | `era3AdvanceReady` |
+| `barracks-open-task-center` | `era3Advanced.clauses[0]` |
+| `barracks-claim-supplies` | `era3Advanced.clauses[1]` |
+| `first-army-open-task-center` | `barracksBuilt.clauses[0]` |
+| `first-army-claim` | `barracksBuilt.clauses[1]` |
+| `scout-officer-open-task-center` | `firstArmyClaimed.clauses[0]` |
+| `scout-officer-claim` | `firstArmyClaimed.clauses[1]` |
+| `final-tech-open` | `famousSeekCompleted`、`finalTechOpened` |
+
+纯度门禁:
+
+- `scripts/check-tutorial-step-config-purity.js` 已进入 `scripts/run-architecture-smoke.js`。
+- 递归核验全部对象与数组均冻结，任何函数、内联 `predicate`、未知字段或表外 query 均 FIRE。
+- 规则 ID 集合必须与本段 14 条 S2 规则精确一致。
+- 实际门禁原文:`Tutorial StepScript config purity check passed: 10 step key(s), 14 rule id(s), zero functions.`
+
+专项验证:
+
+```powershell
+node --check frontend/js/tutorial-config/TaskPanelStepScripts.js
+node --check scripts/check-tutorial-step-config-purity.js
+node --test frontend/js/tutorial-config/TaskPanelStepScripts.test.js scripts/check-tutorial-step-config-purity.test.js
+node scripts/check-tutorial-step-config-purity.js
+git diff --check
+```
+
+测试数字原文:
+
+```text
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 51.0973
+```
+
+完整 smoke 测试数字与结尾原文:
+
+```text
+ℹ tests 1706
+ℹ suites 0
+ℹ pass 1706
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4312.1244
+[architecture-smoke] passed
+```

@@ -141,6 +141,7 @@ require('../js/tutorial/TutorialGuideEventRegistry');
 require('../js/tutorial/TutorialEngineQueryTable');
 require('../js/tutorial-engine/StepScriptTypeRegistry');
 require('../js/tutorial-engine/StepScriptRunner');
+require('../js/tutorial-config/TaskPanelStepScripts');
 require('../js/tutorial/TutorialHostContext');
 require('../js/tutorial/TutorialGuideController');
 require('../js/platform/interactions/TechTreeInteractionModel');

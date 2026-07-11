@@ -100,6 +100,10 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/tutorial-engine/StepScriptTypeRegistry.js',
   'frontend/js/tutorial-engine/StepScriptRunner.js',
   'frontend/js/tutorial-engine/StepScriptRunner.test.js',
+  'frontend/js/tutorial-config/TaskPanelStepScripts.js',
+  'frontend/js/tutorial-config/TaskPanelStepScripts.test.js',
+  'scripts/check-tutorial-step-config-purity.js',
+  'scripts/check-tutorial-step-config-purity.test.js',
   'scripts/check-tutorial-action-matches-purity.js',
   'scripts/check-tutorial-action-matches-purity.test.js',
   'scripts/check-step5-action-descriptor-coverage.js',
@@ -750,6 +754,8 @@ const TEST_FILES = Object.freeze([
   'scripts/check-tutorial-host-context-boundary.test.js',
   'scripts/check-tutorial-engine-purity.test.js',
   'frontend/js/tutorial-engine/StepScriptRunner.test.js',
+  'frontend/js/tutorial-config/TaskPanelStepScripts.test.js',
+  'scripts/check-tutorial-step-config-purity.test.js',
   'scripts/check-step5-action-descriptor-coverage.test.js',
   'scripts/verify-step4-phase3-real-server.test.js',
 ]);
@@ -889,6 +895,9 @@ function main() {
   ]);
   run('tutorial engine purity blocking guard', process.execPath, [
     'scripts/check-tutorial-engine-purity.js',
+  ]);
+  run('tutorial StepScript config purity blocking guard', process.execPath, [
+    'scripts/check-tutorial-step-config-purity.js',
   ]);
   run('Step5 action descriptor coverage blocking guard', process.execPath, [
     'scripts/check-step5-action-descriptor-coverage.js',
