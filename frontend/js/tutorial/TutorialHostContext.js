@@ -274,6 +274,51 @@
     return getRefreshReentryTraceSnapshot();
   }
 
+  function getGlobalRenderRefreshDropTrace() {
+    if (!global.__tutorialRenderRefreshDropTrace) {
+      global.__tutorialRenderRefreshDropTrace = {
+        schema: 'tutorial-render-refresh-drop-trace/v1',
+        count: 0,
+        traces: [],
+      };
+    }
+    return global.__tutorialRenderRefreshDropTrace;
+  }
+
+  function getActiveRenderPhase(host) {
+    const owner = host?.game?.lastGame || host?.game || host;
+    return global.TutorialRenderPhaseGuard?.getActivePhase?.(owner) || '';
+  }
+
+  function recordRenderRefreshDrop(host, eventName = '') {
+    const ledger = getGlobalRenderRefreshDropTrace();
+    const snapshot = {
+      stepKey: String(host?.getCurrentStep?.() || ''),
+      eventName: String(eventName || ''),
+      renderPhase: getActiveRenderPhase(host),
+    };
+    ledger.count += 1;
+    ledger.traces.push(snapshot);
+    global.TutorialHostContextTrace?.log?.('tutorial-render-refresh-dropped', snapshot);
+    return snapshot;
+  }
+
+  function getRenderRefreshDropTraceSnapshot() {
+    const ledger = getGlobalRenderRefreshDropTrace();
+    return {
+      schema: ledger.schema,
+      count: ledger.count,
+      traces: ledger.traces.map((trace) => ({ ...trace })),
+    };
+  }
+
+  function resetRenderRefreshDropTrace() {
+    const ledger = getGlobalRenderRefreshDropTrace();
+    ledger.count = 0;
+    ledger.traces.length = 0;
+    return getRenderRefreshDropTraceSnapshot();
+  }
+
   const highlightRefreshTransactions = new WeakMap();
 
   function getHighlightRefreshTransaction(host) {
@@ -381,6 +426,10 @@
     }
 
     requestHighlightRefresh(eventName = '', _change = {}) {
+      if (getActiveRenderPhase(this)) {
+        recordRenderRefreshDrop(this, eventName);
+        return false;
+      }
       if (eventName === 'state.changed' && getHighlightRefreshTransaction(this).active) {
         recordRefreshReentryTrace({
           stepKey: this.getCurrentStep(),
@@ -1538,6 +1587,10 @@
     }
 
     refreshCurrentHighlight() {
+      if (getActiveRenderPhase(this)) {
+        recordRenderRefreshDrop(this);
+        return false;
+      }
       const transaction = getHighlightRefreshTransaction(this);
       if (transaction.active) {
         this.highlightRefreshPending = true;
@@ -1585,6 +1638,8 @@
   TutorialHostContext.resetStepScriptTrace = resetStepScriptTrace;
   TutorialHostContext.getRefreshReentryTrace = getRefreshReentryTraceSnapshot;
   TutorialHostContext.resetRefreshReentryTrace = resetRefreshReentryTrace;
+  TutorialHostContext.getRenderRefreshDropTrace = getRenderRefreshDropTraceSnapshot;
+  TutorialHostContext.resetRenderRefreshDropTrace = resetRenderRefreshDropTrace;
   TutorialHostContext.getAdvanceWatchdogTrace = getAdvanceWatchdogTraceSnapshot;
   TutorialHostContext.resetAdvanceWatchdogTrace = resetAdvanceWatchdogTrace;
   if (

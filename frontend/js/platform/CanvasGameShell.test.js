@@ -12,6 +12,7 @@ require('../ecs/system/FogRevealModel');
 require('../ecs/mode/EcsModeRuntimeEntry');
 const WorldMapRenderSnapshot = require('../ecs/projection/WorldMapRenderSnapshot');
 const CanvasGameShell = require('./CanvasGameShell');
+const TutorialHostContext = require('../tutorial/TutorialHostContext');
 const CanvasActionDispatcher = require('./CanvasActionDispatcher');
 const CanvasPanelSurfaceManager = require('./CanvasPanelSurfaceManager');
 const BattleStore = require('../state/BattleStore');
@@ -1364,6 +1365,61 @@ test('CanvasGameShell renderActive does not publish derived navigation state', (
   assert.equal(shell.lastGame.state, state);
   assert.equal(state.currentTab, 'military');
   assert.equal(state.militaryView, 'world');
+});
+
+test('CanvasGameShell drops and traces highlight refresh attempts during rendering', () => {
+  TutorialHostContext.resetRenderRefreshDropTrace();
+  const tutorial = { completed: false, currentStep: 'cityEntered' };
+  const game = {
+    state: {
+      currentTab: 'military',
+      militaryView: 'world',
+      tutorial,
+      territoryState: { worldMap: { tiles: [{ id: 'tile_0_0' }] } },
+    },
+    tutorial,
+    mapHomeActive: true,
+    activeTab: 'military',
+    militaryView: 'world',
+  };
+  let refreshCount = 0;
+  let refreshResult = null;
+  const shell = new CanvasGameShell({
+    previewEnabled: true,
+    renderer: { render() {} },
+  });
+  shell.lastGame = game;
+  shell.setWorldMapLayerVisible = () => {};
+  shell.renderWorldMapLayer = () => false;
+  const context = new TutorialHostContext({
+    game,
+    state: tutorial,
+    eventRegistry: { subscribeToBus: () => null },
+    stepScriptConfig: {},
+    flowRegistry: {
+      refresh() {
+        refreshCount += 1;
+        return true;
+      },
+    },
+    targetResolver: null,
+    queryTable: null,
+  });
+
+  assert.equal(shell.renderActive(), true);
+  assert.equal(TutorialHostContext.getRenderRefreshDropTrace().count, 0);
+  shell.renderer.render = () => {
+    refreshResult = context.refreshCurrentHighlight();
+  };
+  assert.equal(shell.renderActive(), true);
+
+  assert.equal(refreshResult, false);
+  assert.equal(refreshCount, 0);
+  assert.deepEqual(TutorialHostContext.getRenderRefreshDropTrace(), {
+    schema: 'tutorial-render-refresh-drop-trace/v1',
+    count: 1,
+    traces: [{ stepKey: 'cityEntered', eventName: '', renderPhase: 'renderReadOnly' }],
+  });
 });
 
 test('CanvasGameShell renderCanvasSurface uses mounted game state instead of inherited shell state', () => {

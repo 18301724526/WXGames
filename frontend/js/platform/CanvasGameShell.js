@@ -161,6 +161,44 @@
     return getMountedGame(shell) || shell;
   }
 
+  const TutorialRenderPhaseGuard = (() => {
+    if (global.TutorialRenderPhaseGuard) return global.TutorialRenderPhaseGuard;
+    const transactions = new WeakMap();
+    const getOwner = (shell) => getMountedGame(shell) || shell;
+    const api = Object.freeze({
+      enter(shell, phase) {
+        const owner = getOwner(shell);
+        if (!owner || (typeof owner !== 'object' && typeof owner !== 'function')) return null;
+        const transaction = transactions.get(owner) || { phases: [] };
+        transaction.phases.push(String(phase || 'render'));
+        transactions.set(owner, transaction);
+        return owner;
+      },
+      exit(owner) {
+        const transaction = owner && transactions.get(owner);
+        if (!transaction) return false;
+        transaction.phases.pop();
+        if (transaction.phases.length === 0) transactions.delete(owner);
+        return true;
+      },
+      getActivePhase(owner) {
+        const transaction = owner && transactions.get(owner);
+        return transaction?.phases?.at(-1) || '';
+      },
+    });
+    global.TutorialRenderPhaseGuard = api;
+    return api;
+  })();
+
+  function runInTutorialRenderPhase(shell, phase, render) {
+    const owner = TutorialRenderPhaseGuard.enter(shell, phase);
+    try {
+      return render();
+    } finally {
+      TutorialRenderPhaseGuard.exit(owner);
+    }
+  }
+
   function getWorldActorOverlayAssemblyReason(assembly, context = {}) {
     if (assembly.enabled !== true) return 'flag_disabled';
     if (assembly.canvasCreated !== true) {
@@ -1809,6 +1847,12 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
         }
 
     renderGuideHighlightFrame(highlight = this.tutorialHighlight) {
+          return runInTutorialRenderPhase(this, 'renderGuideHighlightFrame', () => (
+            this.renderGuideHighlightFrameProjection(highlight)
+          ));
+        }
+
+    renderGuideHighlightFrameProjection(highlight = this.tutorialHighlight) {
           if (highlight?.locator) {
             const refreshed = this.refreshTutorialHighlightTarget(highlight);
             if (!refreshed) {
@@ -2926,6 +2970,10 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
         }
 
     renderActive(options = {}) {
+          return runInTutorialRenderPhase(this, 'renderActive', () => this.renderActiveProjection(options));
+        }
+
+    renderActiveProjection(options = {}) {
           if (this.isWorldMapDragging()) {
             this.deferRenderUntilWorldMapDragEnd = true;
             return true;
@@ -2962,6 +3010,12 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
         }
 
     renderReadOnly(state, activeTab = 'resources', options = {}) {
+          return runInTutorialRenderPhase(this, 'renderReadOnly', () => (
+            this.renderReadOnlyProjection(state, activeTab, options)
+          ));
+        }
+
+    renderReadOnlyProjection(state, activeTab = 'resources', options = {}) {
           if (!this.previewEnabled || !this.renderer || !state) return false;
           this.syncWorldMapRendererLayerMetrics();
           const inputSummary = global.CodexWorldMapDiag?.summarizeState?.(state) || null;
