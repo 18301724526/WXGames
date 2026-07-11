@@ -189,6 +189,48 @@ test('synchronous modal refresh reentry is traced and coalesced into one trailin
   context.disconnectChangeEventBus();
 });
 
+test('reentry during a trailing refresh schedules one more non-recursive refresh', async () => {
+  TutorialHostContext.resetRefreshReentryTrace();
+  const tutorial = { completed: false, currentStep: 'cityEntered' };
+  const bus = ChangeEventBus.createEventBus();
+  let refreshCount = 0;
+  let activeDepth = 0;
+  let maxDepth = 0;
+  const context = new TutorialHostContext({
+    state: tutorial,
+    game: { tutorial, state: { tutorial } },
+    changeEventBus: bus,
+    stepScriptConfig: {},
+    flowRegistry: {
+      refresh() {
+        refreshCount += 1;
+        activeDepth += 1;
+        maxDepth = Math.max(maxDepth, activeDepth);
+        if (refreshCount <= 2) {
+          bus.emit('modal.changed', { source: 'test-trailing-reentry', subtype: 'modal:cityManagement' });
+        }
+        activeDepth -= 1;
+        return true;
+      },
+    },
+    targetResolver: null,
+    queryTable: null,
+  });
+
+  assert.equal(context.refreshCurrentHighlight(), true);
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(refreshCount, 3);
+  assert.equal(maxDepth, 1);
+  assert.deepEqual(TutorialHostContext.getRefreshReentryTrace().traces, [
+    { stepKey: 'cityEntered', phase: 'primary', trailingScheduled: true },
+    { stepKey: 'cityEntered', phase: 'trailing', trailingScheduled: false },
+  ]);
+  context.disconnectChangeEventBus();
+});
+
 test('cityEntered prepares the house surface before refreshing its pure projection', async () => {
   const steps = TutorialFlowShared.TUTORIAL_STEPS;
   const calls = [];

@@ -1407,7 +1407,7 @@
           this.refreshCurrentHighlight();
         } finally {
           this.highlightRefreshTrailing = false;
-          this.highlightRefreshPending = false;
+          if (this.highlightRefreshPending) this.scheduleTrailingHighlightRefresh();
         }
       };
       if (typeof runtime?.queueMicrotask === 'function') runtime.queueMicrotask(run);
