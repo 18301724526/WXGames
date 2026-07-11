@@ -41,7 +41,7 @@
     },
     {
       "file": "frontend/js/platform/CanvasGameApp.js",
-      "sha256": "44c180ad99e397fe5ac33cab6c2d01197b54bbad5a85e16ebe6312049f26326e"
+      "sha256": "aac986902bb48521582db5700f19ccfccf439e425d402125dc405ac33534818f"
     },
     {
       "file": "frontend/js/platform/CanvasGameAppRenderPolicy.js",

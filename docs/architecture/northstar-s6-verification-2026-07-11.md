@@ -76,3 +76,32 @@ tutorialHostContextWitness.count=0
 ```
 
 `git diff --no-index --exit-code` 返回 0，投影逐字节 diff 为空；未触发 L2，未重录基线。`node scripts/run-architecture-smoke.js` 最终输出 `[architecture-smoke] passed`。
+
+## Z3|割接批二：CanvasGameApp
+
+- 当前源码实测 `CanvasGameApp.js` 有 6 个教程事件调用，分别为 `eraAdvanced/exploreStarted/taskRewardClaimed/cityEntered/armyFormationOpened/tabClicked`；全部改为 `ChangeEventBus.emit`。`frontend/app.js` 当前实测为 0 个 `onXxx` 调用，任务单“24/9 触点”是旧统计，不冒充当前实数。
+- 删除 `CanvasGameApp.js` 7 处非冻结 poke，原行号为 `1382/3031/3083/3085/3144/3198/3430`；每处均有同名 `frontend/js/platform/CanvasGameApp.js:<line>` 特征测试，经 `StateWriter.commit` 或 `ModalStore.openModal/updateModalPayload/closeModal` 真实漏斗断言订阅刷新。
+- `ModalStore.updateModalPayload` 补齐 `modal.changed` 发布，使模态载荷更新与打开、关闭共用同一刷新漏斗。
+- 非冻结 poke 期望计数与实数：`16→9`。冻结 `CanvasPanelActionRunner*` 3 处 declared 残留未修改、未计入。
+- Z3 结束后：`CanvasGameApp.js onXxx=0`、`CanvasGameApp.js refreshCurrentHighlight=0`、`CanvasGameApp.js scheduleTutorialHighlightRefresh=0`、`frontend/app.js onXxx=0`、`frontend/app.js refreshCurrentHighlight=0`，command-owner `inventoryDriftFindings=0`，Step4 debt catalog `violations=0`。
+- S5 命中目标类型派生清单因 `CanvasGameApp.js` 内容哈希变化按生成器机械重建，`--check` 通过；清单语义计数保持 `registrationSites=204/tutorialReferenceSites=39/missingTypes=0`。
+
+定向测试原文：
+
+```text
+ℹ tests 79
+ℹ suites 0
+ℹ pass 79
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+```
+
+全程投影使用 S2b Run 2，重投影 64 条；仓库基线与 Z3 重投影 SHA-256 均为：
+
+```text
+16862F819B0EE78ACBD8C358CB964FC1307646BD122BA4BA6EC9C270E79D605F
+```
+
+`git diff --no-index --exit-code` 返回 0，投影逐字节 diff 为空；未触发 L2，未重录基线。受控运行记录的 `tutorialHostContextWitness.count=0`。`node scripts/run-architecture-smoke.js` 最终输出 `[architecture-smoke] passed`。

@@ -97,6 +97,13 @@
     const entry = state.entries[key];
     if (!entry) return null;
     entry.payload = freezePayload({ ...entry.payload, ...(patch || {}) });
+    getChangeEventBus()?.emit?.('modal.changed', {
+      source: 'ModalStore',
+      operation: 'update',
+      subtype: key,
+      token: entry.token,
+      payload: entry.payload,
+    });
     return entry.payload;
   }
 

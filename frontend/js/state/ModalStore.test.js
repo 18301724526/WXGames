@@ -110,11 +110,12 @@ test('buildModalSnapshot reconstructs the { open, token, payload } entry shape',
   ModalStore.closeModal('modal:event');
 });
 
-test('openModal and closeModal publish modal change descriptions', () => {
+test('openModal, updateModalPayload, and closeModal publish modal change descriptions', () => {
   resetModalStore();
   const changes = [];
   const unsubscribe = ChangeEventBus.subscribe('modal.changed', (change) => changes.push(change));
   const token = ModalStore.openModal('modal:event', { eventId: 'e2' });
+  ModalStore.updateModalPayload('modal:event', { selected: true });
   ModalStore.closeModal('modal:event');
   unsubscribe();
 
@@ -134,10 +135,17 @@ test('openModal and closeModal publish modal change descriptions', () => {
     },
     {
       source: 'ModalStore',
+      operation: 'update',
+      subtype: 'modal:event',
+      token,
+      payload: { eventId: 'e2', selected: true },
+    },
+    {
+      source: 'ModalStore',
       operation: 'close',
       subtype: 'modal:event',
       token,
-      payload: { eventId: 'e2' },
+      payload: { eventId: 'e2', selected: true },
     },
   ]);
 });

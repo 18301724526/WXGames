@@ -111,6 +111,10 @@
   if (typeof module !== 'undefined' && module.exports && !StateWriter) {
     StateWriter = require('../state/StateWriter');
   }
+  var ChangeEventBus = global.ChangeEventBus;
+  if (typeof module !== 'undefined' && module.exports && !ChangeEventBus) {
+    ChangeEventBus = require('../state/ChangeEventBus');
+  }
   var UiRuntimeStateStore = global.UiRuntimeStateStore;
   if (typeof module !== 'undefined' && module.exports && !UiRuntimeStateStore) {
     UiRuntimeStateStore = require('../state/UiRuntimeStateStore');
@@ -315,6 +319,7 @@
   class CanvasGameApp {
     constructor(options = {}) {
           this.runtime = options.runtime || null;
+          this.changeEventBus = options.changeEventBus || ChangeEventBus || null;
           const runtimeRequired = options.runtimeRequired !== false;
           if (!this.runtime && runtimeRequired) throw new Error('Canvas game runtime is required');
           this.presenter = options.presenter || null;
@@ -480,6 +485,11 @@
 
     getStateHost() {
           return StateWriter.getStateHost(this);
+        }
+
+    emitTutorialEvent(eventName, payload = {}) {
+          const report = this.changeEventBus?.emit?.(eventName, payload);
+          return report?.results?.find((result) => result !== undefined);
         }
 
     getState() {
@@ -1374,13 +1384,6 @@
                   if (this.canvasShell && typeof this.canvasShell.pageTransition !== 'undefined') this.canvasShell.pageTransition = this.pageTransition;
                   if (this.canvasShell && typeof this.canvasShell.buildingTransition !== 'undefined') this.canvasShell.buildingTransition = this.buildingTransition;
                   this.canvasShell.renderReadOnly(this.state, resolvedActiveTab);
-                  if (
-                    !this.pendingTutorialAdvisorDialogue
-                    && !this.tutorialAdvisorDialogue
-                    && !this.canvasShell?.tutorialAdvisorDialogue
-                  ) {
-                    this.tutorialController?.refreshCurrentHighlight?.();
-                  }
                   return true;
                 }
                 if (!this.renderer?.render) return false;
@@ -2825,7 +2828,7 @@
                   const result = await this.getGameApi().advanceEra();
                   this.applyApiState(result);
                   this.tutorialController?.sync?.(this.tutorial);
-                  this.tutorialController?.onEraAdvanced?.(result);
+                  this.emitTutorialEvent('eraAdvanced', { result });
                   this.log(t('command.era.entered', { message: result.message || this.state.currentEraName || '' }));
                   this.showFloatingText(result.message || this.state.currentEraName || t('command.era.advanced', {}));
                   return true;
@@ -2873,7 +2876,7 @@
                     selectedWorldMissionId: '',
                   });
                   this.tutorialController?.sync?.(this.tutorial);
-                  this.tutorialController?.onExploreStarted?.(result);
+                  this.emitTutorialEvent('exploreStarted', { result });
                   this.showFloatingText(result.message || t('command.worldMarch.started', {}));
                   this.log(result.message || t('command.worldMarch.started', {}));
                   return true;
@@ -2966,7 +2969,7 @@
                   const result = await api.claimTaskReward(taskId, category || 'main');
                   this.applyApiState(result);
                   this.tutorialController?.sync?.(this.tutorial);
-                  this.tutorialController?.onTaskRewardClaimed?.(result);
+                  this.emitTutorialEvent('taskRewardClaimed', { result });
                   if (!this.canvasShell?.showRewardReveal?.(result.rewardReveal) && result.rewardReveal) {
                     this.openRewardRevealSnapshot?.({ ...result.rewardReveal, createdAt: this.runtime?.now?.() || Date.now() });
                     this.renderCanvasSurface(this.state?.currentTab);
@@ -3027,9 +3030,8 @@
                     militaryView: homeView.militaryView,
                   }), { source: 'CanvasGameApp:enterCity' });
                   this.renderCanvasSurface(homeView.activeTab);
-                  this.tutorialController?.markCityEntered?.().then(() => {
-                    this.tutorialController?.refreshCurrentHighlight?.();
-                  }).catch((error) => this.log(error?.message || String(error)));
+                  const tutorialResult = this.emitTutorialEvent('cityEntered', {});
+                  tutorialResult?.catch?.((error) => this.log(error?.message || String(error)));
                   return true;
                 } catch (error) {
                   this.log(t('command.failedDetail', { message: error.payload?.message || error.message }));
@@ -3078,11 +3080,7 @@
             const opened = this.getArmyFormationEditorController().open(action) !== false;
             if (opened) {
               const owner = this.getStateHost() || this;
-              const tutorialController = owner.tutorialController || this.tutorialController;
-              const result = tutorialController?.onArmyFormationOpened?.();
-              tutorialController?.refreshCurrentHighlight?.();
-              const scheduler = owner.runtime || this.runtime || global;
-              scheduler?.setTimeout?.(() => tutorialController?.refreshCurrentHighlight?.(), 0);
+              const result = this.emitTutorialEvent('armyFormationOpened', {});
               if (result?.catch) result.catch((error) => owner.log?.(error));
             }
             return opened;
@@ -3130,7 +3128,6 @@
                   this.getPanelSurfaceManager()?.closePanel?.('famousPersons', { render: false });
                   CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'activeCommandPanel');
                   this.render();
-                  this.scheduleTutorialHighlightRefresh(80);
               }
 
     closeNaming() {
@@ -3138,23 +3135,6 @@
                 this.activeNamingPromptKey = null;
                 this.closeNamingSnapshot?.();
                 this.render();
-              }
-
-    scheduleTutorialHighlightRefresh(delayMs = 0) {
-                const callback = () => this.tutorialController?.refreshCurrentHighlight?.();
-                const scheduler = typeof this.scheduler?.setTimeout === 'function'
-                  ? this.scheduler
-                  : (typeof this.runtime?.setTimeout === 'function' ? this.runtime : null);
-                if (scheduler) {
-                  scheduler.setTimeout(callback, delayMs);
-                  return true;
-                }
-                if (typeof setTimeout === 'function') {
-                  setTimeout(callback, delayMs);
-                  return true;
-                }
-                callback();
-                return false;
               }
 
     async requestNamingInput() {
@@ -3172,7 +3152,6 @@
                 const inputValue = String(value).trim().slice(0, Number(view.maxLength) || 12);
                 this.updateNamingSnapshot?.({ inputValue });
                 this.render();
-                this.scheduleTutorialHighlightRefresh(0);
               }
 
     submitNaming(inputName = null) {
@@ -3184,7 +3163,6 @@
                 const prompt = this.activeNamingPrompt || naming?.prompt || {};
                 const name = String(inputName ?? naming?.inputValue ?? '').trim();
                 if (!prompt.type || !name) return;
-                let tutorialHandledView = false;
                 this.updateNamingSnapshot?.({ submitting: true });
                 this.render();
                 try {
@@ -3195,23 +3173,22 @@
                   this.closeNaming();
                   this.applyApiState(result);
                   this.tutorialController?.sync?.(this.tutorial || this.state?.tutorial || {});
-                  tutorialHandledView = this.tutorialController?.refreshCurrentHighlight?.() === true;
                   this.showFloatingText(result.message);
                   this.log(t('command.success.detail', { message: result.message || '' }));
                 } catch (error) {
                   this.log(t('command.failedDetail', { message: error.payload?.message || error.message }));
                 } finally {
                   this.updateNamingSnapshot?.({ submitting: false });
-                  if (!tutorialHandledView) this.renderCanvasSurface(this.state?.currentTab);
+                  this.renderCanvasSurface(this.state?.currentTab);
                 }
               }
 
     async handleCanvasTabSelection(tabId) {
                 if (!tabId) return false;
-                const onTabClicked = this.tutorialController?.onTabClicked;
-                const allowed = typeof onTabClicked === 'function'
-                  ? await onTabClicked.call(this.tutorialController, tabId).catch(() => false)
-                  : true;
+                const tutorialResult = this.emitTutorialEvent('tabClicked', { tabId });
+                const allowed = tutorialResult && typeof tutorialResult.then === 'function'
+                  ? await tutorialResult.catch(() => false)
+                  : tutorialResult ?? true;
                 if (!allowed) {
                   this.log(t('guide.completeCurrentStep'));
                   this.renderCanvasSurface(this.state?.currentTab);
@@ -3427,7 +3404,6 @@
                     }
                     this.renderCanvasSurface(this.state?.currentTab);
                   }
-                  this.tutorialController?.refreshCurrentHighlight?.();
                   return true;
                 }
                 if (resolution?.kind === 'guideTask') {

@@ -7,6 +7,7 @@ const CanvasGameApp = require('./CanvasGameApp');
 const BattleStore = require('../state/BattleStore');
 const TerritoryUiStateStore = require('../state/TerritoryUiStateStore');
 const UiRuntimeStateStore = require('../state/UiRuntimeStateStore');
+const ChangeEventBus = require('../state/ChangeEventBus');
 const CanvasGameShell = require('./CanvasGameShell');
 
 const RETIRED_APP_MODULES = [
@@ -153,12 +154,16 @@ test('CanvasGameApp falls back to controller for unsupported actions', () => {
 
 test('CanvasGameApp advanceEra always reaches GameAPI before local era eligibility', async () => {
   const calls = [];
+  const changeEventBus = ChangeEventBus.createEventBus();
+  changeEventBus.subscribe('eraAdvanced', ({ result }) => {
+    calls.push(['tutorial.eraAdvanced', result.message]);
+  });
   const app = makeAppHost({
+    changeEventBus,
     state: { currentEraName: 'Bronze Age' },
     tutorial: {},
     tutorialController: {
       sync(value) { calls.push(['tutorial.sync', value]); },
-      onEraAdvanced(result) { calls.push(['tutorial.onEraAdvanced', result.message]); },
     },
     canAdvanceEraNow() {
       calls.push(['canAdvanceEraNow']);
@@ -191,7 +196,7 @@ test('CanvasGameApp advanceEra always reaches GameAPI before local era eligibili
     'api.advanceEra',
     'applyApiState',
     'tutorial.sync',
-    'tutorial.onEraAdvanced',
+    'tutorial.eraAdvanced',
     'log',
     'showFloatingText',
     'renderMilitary',
@@ -471,6 +476,11 @@ test('openArmyFormation seeds the editor from the city formation and normalizes 
 
 test('openArmyFormation writes the UiRuntimeStateStore authority on a real app instance', () => {
   const tutorialCalls = [];
+  const changeEventBus = ChangeEventBus.createEventBus();
+  changeEventBus.subscribe('armyFormationOpened', () => {
+    tutorialCalls.push('opened');
+    return Promise.resolve(true);
+  });
   const shell = new CanvasGameShell({
     previewEnabled: false,
     inputEnabled: false,
@@ -481,15 +491,8 @@ test('openArmyFormation writes the UiRuntimeStateStore authority on a real app i
     rendererRequired: false,
     useWorldMapRuntime: false,
     canvasShell: shell,
-    tutorialController: {
-      onArmyFormationOpened() {
-        tutorialCalls.push('opened');
-        return Promise.resolve(true);
-      },
-      refreshCurrentHighlight() {
-        tutorialCalls.push('refresh');
-      },
-    },
+    tutorialController: {},
+    changeEventBus,
     initialState: {
       activeCityId: 'capital',
       currentTab: 'military',
@@ -498,12 +501,6 @@ test('openArmyFormation writes the UiRuntimeStateStore authority on a real app i
   });
   shell.lastGame = app;
   app.renderCanvasSurface = () => true;
-  app.runtime = {
-    setTimeout(callback, delay) {
-      tutorialCalls.push(`scheduled:${delay}`);
-      callback();
-    },
-  };
 
   assert.equal(shell.dispatchCanvasAction({ type: 'openArmyFormation', cityId: 'capital', slot: 1 }), true);
   assert.equal(app.armyFormationEditor.open, true);
@@ -514,7 +511,7 @@ test('openArmyFormation writes the UiRuntimeStateStore authority on a real app i
     app.getArmyFormationEditorController().editor,
     UiRuntimeStateStore.getFormationEditor(app),
   );
-  assert.deepEqual(tutorialCalls, ['opened', 'refresh', 'scheduled:0', 'refresh']);
+  assert.deepEqual(tutorialCalls, ['opened']);
 });
 
 test('toggleArmyFormationMember adds with zeroed assignments, removes, and enforces the 5-member cap', () => {
