@@ -256,9 +256,23 @@ function writeInventory(output = DEFAULT_OUTPUT) {
 if (require.main === module) {
   const outputArg = process.argv.find((arg) => arg.startsWith('--output='));
   const output = outputArg ? outputArg.slice('--output='.length) : DEFAULT_OUTPUT;
-  const result = writeInventory(output);
+  const checkOnly = process.argv.includes('--check');
+  const result = checkOnly
+    ? { absolute: path.resolve(REPO_ROOT, output), inventory: buildInventory() }
+    : writeInventory(output);
+  if (checkOnly) {
+    const expected = `${JSON.stringify(result.inventory, null, 2)}\n`;
+    const actual = fs.existsSync(result.absolute)
+      ? fs.readFileSync(result.absolute, 'utf8').replace(/\r\n/g, '\n')
+      : '';
+    if (actual !== expected) {
+      console.error(`Tutorial host surface inventory is stale: ${normalizePath(output)}`);
+      process.exitCode = 1;
+    }
+  }
   console.log(JSON.stringify({
     output: normalizePath(path.relative(REPO_ROOT, result.absolute)),
+    checked: checkOnly,
     ...result.inventory.counts,
   }));
 }

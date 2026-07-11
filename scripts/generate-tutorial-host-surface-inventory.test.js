@@ -4,10 +4,16 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const {
+  DEFAULT_OUTPUT,
   buildInventory,
   parseSource,
   scanFile,
 } = require('./generate-tutorial-host-surface-inventory');
+
+test('default artifact matches a fresh inventory build', () => {
+  const artifact = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', DEFAULT_OUTPUT), 'utf8'));
+  assert.deepStrictEqual(artifact, buildInventory());
+});
 
 test('tutorial host surface inventory is deterministic and fully classified', () => {
   const first = buildInventory();
@@ -24,7 +30,7 @@ test('tutorial host surface inventory is deterministic and fully classified', ()
   }
 });
 
-test('tutorial host surface inventory catches S2b EventRegistry direct writes', () => {
+test('tutorial host surface inventory reflects the post-adapter EventRegistry surface', () => {
   const artifact = JSON.parse(fs.readFileSync(path.resolve(
     __dirname,
     '../docs/architecture/artifacts/northstar-s3-tutorial-host-surface.json',
@@ -33,14 +39,9 @@ test('tutorial host surface inventory catches S2b EventRegistry direct writes', 
     entry.location.startsWith('frontend/js/tutorial/TutorialGuideEventRegistry.js:')
   ));
 
-  assert.ok(
-    entries.some((entry) => entry.accessShape.endsWith('.famousPersonsPage') && entry.note.startsWith('write;')),
-    'famousPersonsPage direct write must be inventoried',
-  );
-  assert.ok(
-    entries.some((entry) => entry.accessShape.endsWith('.selectedFamousPersonId') && entry.note.startsWith('write;')),
-    'selectedFamousPersonId direct write must be inventoried',
-  );
+  assert.equal(entries.some((entry) => entry.note.startsWith('write;')), false);
+  assert.ok(entries.some((entry) => entry.accessShape === 'host.syncFromResultPayload'));
+  assert.ok(entries.some((entry) => entry.accessShape === 'host.refreshCurrentHighlight'));
 });
 
 test('tutorial host surface inventory catches dynamic host writes', () => {

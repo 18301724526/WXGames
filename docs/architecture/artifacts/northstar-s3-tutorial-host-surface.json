@@ -4,15 +4,15 @@
   "sources": [
     {
       "file": "frontend/js/tutorial/TutorialGuideController.js",
-      "sha256": "b5c21b996989313ead03c7a762b6de70b3f2b205074efe343590ce6544366497"
+      "sha256": "8d34b075a8861b26f020a4497a7fb9907e9526fdacd6616712643337f687b52f"
     },
     {
       "file": "frontend/js/tutorial/TutorialGuideEventRegistry.js",
-      "sha256": "839805e45497d8fb85a50a918c4615f70309e2508e69fd29766793cf1f830a41"
+      "sha256": "3a1ae3c8fe0a152f843feb846334bad7b4ba06c138ffdfc836bdd2ae65429cbe"
     },
     {
       "file": "frontend/js/tutorial/TutorialGuideFlowRegistry.js",
-      "sha256": "5c7e1fa7e67a474e0692e61161ad948b0038b73243f13d72a4e66ac43d0d2a22"
+      "sha256": "60ae8b1e0472ba3879eaff5afb2e4c86cc679bc0aa88029bbbc245c9841c933a"
     },
     {
       "file": "frontend/js/tutorial/TutorialGuideStepPolicy.js",
@@ -20,907 +20,25 @@
     },
     {
       "file": "frontend/js/tutorial/TutorialGuideTargetResolver.js",
-      "sha256": "4c403806520ee5706b6cd4bf8fcb284252849f3f9e74097ce5cb85e843398ed4"
+      "sha256": "84a2a3ba34b6c84803c31729087d12feb859874dee7517b12a4133be4538111b"
     },
     {
       "file": "frontend/js/tutorial/TutorialIntroOverlay.js",
-      "sha256": "c62a9c680251e7be5dbd41aafd92054732a70a62c6adca44596af248fc0287ae"
+      "sha256": "a31867429587ef3a35d6dc8ab42843bf762002079212c4b62e3721487fa38e24"
     }
   ],
   "counts": {
-    "total": 393,
+    "total": 205,
     "categories": {
-      "effects": 124,
+      "effects": 47,
       "waitFor": 0,
       "requestAction": 0,
-      "resolveTarget": 60,
-      "queries": 193,
+      "resolveTarget": 55,
+      "queries": 87,
       "next": 16
     }
   },
   "entries": [
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:93",
-      "accessShape": "CanvasModeOwnershipRuntime.getCurrentTab()",
-      "category": "queries",
-      "note": "call; root=this.game; indirect host access through CanvasModeOwnershipRuntime"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:93",
-      "accessShape": "game.state.currentTab",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:102",
-      "accessShape": "host.getCommandPanelValue",
-      "category": "queries",
-      "note": "read; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:102",
-      "accessShape": "host.getCommandPanelValue",
-      "category": "queries",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:103",
-      "accessShape": "CanvasModalSnapshotAdapter.getCommandPanelValue()",
-      "category": "queries",
-      "note": "call; root=host; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:124",
-      "accessShape": "this.game.api",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:124",
-      "accessShape": "this.game.gameAPI",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:124",
-      "accessShape": "this.game.getGameApi",
-      "category": "queries",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:127",
-      "accessShape": "this.game.state.tutorial",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:127",
-      "accessShape": "this.game.tutorial",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:129",
-      "accessShape": "this.game.tutorial",
-      "category": "effects",
-      "note": "write; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:135",
-      "accessShape": "this.game.state.tutorial.currentStep",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:135",
-      "accessShape": "this.game.tutorial.currentStep",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:140",
-      "accessShape": "this.game.state.tutorial.completed",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:140",
-      "accessShape": "this.game.tutorial.completed",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:176",
-      "accessShape": "this.game.applyApiState",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:177",
-      "accessShape": "this.game.tutorial",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:260",
-      "accessShape": "CanvasModeOwnershipRuntime.isCurrentTab()",
-      "category": "queries",
-      "note": "call; root=this.game; indirect host access through CanvasModeOwnershipRuntime"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:264",
-      "accessShape": "CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen()",
-      "category": "queries",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:268",
-      "accessShape": "CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen()",
-      "category": "queries",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:272",
-      "accessShape": "this.game.activeCityManagementTab",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:278",
-      "accessShape": "CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen()",
-      "category": "queries",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:279",
-      "accessShape": "this.game.canvasShell.tutorialAdvisorDialogue",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:280",
-      "accessShape": "this.game.tutorialAdvisorDialogue",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:285",
-      "accessShape": "this.game.isRewardRevealSnapshotOpen",
-      "category": "queries",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:298",
-      "accessShape": "this.game.tutorial.grants.scoutFamousPerson.personId",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:299",
-      "accessShape": "this.game.state.tutorial.grants.scoutFamousPerson.personId",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:302",
-      "accessShape": "this.game.state.famousPersons.people",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:304",
-      "accessShape": "people.find",
-      "category": "queries",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:310",
-      "accessShape": "CanvasModeOwnershipRuntime.getFormationEditor()",
-      "category": "queries",
-      "note": "call; root=this.game; indirect host access through CanvasModeOwnershipRuntime"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:318",
-      "accessShape": "TerritoryUiStateStore.ensure()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through TerritoryUiStateStore"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:328",
-      "accessShape": "this.game.isTargetPickerSnapshotOpen",
-      "category": "queries",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:329",
-      "accessShape": "this.game.getTargetPickerSnapshot",
-      "category": "queries",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:329",
-      "accessShape": "this.game.getTargetPickerSnapshot().pickerKind",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:338",
-      "accessShape": "this.game.getTargetPickerSnapshot",
-      "category": "queries",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:339",
-      "accessShape": "snapshot.pickerKind",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:340",
-      "accessShape": "snapshot.picker.candidates",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:355",
-      "accessShape": "CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen()",
-      "category": "queries",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:359",
-      "accessShape": "this.game.selectedFamousPersonId",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:363",
-      "accessShape": "this.game.getEventSnapshot",
-      "category": "queries",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:363",
-      "accessShape": "this.game.getEventSnapshot().eventId",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:364",
-      "accessShape": "this.game.eventController.activeEventId",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:370",
-      "accessShape": "this.game.tutorial.grants.firstExploreEmptyCity.siteId",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:371",
-      "accessShape": "this.game.state.tutorial.grants.firstExploreEmptyCity.siteId",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:379",
-      "accessShape": "this.game.tutorial.grants.firstExploreEmptyCity",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:380",
-      "accessShape": "this.game.state.tutorial.grants.firstExploreEmptyCity",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:396",
-      "accessShape": "this.game.state.cityState.capitalCityId",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:397",
-      "accessShape": "this.game.state.activeCityId",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:398",
-      "accessShape": "this.game.activeCityId",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:403",
-      "accessShape": "this.game.state.territoryState.territories",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:412",
-      "accessShape": "TerritoryUiStateStore.ensure()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through TerritoryUiStateStore"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:417",
-      "accessShape": "this.game.getNamingSnapshot",
-      "category": "queries",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:417",
-      "accessShape": "this.game.getNamingSnapshot().prompt",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:418",
-      "accessShape": "this.game.activeNamingPrompt",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:420",
-      "accessShape": "this.game.state.territoryState.namingPrompt",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:423",
-      "accessShape": "prompt.type",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:424",
-      "accessShape": "prompt.territoryId",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:429",
-      "accessShape": "this.game.getNamingInputValue",
-      "category": "queries",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:538",
-      "accessShape": "game.canvasShell",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:542",
-      "accessShape": "host[*dynamic*]",
-      "category": "queries",
-      "note": "read; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:543",
-      "accessShape": "host[*dynamic*]",
-      "category": "effects",
-      "note": "write; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:546",
-      "accessShape": "game.state",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:547",
-      "accessShape": "game.state",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:548",
-      "accessShape": "game.state",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:557",
-      "accessShape": "CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen()",
-      "category": "queries",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:558",
-      "accessShape": "CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:566",
-      "accessShape": "game.closeEventSnapshot",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:568",
-      "accessShape": "TerritoryUiStateStore.clearWorldSelection()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through TerritoryUiStateStore"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:569",
-      "accessShape": "game.territoryController.closeSiteDialog",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:573",
-      "accessShape": "shell.closeEventSnapshot",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:574",
-      "accessShape": "TerritoryUiStateStore.ensure()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through TerritoryUiStateStore"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:576",
-      "accessShape": "shell.hideTutorialHighlight",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:577",
-      "accessShape": "shell.renderReadOnly",
-      "category": "effects",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:578",
-      "accessShape": "game.state",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:578",
-      "accessShape": "shell.renderReadOnly",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:580",
-      "accessShape": "game.renderCanvasSurface",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:606",
-      "accessShape": "CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen()",
-      "category": "queries",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:607",
-      "accessShape": "CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:615",
-      "accessShape": "game.canvasShell.hideTutorialHighlight",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:617",
-      "accessShape": "StateWriter.commit()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through StateWriter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:625",
-      "accessShape": "CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:626",
-      "accessShape": "game.tutorialAdvisorDialogue",
-      "category": "effects",
-      "note": "write; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:627",
-      "accessShape": "game.canvasShell",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:628",
-      "accessShape": "game.canvasShell.tutorialAdvisorDialogue",
-      "category": "effects",
-      "note": "write; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:631",
-      "accessShape": "game.renderCanvasSurface",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:641",
-      "accessShape": "CanvasModeOwnershipRuntime.closeFormationEditor()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through CanvasModeOwnershipRuntime"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:656",
-      "accessShape": "this.game.canvasShell",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:657",
-      "accessShape": "shell.actionController",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:657",
-      "accessShape": "this.game.actionController",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:658",
-      "accessShape": "actionController.centerWorldMapOnSite",
-      "category": "effects",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:659",
-      "accessShape": "actionController.centerWorldMapOnSite",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:671",
-      "accessShape": "this.game.canvasShell",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:672",
-      "accessShape": "shell.actionController",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:672",
-      "accessShape": "this.game.actionController",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:674",
-      "accessShape": "actionController.centerWorldMapOnSite",
-      "category": "effects",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:675",
-      "accessShape": "actionController.centerWorldMapOnSite",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:678",
-      "accessShape": "this.game.renderCanvasSurface",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:679",
-      "accessShape": "shell.renderActive",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:693",
-      "accessShape": "game.canvasShell",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:698",
-      "accessShape": "CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen()",
-      "category": "queries",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:699",
-      "accessShape": "CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:705",
-      "accessShape": "CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:712",
-      "accessShape": "game.selectedFamousPersonId",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:713",
-      "accessShape": "game.selectedFamousPersonId",
-      "category": "effects",
-      "note": "write; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:716",
-      "accessShape": "game.isEventSnapshotOpen",
-      "category": "queries",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:717",
-      "accessShape": "game.closeEventSnapshot",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:719",
-      "accessShape": "shell.isEventSnapshotOpen",
-      "category": "queries",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:720",
-      "accessShape": "shell.closeEventSnapshot",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:724",
-      "accessShape": "shell.hideTutorialHighlight",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:725",
-      "accessShape": "game.renderCanvasSurface",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:733",
-      "accessShape": "CanvasModalSnapshotAdapter.openBlockingPanelSnapshot()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:734",
-      "accessShape": "game.activeCityManagementTab",
-      "category": "effects",
-      "note": "write; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:735",
-      "accessShape": "CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:736",
-      "accessShape": "CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:737",
-      "accessShape": "game.closeEventSnapshot",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:743",
-      "accessShape": "CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:744",
-      "accessShape": "CanvasModalSnapshotAdapter.openBlockingPanelSnapshot()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:745",
-      "accessShape": "game.closeEventSnapshot",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:746",
-      "accessShape": "CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:751",
-      "accessShape": "this.game.state.buildingDefinitions[*dynamic*]",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:752",
-      "accessShape": "this.game.state.buildingConfig.buildings[*dynamic*]",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:753",
-      "accessShape": "this.game.buildingConfig.buildings[*dynamic*]",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:755",
-      "accessShape": "config.category",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:761",
-      "accessShape": "game.activeBuildingCategory",
-      "category": "effects",
-      "note": "write; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:762",
-      "accessShape": "game.buildingOffset",
-      "category": "effects",
-      "note": "write; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:763",
-      "accessShape": "game.buildingTransition",
-      "category": "effects",
-      "note": "write; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:769",
-      "accessShape": "game.canvasShell",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:772",
-      "accessShape": "host[*dynamic*]",
-      "category": "queries",
-      "note": "read; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:773",
-      "accessShape": "host[*dynamic*]",
-      "category": "effects",
-      "note": "write; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:778",
-      "accessShape": "CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen()",
-      "category": "queries",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:780",
-      "accessShape": "CanvasModalSnapshotAdapter.openBlockingPanelSnapshot()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:784",
-      "accessShape": "CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen()",
-      "category": "queries",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:785",
-      "accessShape": "CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:788",
-      "accessShape": "game.state",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:789",
-      "accessShape": "game.state",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:790",
-      "accessShape": "game.state",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:801",
-      "accessShape": "game.isEventSnapshotOpen",
-      "category": "queries",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:802",
-      "accessShape": "game.closeEventSnapshot",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:805",
-      "accessShape": "TerritoryUiStateStore.clearWorldSelection()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through TerritoryUiStateStore"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:806",
-      "accessShape": "TerritoryUiStateStore.ensure()",
-      "category": "effects",
-      "note": "call; root=this.game; indirect host access through TerritoryUiStateStore"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:807",
-      "accessShape": "game.territoryController.closeSiteDialog",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:808",
-      "accessShape": "shell.closeWorldSiteHud",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:809",
-      "accessShape": "shell.hideTutorialHighlight",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:810",
-      "accessShape": "shell.renderReadOnly",
-      "category": "effects",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:811",
-      "accessShape": "game.state",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:811",
-      "accessShape": "shell.renderReadOnly",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideController.js:816",
-      "accessShape": "game.renderCanvasSurface",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
     {
       "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:60",
       "accessShape": "host.getCurrentStep",
@@ -934,356 +52,326 @@
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:79",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:74",
+      "accessShape": "host.syncFromResultPayload",
+      "category": "effects",
+      "note": "read; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:75",
+      "accessShape": "host.syncFromResultPayload",
+      "category": "effects",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:82",
+      "accessShape": "host.state",
+      "category": "queries",
+      "note": "read; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:82",
       "accessShape": "host.sync",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:80",
-      "accessShape": "host.game.tutorial",
-      "category": "queries",
-      "note": "read; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:80",
-      "accessShape": "host.state",
-      "category": "queries",
-      "note": "read; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:83",
-      "accessShape": "host.state",
-      "category": "queries",
-      "note": "read; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:87",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:84",
       "accessShape": "host.state",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
       "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:88",
+      "accessShape": "host.state",
+      "category": "queries",
+      "note": "read; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:89",
       "accessShape": "host.advanceTo",
       "category": "next",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:88",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:89",
       "accessShape": "host.state",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:95",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:96",
       "accessShape": "host.canOpenTab",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:97",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:98",
       "accessShape": "host.advanceTo",
       "category": "next",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:104",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:105",
       "accessShape": "host.normalizePanelTab",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:105",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:106",
       "accessShape": "host.handleEvent",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:108",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:109",
       "accessShape": "host.advanceTo",
       "category": "next",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:111",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:112",
       "accessShape": "host.advanceTo",
       "category": "next",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:114",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:115",
       "accessShape": "host.advanceTo",
       "category": "next",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:117",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:118",
       "accessShape": "host.advanceTo",
       "category": "next",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:119",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:120",
       "accessShape": "host.refreshCurrentHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:124",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:125",
       "accessShape": "host.isCompleted",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:124",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:125",
       "accessShape": "host.state",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:126",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:127",
       "accessShape": "host.advanceTo",
       "category": "next",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:126",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:127",
       "accessShape": "host.state",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:128",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:129",
       "accessShape": "host.state",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:134",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:135",
       "accessShape": "host.isFarmGuideActive",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:135",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:136",
       "accessShape": "host.isLumbermillGuideActive",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:137",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:138",
       "accessShape": "host.isHouseGuideActive",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:148",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:149",
       "accessShape": "host.showSoftGuide",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:159",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:160",
       "accessShape": "host.showSoftGuide",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:165",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:166",
       "accessShape": "host.showSoftGuide",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:170",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:171",
       "accessShape": "host.showSoftGuide",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:181",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:182",
       "accessShape": "host.advanceTo",
       "category": "next",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:181",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:182",
       "accessShape": "host.state",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:184",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:185",
       "accessShape": "host.advanceTo",
       "category": "next",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:184",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:185",
       "accessShape": "host.state",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:186",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:187",
       "accessShape": "host.state",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:191",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:192",
       "accessShape": "host.advanceTo",
       "category": "next",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:194",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:195",
       "accessShape": "host.advanceTo",
       "category": "next",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:194",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:195",
       "accessShape": "host.state",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:196",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:197",
       "accessShape": "host.state",
-      "category": "queries",
-      "note": "read; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:202",
-      "accessShape": "host.game",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
       "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:203",
-      "accessShape": "game.getPanelSurfaceManager",
-      "category": "queries",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:203",
-      "accessShape": "game.getPanelSurfaceManager().closePanel",
+      "accessShape": "host.closeFamousPersonsSurface",
       "category": "effects",
       "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:204",
-      "accessShape": "CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot()",
-      "category": "effects",
-      "note": "call; root=host; indirect host access through CanvasModalSnapshotAdapter"
     },
     {
       "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:205",
-      "accessShape": "game.famousPersonsPage",
-      "category": "effects",
-      "note": "write; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:206",
-      "accessShape": "game.selectedFamousPersonId",
-      "category": "effects",
-      "note": "write; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:208",
       "accessShape": "host.refreshCurrentHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:209",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:206",
       "accessShape": "host.state",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:214",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:211",
       "accessShape": "host.getScoutFamousPersonId",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:219",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:216",
       "accessShape": "host.advanceTo",
       "category": "next",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:219",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:216",
       "accessShape": "host.state",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:221",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:218",
       "accessShape": "host.state",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:238",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:235",
       "accessShape": "host.closeArmyFormationEditorEverywhere",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:239",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:236",
       "accessShape": "host.ensureMapHomeGuideVisible",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:240",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:237",
       "accessShape": "host.refreshCurrentHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:243",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:240",
       "accessShape": "host.closeArmyFormationEditorEverywhere",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:244",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:241",
       "accessShape": "host.refreshCurrentHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:258",
-      "accessShape": "host.game",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:255",
+      "accessShape": "host.closeFamousPersonsSurface",
+      "category": "effects",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:256",
+      "accessShape": "host.refreshCurrentHighlight",
+      "category": "effects",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:257",
+      "accessShape": "host.state",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:259",
-      "accessShape": "CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot()",
-      "category": "effects",
-      "note": "call; root=host; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:260",
-      "accessShape": "game.famousPersonsPage",
-      "category": "effects",
-      "note": "write; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:261",
-      "accessShape": "game.selectedFamousPersonId",
-      "category": "effects",
-      "note": "write; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:262",
-      "accessShape": "host.refreshCurrentHighlight",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:263",
+      "accessShape": "host.handleEvent",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
@@ -1294,103 +382,61 @@
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:269",
-      "accessShape": "host.handleEvent",
-      "category": "effects",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:269",
-      "accessShape": "host.state",
-      "category": "queries",
-      "note": "read; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:271",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:265",
       "accessShape": "host.refreshCurrentHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:272",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:266",
       "accessShape": "host.state",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:284",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:278",
       "accessShape": "host.refreshCurrentHighlight",
+      "category": "effects",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:279",
+      "accessShape": "host.state",
+      "category": "queries",
+      "note": "read; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:283",
+      "accessShape": "host.closeAdvisorSurface",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
       "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:285",
-      "accessShape": "host.state",
-      "category": "queries",
-      "note": "read; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:289",
-      "accessShape": "host.game",
-      "category": "queries",
-      "note": "read; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:290",
-      "accessShape": "CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot()",
-      "category": "effects",
-      "note": "call; root=host; indirect host access through CanvasModalSnapshotAdapter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:291",
-      "accessShape": "game.tutorialAdvisorDialogue",
-      "category": "effects",
-      "note": "write; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:292",
-      "accessShape": "game.canvasShell",
-      "category": "queries",
-      "note": "read; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:293",
-      "accessShape": "game.canvasShell.tutorialAdvisorDialogue",
-      "category": "effects",
-      "note": "write; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:296",
       "accessShape": "host.refreshCurrentHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:297",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:286",
       "accessShape": "host.state",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:299",
-      "accessShape": "game.canvasShell.hideTutorialHighlight",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:288",
+      "accessShape": "host.clearTutorialSoftGuide",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:300",
-      "accessShape": "StateWriter.commit()",
-      "category": "effects",
-      "note": "call; root=host; indirect host access through StateWriter"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:308",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:289",
       "accessShape": "host.advanceTo",
       "category": "next",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:309",
+      "location": "frontend/js/tutorial/TutorialGuideEventRegistry.js:290",
       "accessShape": "host.refreshCurrentHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
@@ -1409,7 +455,7 @@
     },
     {
       "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:87",
-      "accessShape": "host.game.canvasShell.hideTutorialHighlight",
+      "accessShape": "host.hideTutorialHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
@@ -1643,7 +689,7 @@
     },
     {
       "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:278",
-      "accessShape": "host.game.openNaming",
+      "accessShape": "host.openNaming",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
@@ -1697,7 +743,7 @@
     },
     {
       "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:313",
-      "accessShape": "host.game.canvasShell.showTutorialHighlight",
+      "accessShape": "host.showTutorialHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
@@ -1739,663 +785,489 @@
     },
     {
       "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:335",
-      "accessShape": "host.game.canvasShell",
-      "category": "queries",
-      "note": "read; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:336",
-      "accessShape": "shell.getCanvasTarget",
+      "accessShape": "host.getCanvasTarget",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:342",
-      "accessShape": "shell.showTutorialHighlight",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:341",
+      "accessShape": "host.showTutorialHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:369",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:368",
       "accessShape": "host.showBuildingGuide",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:397",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:396",
       "accessShape": "host.getActiveEventId",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:404",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:403",
       "accessShape": "host.getActiveEventId",
+      "category": "queries",
+      "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:412",
+      "accessShape": "host.getCapitalCityId",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
       "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:413",
-      "accessShape": "host.getCapitalCityId",
-      "category": "queries",
-      "note": "call; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:414",
       "accessShape": "host.getFirstExploreCityId",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:417",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:416",
       "accessShape": "host.isAdvisorOpen",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:420",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:419",
       "accessShape": "host.isRewardRevealOpen",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:455",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:454",
       "accessShape": "host.isOnTab",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:474",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:473",
       "accessShape": "host.isFarmGuideActive",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:499",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:498",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:510",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:509",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:607",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:606",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:618",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:617",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:628",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:627",
       "accessShape": "host.getCapitalCityId",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:628",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:627",
       "accessShape": "host.isWorldSiteSelected",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:630",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:629",
       "accessShape": "host.getCapitalCityId",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:630",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:629",
       "accessShape": "host.showCapitalEnterHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:635",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:634",
       "accessShape": "host.focusCapitalSite",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:635",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:634",
       "accessShape": "host.getCapitalCityId",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:645",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:644",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:661",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:660",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:665",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:664",
       "accessShape": "host.getCapitalCityId",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:680",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:679",
       "accessShape": "host.ensureMapHomeGuideVisible",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:686",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:685",
       "accessShape": "host.getFirstExploreCityTarget",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:688",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:687",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:691",
+      "accessShape": "target.q",
+      "category": "queries",
+      "note": "read; root=host; direct host member access"
     },
     {
       "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:692",
-      "accessShape": "target.q",
-      "category": "queries",
-      "note": "read; root=host; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:693",
       "accessShape": "target.r",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:695",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:694",
       "accessShape": "target.q",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:695",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:694",
       "accessShape": "target.r",
       "category": "queries",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:699",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:698",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:711",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:710",
       "accessShape": "host.isWorldMarchFormationPickerOpen",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:714",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:713",
       "accessShape": "host.ensureMapHomeGuideVisible",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:715",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:714",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:726",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:725",
       "accessShape": "host.isWorldMarchFormationPickerOpen",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:729",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:728",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:739",
-      "accessShape": "host.game.state.worldExplorerState.activeMission",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:738",
+      "accessShape": "host.hasActiveWorldExplorerMission",
       "category": "queries",
-      "note": "read; root=host; direct host member access"
+      "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:752",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:751",
       "accessShape": "host.getFirstExploreCityId",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:753",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:752",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:773",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:772",
       "accessShape": "host.ensureCityPeopleGuideVisible",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:775",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:774",
       "accessShape": "host.handleEvent",
       "category": "effects",
       "note": "read; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:776",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:775",
       "accessShape": "host.handleEvent",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:777",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:776",
       "accessShape": "host.onTalentPolicyOpened",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:778",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:777",
       "accessShape": "host.refreshCurrentHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:779",
-      "accessShape": "host.game.canvasShell.hideTutorialHighlight",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:778",
+      "accessShape": "host.hideTutorialHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:787",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:786",
       "accessShape": "host.ensureCityPeopleGuideVisible",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:788",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:787",
       "accessShape": "host.isCityManagementTabOpen",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:789",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:788",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:796",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:795",
       "accessShape": "host.advanceTo",
       "category": "next",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:796",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:795",
       "accessShape": "host.advanceTo().then",
       "category": "next",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:796",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:795",
       "accessShape": "host.advanceTo().then().catch",
       "category": "next",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:798",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:797",
       "accessShape": "host.refreshCurrentHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:800",
-      "accessShape": "host.game.canvasShell.hideTutorialHighlight",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:799",
+      "accessShape": "host.hideTutorialHighlight",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:813",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:812",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:824",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:823",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:835",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:834",
       "accessShape": "host.showHighlight",
       "category": "resolveTarget",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:852",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:851",
       "accessShape": "host.showSoftGuide",
       "category": "effects",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:856",
+      "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:855",
       "accessShape": "host.isHouseGuideActive",
       "category": "queries",
       "note": "call; root=host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:48",
-      "accessShape": "this.host.game",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:46",
+      "accessShape": "this.host.retryingHighlightAfterRender",
       "category": "resolveTarget",
-      "note": "read; root=this.host; direct host member access"
+      "note": "write; root=this.host; direct host member access"
+    },
+    {
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:53",
+      "accessShape": "this.host.getTargetActiveRenderTab",
+      "category": "resolveTarget",
+      "note": "call; root=this.host; direct host member access"
     },
     {
       "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:57",
-      "accessShape": "game.state.currentTab",
+      "accessShape": "this.host.queryCanvasTarget",
       "category": "resolveTarget",
-      "note": "read; root=game; direct host member access"
+      "note": "call; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:57",
-      "accessShape": "UiRuntimeStateStore.getNavigation()",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:68",
+      "accessShape": "this.host.refreshTargetSurface",
       "category": "resolveTarget",
-      "note": "call; root=game; indirect host access through UiRuntimeStateStore"
+      "note": "call; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:75",
-      "accessShape": "shell.getPanelSurfaceManager",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:72",
+      "accessShape": "this.host.getTargetState",
       "category": "resolveTarget",
-      "note": "call; root=shell; direct host member access"
+      "note": "call; root=this.host; direct host member access"
     },
     {
       "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:76",
-      "accessShape": "game.getPanelSurfaceManager",
+      "accessShape": "this.host.resolveWorldSiteAnchorTarget",
       "category": "resolveTarget",
-      "note": "call; root=game; direct host member access"
+      "note": "call; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:77",
-      "accessShape": "shell.panelSurfaceManager",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:76",
+      "accessShape": "this.host.resolveWorldSiteAnchorTarget().target",
       "category": "resolveTarget",
-      "note": "read; root=shell; direct host member access"
+      "note": "read; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:78",
-      "accessShape": "game.panelSurfaceManager",
-      "category": "resolveTarget",
-      "note": "read; root=game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:80",
-      "accessShape": "manager.projectModalLayer",
-      "category": "resolveTarget",
-      "note": "call; root=shell; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:96",
-      "accessShape": "shell.worldMapRuntime.getLastTileMapContext",
-      "category": "resolveTarget",
-      "note": "call; root=shell; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:97",
-      "accessShape": "shell.worldMapRuntime.lastTileMapContext",
-      "category": "resolveTarget",
-      "note": "read; root=shell; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:98",
-      "accessShape": "shell.worldMapRenderer.lastWorldTileMapContext",
-      "category": "resolveTarget",
-      "note": "read; root=shell; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:99",
-      "accessShape": "shell.renderer.lastWorldTileMapContext",
-      "category": "resolveTarget",
-      "note": "read; root=shell; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:106",
-      "accessShape": "shell.worldMapRenderer",
-      "category": "resolveTarget",
-      "note": "read; root=shell; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:107",
-      "accessShape": "shell.renderer",
-      "category": "resolveTarget",
-      "note": "read; root=shell; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:108",
-      "accessShape": "shell.worldActorLayerRenderer",
-      "category": "resolveTarget",
-      "note": "read; root=shell; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:119",
-      "accessShape": "shell.territoryUiState",
-      "category": "resolveTarget",
-      "note": "read; root=shell; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:156",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:84",
       "accessShape": "this.host.retryingHighlightAfterRender",
       "category": "resolveTarget",
       "note": "read; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:157",
-      "accessShape": "this.host.retryingHighlightAfterRender",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:91",
+      "accessShape": "this.host.hideTutorialHighlight",
       "category": "resolveTarget",
-      "note": "write; root=this.host; direct host member access"
+      "note": "call; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:160",
-      "accessShape": "this.host.retryingHighlightAfterRender",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:94",
+      "accessShape": "this.host.showTutorialHighlight",
       "category": "resolveTarget",
-      "note": "write; root=this.host; direct host member access"
+      "note": "call; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:163",
-      "accessShape": "shell.hideTutorialHighlight",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:102",
+      "accessShape": "target.getRect",
       "category": "resolveTarget",
-      "note": "call; root=shell; direct host member access"
+      "note": "read; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:166",
-      "accessShape": "shell.showTutorialHighlight",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:103",
+      "accessShape": "target.getRect",
       "category": "resolveTarget",
-      "note": "call; root=shell; direct host member access"
+      "note": "call; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:196",
-      "accessShape": "shell.renderer.width",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:104",
+      "accessShape": "target.getBoundingClientRect",
       "category": "resolveTarget",
-      "note": "read; root=shell; direct host member access"
+      "note": "read; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:196",
-      "accessShape": "shell.runtime.width",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:104",
+      "accessShape": "target.getBoundingClientRect",
       "category": "resolveTarget",
-      "note": "read; root=shell; direct host member access"
+      "note": "call; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:196",
-      "accessShape": "shell.width",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:123",
+      "accessShape": "this.host.getTutorialCanvasSize",
       "category": "resolveTarget",
-      "note": "read; root=shell; direct host member access"
+      "note": "call; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:197",
-      "accessShape": "shell.height",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:135",
+      "accessShape": "this.host.resolveWorldSiteAnchorTarget",
       "category": "resolveTarget",
-      "note": "read; root=shell; direct host member access"
+      "note": "call; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:197",
-      "accessShape": "shell.renderer.height",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:137",
+      "accessShape": "anchorResolution.target",
       "category": "resolveTarget",
-      "note": "read; root=shell; direct host member access"
+      "note": "read; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:197",
-      "accessShape": "shell.runtime.height",
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:138",
+      "accessShape": "anchorResolution.available",
       "category": "resolveTarget",
-      "note": "read; root=shell; direct host member access"
+      "note": "read; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:91",
-      "accessShape": "this.game.state",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:139",
+      "accessShape": "this.host.hideTutorialHighlight",
+      "category": "resolveTarget",
+      "note": "call; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:95",
-      "accessShape": "this.game.authView.loginPanelVisible",
-      "category": "effects",
-      "note": "read; root=this.game; direct host member access"
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:147",
+      "accessShape": "this.host.hideTutorialHighlight",
+      "category": "resolveTarget",
+      "note": "call; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:95",
-      "accessShape": "this.game.canvasShell.auth.view.loginPanelVisible",
-      "category": "effects",
-      "note": "read; root=this.game; direct host member access"
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:150",
+      "accessShape": "this.host.showTutorialHighlight",
+      "category": "resolveTarget",
+      "note": "call; root=this.host; direct host member access"
     },
     {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:96",
-      "accessShape": "this.game.hasServerState",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:106",
-      "accessShape": "this.game.state",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:107",
-      "accessShape": "this.game.tutorial",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:109",
-      "accessShape": "tutorial.completed",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:109",
-      "accessShape": "tutorial.disabled",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:110",
-      "accessShape": "tutorial.currentStep",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:118",
-      "accessShape": "this.game.state",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:135",
-      "accessShape": "this.game.state",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:233",
-      "accessShape": "this.game.log",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:255",
-      "accessShape": "this.game.state",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:284",
-      "accessShape": "this.game.tutorialIntro",
-      "category": "effects",
-      "note": "write; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:286",
-      "accessShape": "this.game.canvasShell",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:287",
-      "accessShape": "this.game.canvasShell.tutorialIntro",
-      "category": "effects",
-      "note": "write; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:293",
-      "accessShape": "this.game.canvasShell",
-      "category": "queries",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:294",
-      "accessShape": "shell.renderActive",
-      "category": "effects",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:294",
-      "accessShape": "shell.renderActive",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:295",
-      "accessShape": "this.game.renderCanvasSurface",
-      "category": "effects",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:295",
-      "accessShape": "this.game.renderCanvasSurface",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:296",
-      "accessShape": "this.game.render",
-      "category": "effects",
-      "note": "read; root=this.game; direct host member access"
-    },
-    {
-      "location": "frontend/js/tutorial/TutorialIntroOverlay.js:296",
-      "accessShape": "this.game.render",
-      "category": "effects",
-      "note": "call; root=this.game; direct host member access"
+      "location": "frontend/js/tutorial/TutorialGuideTargetResolver.js:155",
+      "accessShape": "target.action",
+      "category": "resolveTarget",
+      "note": "read; root=this.host; direct host member access"
     }
   ]
 }

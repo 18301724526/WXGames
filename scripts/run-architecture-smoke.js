@@ -910,6 +910,10 @@ function main() {
   run('tutorial step contract blocking guard', process.execPath, [
     'scripts/check-tutorial-step-contract.js',
   ]);
+  run('tutorial host surface inventory freshness guard', process.execPath, [
+    'scripts/generate-tutorial-host-surface-inventory.js',
+    '--check',
+  ]);
   run('source encoding blocking guard', process.execPath, [
     'scripts/check-source-encoding.js',
   ]);
