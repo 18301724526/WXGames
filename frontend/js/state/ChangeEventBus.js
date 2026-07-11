@@ -27,9 +27,10 @@
       const name = String(eventName || '');
       const listeners = [...(subscribers.get(name) || [])];
       const errors = [];
+      const results = [];
       listeners.forEach((subscriber) => {
         try {
-          subscriber(payload, name);
+          results.push(subscriber(payload, name));
         } catch (error) {
           errors.push(error);
           try {
@@ -39,7 +40,7 @@
           }
         }
       });
-      return { delivered: listeners.length - errors.length, failed: errors.length, errors };
+      return { delivered: listeners.length - errors.length, failed: errors.length, errors, results };
     }
 
     return Object.freeze({ emit, subscribe });

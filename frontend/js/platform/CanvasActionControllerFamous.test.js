@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const CanvasActionController = require('./CanvasActionController');
 const CanvasActionDispatcher = require('./CanvasActionDispatcher');
+const ChangeEventBus = require('../state/ChangeEventBus');
 const ModalStore = require('../state/ModalStore');
 const { makeModalOwnerHost } = require('../../test-support/CanvasOwnerTestHarness');
 
@@ -234,18 +235,21 @@ test('CanvasActionController opens famous persons when the tutorial gate allows 
 test('seek famous person notifies tutorial with async result', async () => {
   const calls = [];
   const result = { candidate: { id: 'candidate-1' } };
+  const changeEventBus = ChangeEventBus.createEventBus();
+  changeEventBus.subscribe('tutorialStateChanged', (payload) => {
+    calls.push(['tutorial', payload.result]);
+  });
   const game = {
     async seekFamousPerson(source) {
       calls.push(['seek', source]);
       return result;
     },
-    tutorialController: {
-      onFamousPersonSought(nextResult) {
-        calls.push(['tutorial', nextResult]);
-      },
-    },
   };
-  const controller = new HostController({ host: { lastGame: game }, awaitAsync: true });
+  const controller = new HostController({
+    host: { lastGame: game },
+    awaitAsync: true,
+    changeEventBus,
+  });
 
   assert.equal(
     await controller.handle_seekFamousPerson({ type: 'seekFamousPerson', source: 'guide' }),

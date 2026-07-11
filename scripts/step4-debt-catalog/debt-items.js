@@ -317,7 +317,7 @@ const DEBT_ITEMS = Object.freeze([
     targetPhase: 4,
     contracts: ['COP-OWNER-002'],
     sourceRefs: [
-      sourceRef('frontend/js/platform/CanvasActionController.js', 510, 515, 'territoryAction/claimConquest routing is action dispatch only', 'frontend:territory-mission-ready'),
+      sourceRef('frontend/js/platform/CanvasActionController.js', 948, 954, 'territoryAction/claimConquest routing is action dispatch only', 'frontend:territory-mission-ready'),
       sourceRef('frontend/js/api/GameAPI.js', 880, 886, 'GameAPI claimConquest submits command', 'frontend:territory-mission-ready'),
       sourceRef('scripts/command-owner-step1/inventories.js', 745, 760, 'CLIENT_LOCAL_BLOCKS territory-mission-ready', 'frontend:territory-mission-ready'),
     ],
@@ -337,7 +337,7 @@ const DEBT_ITEMS = Object.freeze([
     targetPhase: 4,
     contracts: ['COP-TIME-001'],
     sourceRefs: [
-      sourceRef('frontend/js/platform/CanvasActionController.js', 442, 442, 'confirmWorldMarchDeployment routes after warning confirmation', 'frontend:world-march-passability'),
+      sourceRef('frontend/js/platform/CanvasActionController.js', 1038, 1040, 'confirmWorldMarchDeployment routes after warning confirmation', 'frontend:world-march-passability'),
       sourceRef('frontend/js/api/GameAPI.js', 821, 829, 'GameAPI startWorldMarch submits command', 'frontend:world-march-passability'),
       sourceRef('scripts/command-owner-step1/inventories.js', 762, 777, 'CLIENT_LOCAL_BLOCKS world-march-passability', 'frontend:world-march-passability'),
     ],

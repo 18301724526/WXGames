@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const CanvasActionController = require('./CanvasActionController');
+const ChangeEventBus = require('../state/ChangeEventBus');
 const { makeModalOwnerHost } = require('../../test-support/CanvasOwnerTestHarness');
 
 const makeModalHost = makeModalOwnerHost;
@@ -55,18 +56,14 @@ test('switch tab preserves page transition contract after delegated tab selectio
 
 test('advisor close clears dialogue across shell and game then resumes tutorial', async () => {
   const calls = [];
+  const changeEventBus = ChangeEventBus.createEventBus();
+  changeEventBus.subscribe('advisorClosed', async () => {
+    calls.push(['closed']);
+    return true;
+  });
   const game = makeModalHost({
     tutorialAdvisorDialogue: { source: 'houseBuilt' },
     canvasShell: null,
-    tutorialController: {
-      async onAdvisorClosed() {
-        calls.push(['closed']);
-        return true;
-      },
-      refreshCurrentHighlight() {
-        calls.push(['refresh']);
-      },
-    },
   });
   const host = makeModalHost({
     tutorialAdvisorDialogue: { source: 'houseBuilt' },
@@ -82,14 +79,14 @@ test('advisor close clears dialogue across shell and game then resumes tutorial'
   });
   game.canvasShell = host;
   host.openBlockingPanelSnapshot('showAdvisor', true);
-  const controller = new HostController({ host: host, awaitAsync: true });
+  const controller = new HostController({ host: host, awaitAsync: true, changeEventBus });
 
   assert.equal(await controller.handle_closeAdvisor({ type: 'closeAdvisor' }), true);
   assert.equal(host.isBlockingPanelSnapshotOpen('showAdvisor'), false);
   assert.equal(host.isModalOpen('modal:advisor'), false);
   assert.equal(host.tutorialAdvisorDialogue, null);
   assert.equal(game.tutorialAdvisorDialogue, null);
-  assert.deepEqual(calls, [['clear'], ['closed'], ['render', 'closeAdvisor'], ['refresh']]);
+  assert.deepEqual(calls, [['clear'], ['closed'], ['render', 'closeAdvisor']]);
 });
 
 test('submit naming closes shell and game naming after successful submit', async () => {
@@ -101,11 +98,6 @@ test('submit naming closes shell and game naming after successful submit', async
     },
     closeNamingModal() {
       calls.push(['gameClose']);
-    },
-    tutorialController: {
-      refreshCurrentHighlight() {
-        calls.push(['refresh']);
-      },
     },
   };
   const host = {
@@ -120,7 +112,7 @@ test('submit naming closes shell and game naming after successful submit', async
   const controller = new HostController({ host: host, awaitAsync: true });
 
   assert.equal(await controller.handle_submitNaming({ type: 'submitNaming' }), true);
-  assert.deepEqual(calls, [['submit', 'River City'], ['hostClose'], ['gameClose'], ['refresh']]);
+  assert.deepEqual(calls, [['submit', 'River City'], ['hostClose'], ['gameClose']]);
 });
 
 test('submit naming prefers game promise instead of boolean forward result', async () => {
@@ -132,11 +124,6 @@ test('submit naming prefers game promise instead of boolean forward result', asy
     },
     closeNamingModal() {
       calls.push(['gameClose']);
-    },
-    tutorialController: {
-      refreshCurrentHighlight() {
-        calls.push(['refresh']);
-      },
     },
   };
   const host = {
@@ -155,7 +142,7 @@ test('submit naming prefers game promise instead of boolean forward result', asy
   };
 
   assert.equal(await controller.handle_submitNaming({ type: 'submitNaming' }), true);
-  assert.deepEqual(calls, [['submit', 'River City'], ['hostClose'], ['gameClose'], ['refresh']]);
+  assert.deepEqual(calls, [['submit', 'River City'], ['hostClose'], ['gameClose']]);
 });
 
 test('reset request opens canvas confirmation before executing reset', async () => {
@@ -313,13 +300,7 @@ test('downloadClientOperationLog reports concrete local save failure', () => {
 
 test('shell blocking panel actions route canonical opens through the snapshot owner', async () => {
   const calls = [];
-  const game = makeModalHost({
-    tutorialController: {
-      refreshCurrentHighlight() {
-        calls.push(['refresh']);
-      },
-    },
-  });
+  const game = makeModalHost({});
   const host = makeModalHost({
     lastGame: game,
     runtime: {
@@ -354,7 +335,7 @@ test('shell blocking panel actions route canonical opens through the snapshot ow
   assert.equal(host.isModalOpen('modal:commandPanel'), false);
   assert.deepEqual(
     calls.map((call) => call[0]),
-    ['render', 'render', 'refresh', 'timeout', 'refresh', 'render'],
+    ['render', 'render', 'render'],
   );
 });
 

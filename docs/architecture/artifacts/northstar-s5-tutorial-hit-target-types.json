@@ -25,7 +25,7 @@
     },
     {
       "file": "frontend/js/platform/CanvasActionController.js",
-      "sha256": "11a831fda54b1a6b62deeb7e0d4f29a426f92d8ff8240bdf7f59cd14c6107b10"
+      "sha256": "80a520695eb884820759ca3638b6bb3761f2c67030cef45928d7cc69ff02f08f"
     },
     {
       "file": "frontend/js/platform/CanvasActionDescriptorRegistry.js",

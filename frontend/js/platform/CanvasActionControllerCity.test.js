@@ -201,7 +201,6 @@ test('event claim closes event state, syncs tutorial, and exposes reward reveal 
     ['sync', 14],
     ['close'],
     ['hideGuideHighlight'],
-    ['refresh'],
   ]);
 });
 

@@ -20,7 +20,12 @@ test('multiple subscribers receive the same publication', () => {
   const received = [];
   bus.subscribe('state.changed', () => received.push('first'));
   bus.subscribe('state.changed', () => received.push('second'));
-  assert.deepEqual(bus.emit('state.changed', {}), { delivered: 2, failed: 0, errors: [] });
+  assert.deepEqual(bus.emit('state.changed', {}), {
+    delivered: 2,
+    failed: 0,
+    errors: [],
+    results: [1, 2],
+  });
   assert.deepEqual(received, ['first', 'second']);
 });
 

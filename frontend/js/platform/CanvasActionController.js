@@ -63,6 +63,10 @@
   if (typeof module !== 'undefined' && module.exports && !StateWriter) {
     StateWriter = require('../state/StateWriter');
   }
+  var ChangeEventBus = global.ChangeEventBus;
+  if (typeof module !== 'undefined' && module.exports && !ChangeEventBus) {
+    ChangeEventBus = require('../state/ChangeEventBus');
+  }
 
   function getCanvasPanelSurfaceManagerCtor() {
     if (global.CanvasPanelSurfaceManager) return global.CanvasPanelSurfaceManager;
@@ -175,6 +179,7 @@
       this.host = options.host || null;
       this.awaitAsync = Boolean(options.awaitAsync);
       this.log = typeof options.log === 'function' ? options.log : null;
+      this.changeEventBus = options.changeEventBus || ChangeEventBus || null;
       const PanelActionRunnerCtor = options.panelActionRunnerClass || getCanvasPanelActionRunnerCtor();
       this.panelActionRunner = options.panelActionRunner || (PanelActionRunnerCtor ? new PanelActionRunnerCtor() : null);
       const TechTreeInteractionModelCtor = options.techTreeInteractionModelClass || TechTreeInteractionModelBase || null;
@@ -203,6 +208,11 @@
 
     getGameHost() {
       return this.host?.getCanvasGameHost?.() || this.host?.lastGame || this.host;
+    }
+
+    emitTutorialEvent(eventName, payload = {}) {
+      const report = this.changeEventBus?.emit?.(eventName, payload);
+      return report?.results?.find((result) => result !== undefined);
     }
 
     getState() {
@@ -807,11 +817,10 @@
               const switched = game.switchMilitaryView(action.view) !== false;
               if (switched) {
                 CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this.host, 'activeCommandPanel');
-                const result = game?.tutorialController?.onMilitaryViewSwitched?.(action.view || 'army');
+                const result = this.emitTutorialEvent('militaryViewSwitched', {
+                  view: action.view || 'army',
+                });
                 this.afterHandled(action);
-                game?.tutorialController?.refreshCurrentHighlight?.();
-                const scheduler = this.host?.runtime || game?.runtime || global;
-                scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
                 if (result?.catch) result.catch((error) => this.log?.(error));
               }
               return switched;
@@ -819,7 +828,7 @@
             const view = action.view || 'army';
             CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this.host, 'activeCommandPanel');
             CanvasModeOwnershipRuntime?.setMilitaryView?.(this.host, view);
-            game?.tutorialController?.onMilitaryViewSwitched?.(view);
+            this.emitTutorialEvent('militaryViewSwitched', { view });
             return this.afterHandled(action);
           }
 
@@ -848,21 +857,17 @@
             if (forwarded !== undefined) {
               return this.finalizeForwarded(forwarded, () => {
                 this.openWorldSiteLocally(siteId);
-                this.getGameHost()?.tutorialController?.refreshCurrentHighlight?.();
               });
             }
             closeTargetPickerSnapshot(this.host);
             const territory = this.getTerritoryController();
             if (territory?.openSiteDialog) {
               territory.openSiteDialog(siteId);
-              this.getGameHost()?.tutorialController?.refreshCurrentHighlight?.();
               return true;
             }
             const uiState = this.getSharedTerritoryUiState();
             uiState.selectedSiteId = siteId;
-            const handled = this.afterHandled(action);
-            this.getGameHost()?.tutorialController?.refreshCurrentHighlight?.();
-            return handled;
+            return this.afterHandled(action);
           }
 
     handle_closeWorldSite(action) {
@@ -1083,11 +1088,10 @@
             CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this.host, 'showCityManagement', true);
             this.closePanels(['showCityManagement']);
             const handled = this.afterHandled(action);
-            const result = game?.tutorialController?.onCityManagementOpened?.(tab);
+            const result = this.emitTutorialEvent('cityManagementOpened', { tab });
             const refreshAfterTutorialAdvance = () => {
               owner.activeCityManagementTab = tab;
               CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this.host, 'showCityManagement', true);
-              game?.tutorialController?.refreshCurrentHighlight?.();
             };
             if (result && typeof result.then === 'function') {
               result.then(refreshAfterTutorialAdvance).catch((error) => this.log?.(error));
@@ -1109,9 +1113,7 @@
             const owner = game || this.host;
             owner.activeCityManagementTab = tab;
             const handled = this.afterHandled(action);
-            game?.tutorialController?.onCityManagementOpened?.(tab);
-            const scheduler = this.host?.runtime || game?.runtime || global;
-            scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
+            this.emitTutorialEvent('cityManagementOpened', { tab });
             return handled;
           }
 
@@ -1124,9 +1126,7 @@
             const eventId = this.host.openEventSnapshot?.(action.eventId) || action.eventId;
             const controller = this.getEventController();
             controller?.open?.(eventId);
-            const handled = this.afterHandled(action);
-            game?.tutorialController?.refreshCurrentHighlight?.();
-            return handled;
+            return this.afterHandled(action);
           }
 
     handle_closeEvent(action) {
@@ -1149,9 +1149,7 @@
             if (game?.canvasShell && game.canvasShell !== this.host) {
               game.canvasShell.activeTaskCenterTab = tab;
             }
-            const handled = this.afterHandled(action);
-            game?.tutorialController?.refreshCurrentHighlight?.();
-            return handled;
+            return this.afterHandled(action);
           }
 
     handle_closeTaskCenter(action) {
@@ -1262,9 +1260,7 @@
                 CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this.host, 'showCityManagement', true);
                 this.afterHandled(action);
                 const tab = action.tab || 'buildings';
-                game?.tutorialController?.onCityManagementOpened?.(tab);
-                const scheduler = this.host?.runtime || game?.runtime || global;
-                scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
+                this.emitTutorialEvent('cityManagementOpened', { tab });
               }
               return allowed !== false;
             }));
@@ -1276,12 +1272,12 @@
             const game = this.getGameHost();
             if (typeof game?.assignJob === 'function') {
               return this.finalize(Promise.resolve(game.assignJob(action.job, action.delta)).then((result) => {
-                game?.tutorialController?.onManualTalentAssigned?.(result || {});
+                this.emitTutorialEvent('tutorialStateChanged', { result: result || {} });
                 return result;
               }));
             }
             return this.finalize(this.runAction(() => this.host.api.assignJob(action.job, action.delta)).then((result) => {
-              game?.tutorialController?.onManualTalentAssigned?.(result || {});
+              this.emitTutorialEvent('tutorialStateChanged', { result: result || {} });
               return result;
             }));
           }
@@ -1382,7 +1378,6 @@
               return this.finalizeForwarded(forwarded, () => {
                 const game = this.getGameHost();
                 game?.tutorialController?.sync?.(game?.tutorial || game?.state?.tutorial || {});
-                game?.tutorialController?.refreshCurrentHighlight?.();
                 this.afterHandled(action);
               });
             }
@@ -1419,7 +1414,6 @@
             }
             if (typeof this.host.hideGuideHighlight === 'function') this.host.hideGuideHighlight();
             else this.host.hideTutorialHighlight?.();
-            game?.tutorialController?.refreshCurrentHighlight?.();
             return true;
           }
 
@@ -1479,12 +1473,12 @@
             const game = this.getGameHost();
             if (typeof game?.seekFamousPerson === 'function') {
               return this.finalize(Promise.resolve(game.seekFamousPerson(action.source || 'seek')).then((result) => {
-                game?.tutorialController?.onFamousPersonSought?.(result || {});
+                this.emitTutorialEvent('tutorialStateChanged', { result: result || {} });
                 return result;
               }));
             }
             return this.finalize(this.runAction(() => this.host.api.seekFamousPerson(action.source || 'seek')).then((result) => {
-              game?.tutorialController?.onFamousPersonSought?.(result || {});
+              this.emitTutorialEvent('tutorialStateChanged', { result: result || {} });
               return result;
             }));
           }
@@ -1526,7 +1520,6 @@
                 this.host?.closeNaming?.();
                 const game = this.getGameHost();
                 if (game && game !== this.host && typeof game.closeNamingModal === 'function') game.closeNamingModal();
-                game?.tutorialController?.refreshCurrentHighlight?.();
               }
               return value !== false;
             };
@@ -1610,8 +1603,8 @@
             CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this.host, 'activeCommandPanel', nextPanel);
             this.closePanels(nextPanel ? ['activeCommandPanel'] : []);
             const openedPanel = nextPanel;
-            const tutorialResult = openedPanel && typeof tutorialController?.onCommandPanelOpened === 'function'
-              ? tutorialController.onCommandPanelOpened(openedPanel)
+            const tutorialResult = openedPanel
+              ? this.emitTutorialEvent('commandPanelOpened', { panelId: openedPanel })
               : true;
             return this.finalize(Promise.resolve(tutorialResult).then((allowed) => {
               if (allowed === false) {
@@ -1624,9 +1617,6 @@
                 return false;
               }
               this.afterHandled(action);
-              game?.tutorialController?.refreshCurrentHighlight?.();
-              const scheduler = this.host?.runtime || game?.runtime || global;
-              scheduler?.setTimeout?.(() => game?.tutorialController?.refreshCurrentHighlight?.(), 0);
               return true;
             }));
           }
@@ -1642,7 +1632,6 @@
               : (this.host.closeRewardRevealSnapshot?.(), true);
             if (closed) {
               this.afterHandled(action);
-              this.getGameHost()?.tutorialController?.refreshCurrentHighlight?.();
             }
             return closed !== false;
           }
@@ -1861,13 +1850,10 @@
               game.tutorialAdvisorDialogue = null;
               if (game.canvasShell) game.canvasShell.tutorialAdvisorDialogue = null;
             }
-            const closeResult = typeof game?.tutorialController?.onAdvisorClosed === 'function'
-              ? game.tutorialController.onAdvisorClosed(action)
-              : true;
+            const closeResult = this.emitTutorialEvent('advisorClosed', {}) ?? true;
             return this.finalize(Promise.resolve(closeResult).then((result) => {
               if (result !== false) {
                 this.afterHandled(action);
-                game?.tutorialController?.refreshCurrentHighlight?.();
               }
               return result !== false;
             }));
