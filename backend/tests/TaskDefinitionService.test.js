@@ -35,7 +35,7 @@ test('TaskDefinitionService loads live definitions only from the active release 
   assert.match(task.rewardText, /food\+120/);
 });
 
-test('TaskDefinitionService loads the tutorial-chain tasks with step-name conditions and reward overrides', () => {
+test('TaskDefinitionService loads the barracks-chain tasks with real-state conditions and reward overrides', () => {
   const definitions = TaskDefinitionService.loadDefinitions();
 
   assert.equal(definitions.errors.length, 0);
@@ -44,18 +44,18 @@ test('TaskDefinitionService loads the tutorial-chain tasks with step-name condit
   assert.equal(homestead, undefined);
 
   const barracks = definitions.tasks.find((item) => item.id === 'main_barracks_supplies');
-  assert.deepEqual(barracks.condition, { type: 'tutorialStepAtLeast', step: 'era3Advanced' });
+  assert.deepEqual(barracks.condition, { type: 'eraAtLeast', era: 3 });
   assert.deepEqual(barracks.reward.resources, { food: 260, knowledge: 80 });
 
   const firstArmy = definitions.tasks.find((item) => item.id === 'main_first_army');
   assert.deepEqual(firstArmy.reward.resources, { soldiers: 1000 });
   assert.equal(firstArmy.rewardText, '士兵+1000');
-  assert.deepEqual(firstArmy.condition.conditions[1], { type: 'tutorialStepAtLeast', step: 'barracksBuilt' });
+  assert.deepEqual(firstArmy.condition, { type: 'buildingLevel', buildingId: 'barracks', count: 1 });
 
   const officer = definitions.tasks.find((item) => item.id === 'main_scout_officer');
   assert.equal(officer.reward.famousPerson, 'scout');
   assert.equal(officer.rewardText, '开拓名人+1');
-  assert.deepEqual(officer.condition, { type: 'tutorialStepAtLeast', step: 'firstArmyClaimed' });
+  assert.deepEqual(officer.condition, { type: 'taskRewardGranted', grantType: 'soldiers', grantKey: 'firstArmy' });
 });
 
 test('TaskDefinitionService rejects explicit source overrides', () => {

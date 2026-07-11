@@ -89,3 +89,51 @@ rg -n "TutorialGrantService\.recordFirstArmyGrant|recordFirstArmyGrant\(" backen
 
 ### 交接
 - `getFirstArmyReserveFloor()` 仍沿用既有教程阶段窗口决定 floor 何时结束，T2 只迁移 floor 的发放记录键；真实状态条件改键在 T3 处理。
+
+## T3 - 任务条件改真实状态
+
+### 条件对照
+
+| 任务 | 旧条件语义 | 新真实状态条件 |
+|---|---|---|
+| `main_barracks_supplies` | 城邦时代引导已推进 | `{ type: "eraAtLeast", era: 3 }` |
+| `main_first_army` | 兵营引导已推进且兵营存在 | `{ type: "buildingLevel", buildingId: "barracks", count: 1 }` |
+| `main_scout_officer` | 首军领取引导已推进 | `{ type: "taskRewardGranted", grantType: "soldiers", grantKey: "firstArmy" }` |
+
+### 变更
+- `defaultTaskDefinitions.json` 三处任务条件改为真实游戏状态/任务奖励台账。
+- `TaskProgressEvaluator` 删除教程步条件分支，新增 `taskRewardGranted` 条件。
+- `TaskDefinitionNormalizer` 删除教程步条件解析，新增 `taskRewardGranted` 的 `grantType/grantKey` 解析与校验。
+- `TaskDefinitionTemplateBuilder` 增加 `condition.grantType`、`condition.grantKey`，保证模板导出再导入不丢条件。
+- 更新 `tutorial-coupling-inventory-2026-07-11.md` 中已过期的任务中心旧条件记录。
+
+### 自验命令
+
+```powershell
+node --check backend/services/taskCenter/TaskProgressEvaluator.js; node --check backend/services/taskDefinitions/TaskDefinitionNormalizer.js; node --check backend/services/taskDefinitions/TaskDefinitionTemplateBuilder.js
+```
+
+结果: 通过。
+
+```powershell
+node --test backend/tests/TaskDefinitionService.test.js backend/tests/TaskCenterService.test.js backend/tests/TaskCenterArchitecture.test.js backend/tests/GameRoutesTutorial.test.js
+```
+
+结果: 41/41 通过。
+
+```powershell
+rg -n "tutorialStepAtLeast" . --glob "!docs/architecture/northstar-b1prime-order-2026-07-11.md" --glob "!docs/architecture/tutorial-engine-northstar-roadmap-2026-07-11.md" --glob "!docs/architecture/northstar-b1prime-verification-2026-07-11.md" --glob "!node_modules/**"
+```
+
+结果: 无命中(exit 1, expected)。
+
+豁免清单:
+- `docs/architecture/northstar-b1prime-order-2026-07-11.md`: 本任务单原文。
+- `docs/architecture/tutorial-engine-northstar-roadmap-2026-07-11.md`: 北极星路线图原文。
+- `docs/architecture/northstar-b1prime-verification-2026-07-11.md`: 本验证文档内保留 grep 命令本身。
+- `node_modules/**`: 第三方依赖目录。
+
+### 契约测试
+- 新条件类型满足/不满足/边界: `TaskProgressEvaluator evaluates task reward grant conditions`。
+- 旧档不回退: `legacy first-army tutorial grant keeps the scout-officer task claimable for old saves`。
+- 模板往返: `TaskDefinitionService can preview its template without doubling formula rewards`。

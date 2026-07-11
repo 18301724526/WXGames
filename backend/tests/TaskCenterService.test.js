@@ -137,6 +137,11 @@ test('claiming the scout-officer task grants the tutorial scout famous person on
     currentEra: 3,
     tutorialStep: TutorialService.TUTORIAL_STEPS.firstArmyClaimed,
   });
+  TaskRewardGrantLedger.recordSoldierGrant(
+    gameState,
+    TaskRewardGrantLedger.FIRST_ARMY_GRANT_KEY,
+    { soldiers: 1000, grantedAt: '2026-07-11T00:00:00.000Z' },
+  );
   gameState.famousPeople = [];
   gameState.famousPersonState = { candidates: [], seek: { count: 0, lastAt: null } };
 
@@ -160,6 +165,20 @@ test('claiming the scout-officer task grants the tutorial scout famous person on
   assert.equal(duplicate.success, false);
   assert.equal(duplicate.error, 'TASK_ALREADY_CLAIMED');
   assert.equal(gameState.famousPeople.length, 1);
+});
+
+test('legacy first-army tutorial grant keeps the scout-officer task claimable for old saves', () => {
+  const gameState = createMainTaskState({
+    currentEra: 3,
+    tutorialStep: TutorialService.TUTORIAL_STEPS.firstArmyClaimed,
+  });
+  gameState.tutorial.grants.firstArmy = { soldiers: 1000, grantedAt: '2026-07-03T00:00:00.000Z' };
+
+  assert.equal(getMainTask(gameState, 'main_scout_officer').status, 'claimable');
+  assert.equal(
+    TaskRewardGrantLedger.getSoldierGrant(gameState, TaskRewardGrantLedger.FIRST_ARMY_GRANT_KEY).soldiers,
+    1000,
+  );
 });
 
 test('main lumbermill supplies wait for lumbermill and pay next era cost', () => {

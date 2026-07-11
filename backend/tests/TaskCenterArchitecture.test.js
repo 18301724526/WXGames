@@ -5,6 +5,7 @@ const CityService = require('../services/CityService');
 const TaskCenterAssembler = require('../services/taskCenter/TaskCenterAssembler');
 const TaskProgressEvaluator = require('../services/taskCenter/TaskProgressEvaluator');
 const TaskRewardClaimer = require('../services/taskCenter/TaskRewardClaimer');
+const TaskRewardGrantLedger = require('../services/taskCenter/TaskRewardGrantLedger');
 
 function createGameState() {
   const city = CityService.createCityState({
@@ -40,6 +41,38 @@ test('TaskProgressEvaluator owns task progress and condition evaluation', () => 
       ],
     }),
     true,
+  );
+});
+
+test('TaskProgressEvaluator evaluates task reward grant conditions', () => {
+  const gameState = createGameState();
+  const condition = {
+    type: 'taskRewardGranted',
+    grantType: 'soldiers',
+    grantKey: 'firstArmy',
+  };
+
+  assert.equal(TaskProgressEvaluator.isTaskConditionMet(gameState, condition), false);
+  TaskRewardGrantLedger.recordSoldierGrant(gameState, TaskRewardGrantLedger.FIRST_ARMY_GRANT_KEY, {
+    soldiers: 1000,
+    grantedAt: '2026-07-11T00:00:00.000Z',
+  });
+  assert.equal(TaskProgressEvaluator.isTaskConditionMet(gameState, condition), true);
+  assert.equal(
+    TaskProgressEvaluator.isTaskConditionMet(gameState, {
+      type: 'taskRewardGranted',
+      grantType: 'soldiers',
+      grantKey: '',
+    }),
+    false,
+  );
+  assert.equal(
+    TaskProgressEvaluator.isTaskConditionMet(gameState, {
+      type: 'taskRewardGranted',
+      grantType: 'unknown',
+      grantKey: 'firstArmy',
+    }),
+    false,
   );
 });
 

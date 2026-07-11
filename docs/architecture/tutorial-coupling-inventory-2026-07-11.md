@@ -27,10 +27,10 @@
 - **命令管线双相内嵌**:GameCommandStateSupport.js:30-42 syncEra2Tutorial 在 4 个 handler 各自手工接线(validate 前+execute 后),应为管线级单一中间件。
 - **教程校验器手工嵌入每个 handler 的 validate**:TutorialActionValidator.js:253-292 覆盖 ~20 动作语义,被各 handler 分别调用,应为统一管线阶段。
 - **动作层 6 文件内联教程推进分支**:AdvanceEraAction.js:77-94、AssignPopulationAction.js:15-26、ClaimEventAction.js:10、BuildingActionService.js:20-46、TalentPolicyService.js:376-391、GameActionRegistry.js。
-- **教程态改核心军事数值**:MilitaryService.js:243-252 normalizeMilitaryState 用 getFirstArmyReserveFloor(读 tutorial.grants)钳制 soldierCap/soldiers——无法事件化,需 TutorialPolicy 声明式接口。
+- **教程态改核心军事数值**:MilitaryService.js:243-252 normalizeMilitaryState 用 getFirstArmyReserveFloor 钳制 soldierCap/soldiers——B1' T2 已把发放记录改到任务奖励台账,阶段窗口残留待后续后端教程删除单清理。
 - **建筑解锁内嵌教程绕行**:BuildingActionValidator.js:20-31、BuildingUnlockService.js:10-11。
 - **世界生成被教程塑形**:SpawnScoring.js:63-144(出生点必须有 tutorialTarget)、SpawnLifecycleService.js:61、WorldCitySpawner.js:176-178、TerritoryConquestMissions.js:35-53。
-- **任务中心双向纠缠**:TaskCenterService.js:17-23,64、TaskProgressEvaluator.js:34-40(tutorialStepAtLeast 条件)、defaultTaskDefinitions.json。
+- **任务中心双向纠缠**:TaskCenterService.js:17-23,64 与领取后教程推进仍在;B1' T3 已把任务定义里的教程步条件改为真实状态条件。
 - **事件系统被教程门禁**:EventService.js:21-22。
 - **startWorldMarch 三触点**(owner 点名):WorldExplorerActions.js:130 读 TUTORIAL_STEPS、:157 validateTutorialFormation(即 403 TUTORIAL_BLOCKED 源)、:283 直写推进。
 - **前端 hook 阵列多数可否决**(非纯通知):CanvasActionController 40+ 处(canOpenTab 先问再动 modal)。

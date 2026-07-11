@@ -1,5 +1,5 @@
 const CityService = require('../CityService');
-const SharedTutorialFlowConfig = require('../../../shared/tutorialFlowConfig');
+const TaskRewardGrantLedger = require('./TaskRewardGrantLedger');
 
 function getTaskProgress(gameState) {
   if (!gameState.taskProgress || typeof gameState.taskProgress !== 'object') {
@@ -31,13 +31,13 @@ function isTaskConditionMet(gameState, condition = {}) {
   if (condition.type === 'eraAtLeast') {
     return Math.max(0, Number(gameState.currentEra) || 0) >= Math.max(0, Number(condition.era) || 0);
   }
-  if (condition.type === 'tutorialStepAtLeast') {
-    // Accepts step names and legacy numbers on both sides (missing -> initial).
-    const currentStep = SharedTutorialFlowConfig.stepName(gameState.tutorial?.currentStep)
-      || SharedTutorialFlowConfig.TUTORIAL_STEPS.initial;
-    const targetStep = SharedTutorialFlowConfig.stepName(condition.step)
-      || SharedTutorialFlowConfig.TUTORIAL_STEPS.initial;
-    return SharedTutorialFlowConfig.stepAtLeast(currentStep, targetStep);
+  if (condition.type === 'taskRewardGranted') {
+    const grantType = String(condition.grantType || '').trim();
+    const grantKey = String(condition.grantKey || '').trim();
+    if (!grantKey) return false;
+    if (grantType === 'soldiers') return Boolean(TaskRewardGrantLedger.getSoldierGrant(gameState, grantKey));
+    if (grantType === 'famousPersons') return Boolean(TaskRewardGrantLedger.getFamousPersonGrant(gameState, grantKey));
+    return false;
   }
   if (condition.type === 'eventClaimed') {
     return (gameState.eventHistory || []).some((event) => event?.id === condition.eventId);

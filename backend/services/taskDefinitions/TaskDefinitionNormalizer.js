@@ -14,7 +14,6 @@ const {
 } = require('./TaskDefinitionShared');
 const ConfigRegistryContract = require('../config/ConfigRegistryContract');
 const RewardResolver = require('./TaskDefinitionRewardResolver');
-const SharedTutorialFlowConfig = require('../../../shared/tutorialFlowConfig');
 
 // Non-resource reward archetypes TaskRewardClaimer can pay out.
 const FAMOUS_PERSON_REWARD_ARCHETYPES = Object.freeze(['scout']);
@@ -32,6 +31,8 @@ const HEADER_ALIASES = Object.freeze({
   conditionJson: ['condition', 'conditionJson', '完成条件JSON', '条件JSON'],
   conditionType: ['condition.type', 'conditionType', '条件类型'],
   conditionTarget: ['condition.target', 'conditionTarget', 'condition.buildingId', '条件目标', '建筑ID'],
+  conditionGrantType: ['condition.grantType', 'conditionGrantType', '奖励台账类型'],
+  conditionGrantKey: ['condition.grantKey', 'conditionGrantKey', '奖励台账键'],
   requiredCount: ['condition.count', 'requiredCount', 'required', '要求数量', '数量'],
   rewardJson: ['reward', 'rewardJson', '奖励JSON'],
   rewardFormula: ['reward.formulas', 'rewardFormula', '奖励公式'],
@@ -92,14 +93,12 @@ function normalizeCondition(rawTask, row) {
   )));
   if (type === 'buildingLevel') return { type, buildingId: target, count };
   if (type === 'eraAtLeast') return { type, era: Math.max(0, Math.floor(toNumber(target || condition.era, 0))) };
-  if (type === 'tutorialStepAtLeast') {
-    // Steps are NAMES (shared/tutorialFlowConfig.js); legacy numeric rows stay
-    // accepted and normalize through the same clamp as persisted saves.
-    const rawStep = condition.step ?? target;
-    if (SharedTutorialFlowConfig.isValidStep(rawStep)) {
-      return { type, step: SharedTutorialFlowConfig.stepName(rawStep) };
-    }
-    return { type, step: Math.max(0, Math.floor(toNumber(rawStep, 0))) };
+  if (type === 'taskRewardGranted') {
+    return {
+      type,
+      grantType: sanitizeText(condition.grantType || getHeaderValue(row, 'conditionGrantType') || condition.target || target),
+      grantKey: sanitizeText(condition.grantKey || condition.key || condition.rewardKey || getHeaderValue(row, 'conditionGrantKey')),
+    };
   }
   if (type === 'eventClaimed') return { type, eventId: target };
   return { type: 'always' };
@@ -180,6 +179,9 @@ function validateTasks(tasks = [], options = {}) {
     if (task.reward?.__parseError) errors.push(`${label}: invalid reward JSON`);
     if (task.condition?.type === 'buildingLevel' && !task.condition.buildingId) {
       errors.push(`${label}: buildingLevel condition needs buildingId`);
+    }
+    if (task.condition?.type === 'taskRewardGranted' && (!task.condition.grantType || !task.condition.grantKey)) {
+      errors.push(`${label}: taskRewardGranted condition needs grantType and grantKey`);
     }
     if (task.reward?.famousPerson && !FAMOUS_PERSON_REWARD_ARCHETYPES.includes(task.reward.famousPerson)) {
       errors.push(`${label}: UNKNOWN_FAMOUS_PERSON_REWARD:${task.reward.famousPerson}`);
