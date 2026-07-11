@@ -26,6 +26,7 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/state/BattleStore.test.js',
   'frontend/js/state/ModalStore.js',
   'frontend/js/state/ModalStore.test.js',
+  'frontend/js/tutorial/TutorialGuideEventRegistry.contract.test.js',
   'frontend/js/ecs/projection/FogProjection.js',
   'frontend/js/ecs/projection/FogProjection.test.js',
   'frontend/js/ecs/snapshot/RendererSnapshotBoundary.js',
@@ -512,6 +513,8 @@ const CHECK_FILES = Object.freeze([
   'scripts/validate-config-pipeline.test.js',
   'scripts/build-config-tables.js',
   'scripts/build-config-tables.test.js',
+  'scripts/generate-tutorial-event-contracts.js',
+  'scripts/generate-tutorial-event-contracts.test.js',
   'scripts/check-client-command-block-reasons.js',
   'scripts/check-client-command-block-reasons.test.js',
 ]);
@@ -524,6 +527,7 @@ const TEST_FILES = Object.freeze([
   'frontend/js/state/StateWriter.test.js',
   'frontend/js/state/BattleStore.test.js',
   'frontend/js/state/ModalStore.test.js',
+  'frontend/js/tutorial/TutorialGuideEventRegistry.contract.test.js',
   'frontend/js/ecs/snapshot/RendererSnapshotBoundary.test.js',
   'frontend/js/ecs/input/InputIntent.test.js',
   'frontend/js/ecs/input/InputIntentResolver.test.js',
@@ -702,6 +706,7 @@ const TEST_FILES = Object.freeze([
   'scripts/check-duplicate-coord-helpers.test.js',
   'scripts/check-duplicate-march-builders.test.js',
   'scripts/build-config-tables.test.js',
+  'scripts/generate-tutorial-event-contracts.test.js',
   'scripts/check-tutorial-advance-single-source.test.js',
   'scripts/check-tutorial-step-contract.test.js',
   'shared/tutorialFlowConfig.test.js',
@@ -915,6 +920,10 @@ function main() {
   ]);
   run('tutorial host surface inventory freshness guard', process.execPath, [
     'scripts/generate-tutorial-host-surface-inventory.js',
+    '--check',
+  ]);
+  run('tutorial event contract freshness guard', process.execPath, [
+    'scripts/generate-tutorial-event-contracts.js',
     '--check',
   ]);
   run('source encoding blocking guard', process.execPath, [

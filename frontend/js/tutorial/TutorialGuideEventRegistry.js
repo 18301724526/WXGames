@@ -307,6 +307,13 @@
       }
       return this.handlers[eventName]?.(host, payload);
     }
+
+    subscribeToBus(bus, host, topic = 'tutorial.event') {
+      if (!bus || typeof bus.subscribe !== 'function') return () => false;
+      return bus.subscribe(topic, (event = {}) => (
+        this.handle(host, event.eventName, event.payload || {})
+      ));
+    }
   }
 
   function create(options = {}) {

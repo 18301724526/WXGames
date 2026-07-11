@@ -1,0 +1,266 @@
+{
+  "schema": "northstar-s4-tutorial-event-contracts/v1",
+  "generatedBy": "scripts/generate-tutorial-event-contracts.js",
+  "source": {
+    "file": "frontend/js/tutorial/TutorialGuideEventRegistry.js",
+    "sha256": "27eb1df18706ff92882663fcf2f69e26cf973a634d846ef190f200f79e768d20"
+  },
+  "events": [
+    {
+      "eventName": "tabClicked",
+      "requiredFields": [
+        {
+          "name": "tabId",
+          "source": "generated",
+          "aliases": [
+            "panelId",
+            "tab"
+          ],
+          "description": ""
+        }
+      ],
+      "observedPayloadFields": [
+        "tabId",
+        "panelId",
+        "tab"
+      ],
+      "carriesServerCommandResult": false,
+      "extraction": "generated"
+    },
+    {
+      "eventName": "commandPanelOpened",
+      "requiredFields": [
+        {
+          "name": "panelId",
+          "source": "generated",
+          "aliases": [
+            "tabId",
+            "panel"
+          ],
+          "description": ""
+        }
+      ],
+      "observedPayloadFields": [
+        "panelId",
+        "tabId",
+        "panel"
+      ],
+      "carriesServerCommandResult": false,
+      "extraction": "generated"
+    },
+    {
+      "eventName": "cityEntered",
+      "requiredFields": [],
+      "observedPayloadFields": [],
+      "carriesServerCommandResult": false,
+      "extraction": "generated"
+    },
+    {
+      "eventName": "buildingAction",
+      "requiredFields": [
+        {
+          "name": "buildingId",
+          "source": "generated",
+          "aliases": [],
+          "description": ""
+        },
+        {
+          "name": "action",
+          "source": "generated",
+          "aliases": [],
+          "description": ""
+        }
+      ],
+      "observedPayloadFields": [
+        "buildingId",
+        "action"
+      ],
+      "carriesServerCommandResult": false,
+      "extraction": "generated"
+    },
+    {
+      "eventName": "eraAdvanced",
+      "requiredFields": [
+        {
+          "name": "result",
+          "source": "generated",
+          "aliases": [],
+          "description": "服务端命令结果对象"
+        }
+      ],
+      "observedPayloadFields": [
+        "result"
+      ],
+      "carriesServerCommandResult": true,
+      "extraction": "generated"
+    },
+    {
+      "eventName": "taskRewardClaimed",
+      "requiredFields": [
+        {
+          "name": "result",
+          "source": "generated",
+          "aliases": [],
+          "description": "服务端命令结果对象"
+        }
+      ],
+      "observedPayloadFields": [
+        "result"
+      ],
+      "carriesServerCommandResult": true,
+      "extraction": "generated"
+    },
+    {
+      "eventName": "famousPersonsOpened",
+      "requiredFields": [],
+      "observedPayloadFields": [],
+      "carriesServerCommandResult": false,
+      "extraction": "generated"
+    },
+    {
+      "eventName": "talentPolicyOpened",
+      "requiredFields": [],
+      "observedPayloadFields": [],
+      "carriesServerCommandResult": false,
+      "extraction": "generated"
+    },
+    {
+      "eventName": "tutorialStateChanged",
+      "requiredFields": [
+        {
+          "name": "result",
+          "source": "generated",
+          "aliases": [],
+          "description": "服务端命令结果对象"
+        }
+      ],
+      "observedPayloadFields": [
+        "result"
+      ],
+      "carriesServerCommandResult": true,
+      "extraction": "generated"
+    },
+    {
+      "eventName": "famousPersonDetailOpened",
+      "requiredFields": [
+        {
+          "name": "personId",
+          "source": "generated",
+          "aliases": [],
+          "description": ""
+        }
+      ],
+      "observedPayloadFields": [
+        "personId"
+      ],
+      "carriesServerCommandResult": false,
+      "extraction": "generated"
+    },
+    {
+      "eventName": "armyFormationOpened",
+      "requiredFields": [],
+      "observedPayloadFields": [],
+      "carriesServerCommandResult": false,
+      "extraction": "generated"
+    },
+    {
+      "eventName": "armyFormationSaved",
+      "requiredFields": [
+        {
+          "name": "result",
+          "source": "generated",
+          "aliases": [],
+          "description": "服务端命令结果对象"
+        }
+      ],
+      "observedPayloadFields": [
+        "result"
+      ],
+      "carriesServerCommandResult": true,
+      "extraction": "generated"
+    },
+    {
+      "eventName": "militaryViewSwitched",
+      "requiredFields": [
+        {
+          "name": "view",
+          "source": "generated",
+          "aliases": [],
+          "description": ""
+        }
+      ],
+      "observedPayloadFields": [
+        "view"
+      ],
+      "carriesServerCommandResult": false,
+      "extraction": "generated"
+    },
+    {
+      "eventName": "famousPersonsClosed",
+      "requiredFields": [],
+      "observedPayloadFields": [],
+      "carriesServerCommandResult": false,
+      "extraction": "generated"
+    },
+    {
+      "eventName": "cityManagementOpened",
+      "requiredFields": [
+        {
+          "name": "tab",
+          "source": "generated",
+          "aliases": [
+            "tabId"
+          ],
+          "description": ""
+        }
+      ],
+      "observedPayloadFields": [
+        "tab",
+        "tabId"
+      ],
+      "carriesServerCommandResult": false,
+      "extraction": "generated"
+    },
+    {
+      "eventName": "worldMarchTargetSelected",
+      "requiredFields": [],
+      "observedPayloadFields": [],
+      "carriesServerCommandResult": false,
+      "extraction": "generated"
+    },
+    {
+      "eventName": "exploreStarted",
+      "requiredFields": [
+        {
+          "name": "result",
+          "source": "generated",
+          "aliases": [],
+          "description": "服务端命令结果对象"
+        }
+      ],
+      "observedPayloadFields": [
+        "result"
+      ],
+      "carriesServerCommandResult": true,
+      "extraction": "generated"
+    },
+    {
+      "eventName": "advisorClosed",
+      "requiredFields": [],
+      "observedPayloadFields": [],
+      "carriesServerCommandResult": false,
+      "extraction": "generated"
+    }
+  ],
+  "exclusions": [
+    {
+      "name": "canOpenTab",
+      "reason": "否决式询问，不上事件总线",
+      "onlyVetoSeam": "CanvasPanelActionRunner descriptor hooks",
+      "hooks": [
+        "tutorialCanOpenTab",
+        "tutorialVetoFeedback"
+      ]
+    }
+  ]
+}

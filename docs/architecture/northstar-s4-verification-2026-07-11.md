@@ -41,3 +41,19 @@ node scripts/run-architecture-smoke.js
 - `node scripts/run-architecture-smoke.js`：exit 0。
 - 全程教程：`stopReason=tutorial-completed`、`finalStepName=completed`、62 个动作、64 条投影、0 verification failure、`tutorialHostContextWitness.count=0`。
 - X1 transcript 与仓库基线 SHA-256 同为 `16862F819B0EE78ACBD8C358CB964FC1307646BD122BA4BA6EC9C270E79D605F`，逐字节 diff 为空。
+
+## X2|18 事件必备字段契约
+
+- 新增生成器 `scripts/generate-tutorial-event-contracts.js`，从 `TutorialGuideEventRegistry.createDefaultHandlers` 静态提取 18 个事件及 handler 内 `payload` 字段，产物为 `docs/architecture/artifacts/northstar-s4-tutorial-event-contracts.json`。
+- `tabClicked` 规范字段为 `tabId`（兼容别名 `panelId/tab`）；`buildingAction` 为 `buildingId/action`；另抽查 `famousPersonDetailOpened→personId`。
+- `eraAdvanced/taskRewardClaimed/tutorialStateChanged/armyFormationSaved/exploreStarted` 均声明 `result` 为“服务端命令结果对象”。
+- `exclusions` 明文列出 `canOpenTab`：否决式询问，不上事件总线；唯一 veto seam 为 `CanvasPanelActionRunner descriptor hooks`，钩子现名为 `tutorialCanOpenTab/tutorialVetoFeedback`。
+- `TutorialGuideEventRegistry.subscribeToBus` 提供加法式消费者入口；端到端测试通过总线发布 `taskRewardClaimed` 命令结果，由真实 EventRegistry handler 调用 `syncFromResult` 完成 `TutorialHostContext` 状态同步。
+- 生成器 `--check` 已接入 architecture smoke；S3 host-surface 派生产物同步重生成，调用点仍为 205。
+
+验证结果：
+
+- X2 定向契约与端到端测试 5/5 通过。
+- `TUTORIAL_WITNESS_ASSERT_ZERO=1 npm test`：299 个测试文件，1681/1681 通过。
+- `node scripts/run-architecture-smoke.js`：exit 0。
+- 未修改任何既有 `onXxx` 调用点，未动 S5 映射表与 S7 规则迁移。
