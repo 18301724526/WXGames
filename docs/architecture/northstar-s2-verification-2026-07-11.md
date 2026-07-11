@@ -84,3 +84,61 @@ git diff --check
 ```
 
 结果: 2/2 通过；监督者署名文档、产品 Registry 与冻结三件套零差异。
+
+## U3|教程测试打标与收尾
+
+枚举命令:
+
+```powershell
+node scripts/generate-tutorial-test-inventory.js
+```
+
+生成器对 `npm test` 的三个目录 `backend/tests`、`frontend/js`、`shared` 枚举全部 `.test.js`，逐文件构建本地 import/require 闭包；闭包源码中存在匹配 `/tutorial/i` 的 Identifier token 时纳入。以下 11 个 ECS 测试被机械排除:其闭包唯一教程标识符只是视觉资源键 `tutorial_intro_soldier`，不验证教程行为。完整排除路径写在机器清单的 `excludedIncidental` 字段。
+
+产物: `docs/architecture/artifacts/northstar-s2-tutorial-test-inventory.json`。
+
+- `npm test` 文件宇宙: 297。
+- 教程相关文件: 143。
+- `可复用`: 95。
+- `退役候选`: 47，全部位于 backend，供 B3' declared 退役。
+- `反特征`: 1，即 `frontend/js/tutorial/TutorialGuideArchitecture.test.js`。
+- 产物 SHA-256: `C490AE54AA8A3744C3BBE930589BE7348B0077671E2FE40523F7F3E9E5BD22A0`。
+
+重生成零差异:
+
+```powershell
+git add -- docs/architecture/artifacts/northstar-s2-tutorial-test-inventory.json
+node scripts/generate-tutorial-test-inventory.js
+git diff --exit-code -- docs/architecture/artifacts/northstar-s2-tutorial-test-inventory.json
+```
+
+结果: exit 0；重生成前后 SHA-256 相同。
+
+测试零改动证据:
+
+```powershell
+git diff --diff-filter=M --name-only 1da45f9f -- '*.test.js'
+```
+
+结果: 空；U3 未修改任何既有测试文件，也未新增测试文件。
+
+全量门禁:
+
+```powershell
+npm test
+node scripts/run-architecture-smoke.js
+```
+
+结果:
+
+- `npm test`: 297 个测试文件，2391/2391 通过，0 fail。
+- `node scripts/run-architecture-smoke.js`: exit 0，最终输出 `[architecture-smoke] passed`，内含 `git diff --check` 通过。
+
+## 未做
+
+- 未修改 `TutorialGuideFlowRegistry`、`TutorialGuideEventRegistry`、`TutorialGuideController` 或任何产品教程实现。
+- 未做 S3 的 ctx 适配、动态键扫描扩展、事件总线、target/action 表、引擎迁移或后端教程删除。
+- 未修改任何既有测试；反特征测试本轮只打标，不改写。
+- 未修改监督者署名的裁决、清查、路线图、任务单。
+- 未修改冻结三件套。
+- 未修复 U1 发现的 `openArmyFormation(slot=1)` 实际点击后编辑器未打开问题；未调整名人高亮像素阈值。
