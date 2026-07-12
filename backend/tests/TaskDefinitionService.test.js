@@ -1,9 +1,12 @@
+const fs = require('node:fs');
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const XLSX = require('xlsx');
 
 const TaskDefinitionService = require('../services/TaskDefinitionService');
+const GameplayConfigRuntime = require('../services/config/GameplayConfigRuntime');
 const {
+  createTempReleasePaths,
   publishCurrentConfigRuntime,
   resetConfigRuntime,
 } = require('./helpers/configRuntimeTestHarness');
@@ -76,7 +79,12 @@ test('TaskDefinitionService exposes no live import history or rollback API', () 
 });
 
 test('TaskDefinitionService fails loudly when the active release bundle is unavailable', () => {
+  const paths = createTempReleasePaths('wxgame-task-definitions-unavailable-');
   resetConfigRuntime();
+  GameplayConfigRuntime.configureRuntimeConfig({
+    ...paths,
+    env: { NODE_ENV: 'production' },
+  });
   try {
     assert.throws(
       () => TaskDefinitionService.loadDefinitions(),
@@ -92,7 +100,11 @@ test('TaskDefinitionService fails loudly when the active release bundle is unava
     assert.equal(preview.success, false);
     assert.equal(preview.error, 'TASK_DEFINITIONS_RUNTIME_NOT_READY');
   } finally {
-    publishCurrentConfigRuntime();
+    try {
+      publishCurrentConfigRuntime();
+    } finally {
+      fs.rmSync(paths.dir, { recursive: true, force: true });
+    }
   }
 });
 
