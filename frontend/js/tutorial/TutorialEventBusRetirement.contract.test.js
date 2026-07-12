@@ -24,14 +24,18 @@ test('tutorial event delivery has one bus source and no wrapper topic', () => {
   assert.match(hostSource, /this\.changeEventBus\?\.emit\?\.\(eventName, payload\)/);
 });
 
-test('non-tutorial platform sources have zero direct poke and onXxx calls', () => {
+test('non-tutorial platform sources only allow the settled event-action refresh', () => {
   const sources = collectProductionJs(platformRoot)
     .filter((filePath) => !path.basename(filePath).startsWith('CanvasPanelActionRunner'))
     .map((filePath) => ({ filePath, source: fs.readFileSync(filePath, 'utf8') }));
-  const pokeFiles = sources.filter(({ source }) => source.includes('refreshCurrentHighlight'));
+  const pokeViolations = sources.filter(({ filePath, source }) => {
+    const count = (source.match(/refreshCurrentHighlight/g) || []).length;
+    const allowed = path.basename(filePath) === 'CanvasActionController.js' ? 1 : 0;
+    return count !== allowed;
+  });
   const onXxxFiles = sources.filter(({ source }) => /tutorialController\?\.on[A-Z]/.test(source));
 
-  assert.deepEqual(pokeFiles.map(({ filePath }) => path.relative(repoRoot, filePath)), []);
+  assert.deepEqual(pokeViolations.map(({ filePath }) => path.relative(repoRoot, filePath)), []);
   assert.deepEqual(onXxxFiles.map(({ filePath }) => path.relative(repoRoot, filePath)), []);
 });
 

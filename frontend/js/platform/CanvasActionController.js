@@ -253,6 +253,11 @@
       return this.host?.eventController || this.getGameHost()?.eventController || null;
     }
 
+    notifyTutorialAfterEventAction() {
+      const game = this.getGameHost();
+      return game?.getTutorialController?.()?.refreshCurrentHighlight?.();
+    }
+
     getBuildingController() {
       return this.host?.buildingController || this.getGameHost()?.buildingController || null;
     }
@@ -1126,6 +1131,7 @@
             const eventId = this.host.openEventSnapshot?.(action.eventId) || action.eventId;
             const controller = this.getEventController();
             controller?.open?.(eventId);
+            this.notifyTutorialAfterEventAction();
             return this.afterHandled(action);
           }
 
@@ -1133,6 +1139,7 @@
             this.host.closeEventSnapshot?.();
             const controller = this.getEventController();
             controller?.close?.();
+            this.notifyTutorialAfterEventAction();
             return this.afterHandled(action);
           }
 
@@ -1343,7 +1350,11 @@
           }
 
     handle_claimEvent(action) {
-            return this.finalize(this.claimEvent(action));
+            return this.finalize(this.claimEvent(action).then((handled) => {
+              if (handled === false) return false;
+              this.notifyTutorialAfterEventAction();
+              return this.afterHandled(action);
+            }));
           }
 
     getCaptureController() {
@@ -1375,11 +1386,11 @@
             controller?.close?.();
             const forwarded = this.forward(action);
             if (forwarded !== undefined) {
-              return this.finalizeForwarded(forwarded, () => {
-                const game = this.getGameHost();
-                game?.tutorialController?.sync?.(game?.tutorial || game?.state?.tutorial || {});
-                this.afterHandled(action);
-              });
+              const allowed = await forwarded;
+              if (allowed === false) return false;
+              const game = this.getGameHost();
+              game?.tutorialController?.sync?.(game?.tutorial || game?.state?.tutorial || {});
+              return true;
             }
             if (controller?.claim || controller?.claimActive) {
               controller.open?.(action.eventId);

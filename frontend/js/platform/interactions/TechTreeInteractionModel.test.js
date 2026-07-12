@@ -673,6 +673,12 @@ test('CanvasActionController refreshes lumbermill guide after event reward claim
       sync(nextTutorial) {
         calls.push(['syncTutorial', nextTutorial.currentStep]);
       },
+      refreshCurrentHighlight() {
+        calls.push(['refreshCurrentHighlight']);
+      },
+    },
+    getTutorialController() {
+      return this.tutorialController;
     },
     applyApiState(result) {
       calls.push(['applyApiState', result.tutorial.currentStep]);
@@ -697,6 +703,8 @@ test('CanvasActionController refreshes lumbermill guide after event reward claim
     ['syncTutorial', 13],
     ['closeEvent'],
     ['hideTutorialHighlight'],
+    ['refreshCurrentHighlight'],
+    ['render'],
   ]);
 });
 
