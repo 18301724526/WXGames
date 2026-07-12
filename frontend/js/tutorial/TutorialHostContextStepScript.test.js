@@ -189,16 +189,92 @@ test('synchronous modal refresh reentry is traced and coalesced into one trailin
   context.disconnectChangeEventBus();
 });
 
-test('reentry during a trailing refresh schedules one more non-recursive refresh', async () => {
-  TutorialHostContext.resetRefreshReentryTrace();
+test('render-phase modal change schedules exactly one trailing refresh', (t) => {
+  const previousGuard = global.TutorialRenderPhaseGuard;
+  let renderPhase = '';
+  global.TutorialRenderPhaseGuard = {
+    getActivePhase() {
+      return renderPhase;
+    },
+  };
+  t.after(() => {
+    global.TutorialRenderPhaseGuard = previousGuard;
+  });
+
   const tutorial = { completed: false, currentStep: 'cityEntered' };
   const bus = ChangeEventBus.createEventBus();
+  const microtasks = [];
+  let refreshCount = 0;
+  const game = {
+    tutorial,
+    state: { tutorial },
+    runtime: {
+      queueMicrotask(run) {
+        microtasks.push(run);
+      },
+    },
+  };
+  const context = new TutorialHostContext({
+    state: tutorial,
+    game,
+    changeEventBus: bus,
+    stepScriptConfig: {},
+    flowRegistry: {
+      refresh() {
+        refreshCount += 1;
+        return true;
+      },
+    },
+    targetResolver: null,
+    queryTable: null,
+  });
+
+  renderPhase = 'renderCanvasSurface';
+  bus.emit('modal.changed', { source: 'test-render-phase', subtype: 'modal:cityManagement' });
+  renderPhase = '';
+
+  assert.equal(refreshCount, 0);
+  assert.equal(microtasks.length, 1);
+  assert.equal(context.highlightRefreshPending, true);
+  microtasks.shift()();
+  assert.equal(refreshCount, 1);
+  assert.equal(microtasks.length, 0);
+  assert.equal(context.highlightRefreshPending, false);
+  assert.equal(context.highlightRefreshTrailingScheduled, false);
+  context.disconnectChangeEventBus();
+});
+
+test('render-phase modal reentry during a trailing refresh is dropped without rescheduling', (t) => {
+  TutorialHostContext.resetRefreshReentryTrace();
+  const previousGuard = global.TutorialRenderPhaseGuard;
+  let renderPhase = '';
+  global.TutorialRenderPhaseGuard = {
+    getActivePhase() {
+      return renderPhase;
+    },
+  };
+  t.after(() => {
+    global.TutorialRenderPhaseGuard = previousGuard;
+  });
+
+  const tutorial = { completed: false, currentStep: 'cityEntered' };
+  const bus = ChangeEventBus.createEventBus();
+  const microtasks = [];
   let refreshCount = 0;
   let activeDepth = 0;
   let maxDepth = 0;
+  const game = {
+    tutorial,
+    state: { tutorial },
+    runtime: {
+      queueMicrotask(run) {
+        microtasks.push(run);
+      },
+    },
+  };
   const context = new TutorialHostContext({
     state: tutorial,
-    game: { tutorial, state: { tutorial } },
+    game,
     changeEventBus: bus,
     stepScriptConfig: {},
     flowRegistry: {
@@ -206,8 +282,15 @@ test('reentry during a trailing refresh schedules one more non-recursive refresh
         refreshCount += 1;
         activeDepth += 1;
         maxDepth = Math.max(maxDepth, activeDepth);
-        if (refreshCount <= 2) {
+        if (refreshCount === 1) {
           bus.emit('modal.changed', { source: 'test-trailing-reentry', subtype: 'modal:cityManagement' });
+        } else if (refreshCount === 2) {
+          renderPhase = 'renderCanvasSurface';
+          try {
+            bus.emit('modal.changed', { source: 'test-trailing-self', subtype: 'modal:cityManagement' });
+          } finally {
+            renderPhase = '';
+          }
         }
         activeDepth -= 1;
         return true;
@@ -218,15 +301,18 @@ test('reentry during a trailing refresh schedules one more non-recursive refresh
   });
 
   assert.equal(context.refreshCurrentHighlight(), true);
-  await Promise.resolve();
-  await Promise.resolve();
-  await Promise.resolve();
-
-  assert.equal(refreshCount, 3);
+  assert.equal(refreshCount, 1);
+  assert.equal(microtasks.length, 1);
+  microtasks.shift()();
+  assert.equal(refreshCount, 2);
   assert.equal(maxDepth, 1);
+  assert.equal(microtasks.length, 0);
+  assert.equal(context.highlightRefreshPending, false);
+  assert.equal(context.highlightRefreshTrailing, false);
+  assert.equal(context.highlightRefreshTrailingScheduled, false);
   assert.deepEqual(TutorialHostContext.getRefreshReentryTrace().traces, [
     { stepKey: 'cityEntered', phase: 'primary', trailingScheduled: true },
-    { stepKey: 'cityEntered', phase: 'trailing', trailingScheduled: false },
+    { stepKey: 'cityEntered', phase: 'trailing-self-drop', trailingScheduled: false },
   ]);
   context.disconnectChangeEventBus();
 });

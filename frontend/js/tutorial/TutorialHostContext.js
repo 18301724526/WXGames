@@ -249,7 +249,9 @@
     const ledger = getGlobalRefreshReentryTrace();
     const snapshot = {
       stepKey: String(trace.stepKey || ''),
-      phase: trace.phase === 'trailing' ? 'trailing' : 'primary',
+      phase: trace.phase === 'trailing-self-drop'
+        ? 'trailing-self-drop'
+        : (trace.phase === 'trailing' ? 'trailing' : 'primary'),
       trailingScheduled: trace.trailingScheduled === true,
     };
     ledger.count += 1;
@@ -430,7 +432,10 @@
     requestHighlightRefresh(eventName = '', _change = {}) {
       if (getActiveRenderPhase(this)) {
         recordRenderRefreshDrop(this, eventName);
-        if (eventName === 'modal.changed') this.scheduleTrailingHighlightRefresh();
+        if (eventName === 'modal.changed') {
+          this.highlightRefreshPending = true;
+          this.scheduleTrailingHighlightRefresh();
+        }
         return false;
       }
       if (eventName === 'state.changed' && getHighlightRefreshTransaction(this).active) {
@@ -1588,7 +1593,14 @@
           this.refreshCurrentHighlight();
         } finally {
           this.highlightRefreshTrailing = false;
-          if (this.highlightRefreshPending) this.scheduleTrailingHighlightRefresh();
+          if (this.highlightRefreshPending) {
+            this.highlightRefreshPending = false;
+            recordRefreshReentryTrace({
+              stepKey: this.getCurrentStep(),
+              phase: 'trailing-self-drop',
+              trailingScheduled: false,
+            });
+          }
         }
       };
       if (typeof runtime?.queueMicrotask === 'function') runtime.queueMicrotask(run);
