@@ -433,7 +433,7 @@ test('TutorialGuideController treats tutorial spine advisor dialogue as an open 
   assert.equal(controller.isAdvisorOpen(), true);
 });
 
-test('TutorialGuideController guides farm, forest event, lumbermill, and second main task', () => {
+test('TutorialGuideController guides farm, forest event, lumbermill, and second main task', async () => {
   const calls = [];
   const shell = makeModalHost({
     getCanvasTarget(type, predicate) {
@@ -511,8 +511,9 @@ test('TutorialGuideController guides farm, forest event, lumbermill, and second 
 
   game.state.currentTab = 'civilization';
   game.openBlockingPanelSnapshot('activeCommandPanel', 'civilization');
-  assert.equal(controller.refreshCurrentHighlight(), true);
-  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'advanceEra' });
+  const era2IdleCallCount = calls.length;
+  assert.equal(controller.refreshCurrentHighlight(), false);
+  assert.equal(calls.length, era2IdleCallCount);
 
   controller.onEraAdvanced({
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.eraAdvancedTo2 },
@@ -534,7 +535,8 @@ test('TutorialGuideController guides farm, forest event, lumbermill, and second 
   assert.equal(game.getCommandPanelValue(), '');
 
   game.openBlockingPanelSnapshot('activeCommandPanel', 'events');
-  assert.equal(controller.refreshCurrentHighlight(), true);
+  await controller.onCommandPanelOpened('events');
+  assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.specialEventTabOpened);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openEvent', eventId: 'evt_settlement_forest_001' });
 
   game.openEventSnapshot('evt_settlement_forest_001');
@@ -662,8 +664,9 @@ test('TutorialGuideController guides era three, scout famous card, and army form
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openCommandPanel', panel: 'civilization' });
 
   game.openBlockingPanelSnapshot('activeCommandPanel', 'civilization');
-  assert.equal(controller.refreshCurrentHighlight(), true);
-  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'advanceEra' });
+  const era3IdleCallCount = calls.length;
+  assert.equal(controller.refreshCurrentHighlight(), false);
+  assert.equal(calls.length, era3IdleCallCount);
 
   controller.onEraAdvanced({
     tutorial: {
@@ -1350,7 +1353,7 @@ test('TutorialGuideController keeps map home while opening city people guide dir
   assert.equal(calls.some((call) => call[0] === 'highlight' && call[1]?.type === 'openCityManagement'), false);
 });
 
-test('TutorialGuideController guides final tech explanation and completes tutorial on advisor close', async () => {
+test('TutorialGuideController opens final tech and completes tutorial on advisor close', async () => {
   const calls = [];
   const shell = makeModalHost({
     getCanvasTarget(type, predicate) {
@@ -1408,10 +1411,9 @@ test('TutorialGuideController guides final tech explanation and completes tutori
   assert.equal(controller.getCurrentStep(), TutorialGuideController.TUTORIAL_STEPS.finalTechOpened);
   assert.equal(game.isBlockingPanelSnapshotOpen('showAdvisor'), false);
   assert.equal(shell.isBlockingPanelSnapshotOpen('showAdvisor'), false);
-  assert.equal(game.tutorialAdvisorDialogue.source, 'softGuide:tech-tree');
-  assert.equal(shell.tutorialAdvisorDialogue, game.tutorialAdvisorDialogue);
-  assert.equal(game.state.softGuide.target, 'tech-tree');
-  assert.equal(game.tutorialAdvisorDialogue.message, game.state.softGuide.message);
+  assert.equal(game.tutorialAdvisorDialogue, undefined);
+  assert.equal(shell.tutorialAdvisorDialogue, undefined);
+  assert.equal(game.state.softGuide, undefined);
 
   await controller.onAdvisorClosed();
 

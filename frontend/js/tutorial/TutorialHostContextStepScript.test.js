@@ -27,6 +27,7 @@ function createHarness(options = {}) {
       refresh() {
         legacyRefreshCount += 1;
         calls.push({ type: 'legacyRefresh' });
+        options.onLegacyRefresh?.({ calls, queryState });
         return options.legacyResult !== false;
       },
     },
@@ -81,29 +82,72 @@ test('task-panel steps execute engine projections without entering the legacy re
   assert.equal(trace.steps.eraAdvancedTo1.last.ruleId, 'first-era-claim-supplies');
 });
 
-test('engine-owned step falls back to residual legacy rules when its projection is empty', () => {
+test('engine-owned step stays idle without legacy fallback when its projection is empty', (t) => {
   TutorialHostContext.resetStepScriptTrace();
+  const traceEvents = [];
+  const previousTrace = global.TutorialHostContextTrace;
+  global.TutorialHostContextTrace = {
+    log(eventName, detail) {
+      traceEvents.push({ eventName, detail });
+    },
+  };
+  t.after(() => {
+    global.TutorialHostContextTrace = previousTrace;
+  });
+  let modalWriteCount = 0;
+  const harness = createHarness({
+    stepKey: 'era2AdvanceReady',
+    queryState: { commandPanel: 'civilization' },
+    onLegacyRefresh() {
+      modalWriteCount += 1;
+    },
+  });
+
+  assert.equal(harness.context.refreshCurrentHighlight(), false);
+  assert.equal(harness.legacyRefreshCount(), 0);
+  assert.equal(modalWriteCount, 0);
+  assert.deepEqual(harness.calls, []);
+
+  const trace = TutorialHostContext.getStepScriptTrace();
+  assert.equal(trace.steps.era2AdvanceReady.count, 1);
+  assert.equal(trace.steps.era2AdvanceReady.last.ruleId, '');
+  assert.equal(trace.steps.era2AdvanceReady.last.outcome, 'scripted-step-idle');
+  assert.equal(traceEvents.length, 1);
+  assert.equal(traceEvents[0].eventName, 'scripted-step-idle');
+  assert.equal(traceEvents[0].detail.stepKey, 'era2AdvanceReady');
+});
+
+test('fulfilled scripted ensure remains converged across repeated refreshes', () => {
+  let modalWriteCount = 0;
+  let emittedEventCount = 0;
   const harness = createHarness({
     stepKey: 'era2AdvanceReady',
     queryState: { commandPanel: '' },
+    onLegacyRefresh({ queryState }) {
+      queryState.commandPanel = '';
+      modalWriteCount += 1;
+      emittedEventCount += 1;
+    },
   });
 
   assert.equal(harness.context.refreshCurrentHighlight(), true);
-  assert.equal(harness.legacyRefreshCount(), 0);
   assert.deepEqual(harness.calls.at(-1).allowedAction, {
     type: 'openCommandPanel',
     panel: 'civilization',
   });
-
   harness.queryState.commandPanel = 'civilization';
-  assert.equal(harness.context.refreshCurrentHighlight(), true);
-  assert.equal(harness.legacyRefreshCount(), 1);
-  assert.equal(harness.calls.at(-1).type, 'legacyRefresh');
+  const panelBefore = harness.queryState.commandPanel;
+  const actionCallCountBefore = harness.calls.length;
 
-  const trace = TutorialHostContext.getStepScriptTrace();
-  assert.equal(trace.steps.era2AdvanceReady.count, 2);
-  assert.equal(trace.steps.era2AdvanceReady.first.ruleId, 'era2-open-civilization');
-  assert.equal(trace.steps.era2AdvanceReady.last.ruleId, '');
+  for (let refreshIndex = 0; refreshIndex < 3; refreshIndex += 1) {
+    assert.equal(harness.context.refreshCurrentHighlight(), false);
+  }
+
+  assert.equal(harness.queryState.commandPanel, panelBefore);
+  assert.equal(harness.legacyRefreshCount(), 0);
+  assert.equal(modalWriteCount, 0);
+  assert.equal(emittedEventCount, 0);
+  assert.equal(harness.calls.length, actionCallCountBefore);
 });
 
 test('legacy modal overlays keep priority while engine evaluation is still traced', () => {

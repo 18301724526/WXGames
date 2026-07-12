@@ -179,10 +179,24 @@
       stepKey: String(trace.stepKey || ''),
       scriptType: String(trace.scriptType || ''),
       ruleId: String(trace.ruleId || ''),
+      outcome: String(trace.outcome || ''),
       instructionTypes: Array.isArray(trace.instructionTypes)
         ? trace.instructionTypes.map((type) => String(type || ''))
         : [],
     };
+  }
+
+  function recordStepScriptIdleTrace(stepKey = '', projection = null) {
+    const snapshot = copyStepScriptTrace({
+      ...(projection?.trace || {}),
+      stepKey,
+      outcome: 'scripted-step-idle',
+    });
+    const ledger = getGlobalStepScriptTrace();
+    const entry = ledger.steps[snapshot.stepKey] || null;
+    if (entry) entry.last = snapshot;
+    global.TutorialHostContextTrace?.log?.('scripted-step-idle', snapshot);
+    return snapshot;
   }
 
   function getGlobalStepScriptTrace() {
@@ -1634,7 +1648,10 @@
         const projection = this.evaluateStepScript(stepKey);
         if (this.isLegacyOverlayActive()) return this.refreshLegacyHighlight();
         const instruction = projection?.instructions?.[0] || null;
-        if (!instruction) return this.refreshLegacyHighlight();
+        if (!instruction) {
+          recordStepScriptIdleTrace(stepKey, projection);
+          return false;
+        }
         return this.renderStepScriptInstruction(instruction) || false;
       } finally {
         this.highlightRefreshActive = false;
