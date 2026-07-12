@@ -436,6 +436,7 @@ constructor(options = {}) {
         runtimeRequired: false,
         apiRequired: false,
         rendererRequired: false,
+        tutorialControllerEnabled: false,
       });
       this.runtime = options.runtime || null;
       this.worldClock = options.worldClock || this.runtime?.worldClock || SharedWorldClock?.getShared?.({ runtime: this.runtime }) || null;
@@ -1517,6 +1518,10 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
 
     getCanvasGameHost() {
           return this.lastGame || null;
+        }
+
+    getTutorialController() {
+          return this.getCanvasGameHost()?.tutorialController || null;
         }
 
     getCanvasActionState() {
@@ -2937,7 +2942,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             activeDockItemIds: panel.activeDockItemIds,
             showTopBarDebugStats: panel.showTopBarDebugStats === true,
             logs: this.lastGame?.requestLogs || [],
-            tutorial: this.lastGame?.tutorialController?.state || this.lastGame?.tutorial || {},
+            tutorial: this.getTutorialController()?.state || this.lastGame?.tutorial || {},
             buildingOffset: uiOwner.buildingOffset,
             techTreePanX: uiOwner.techTreePanX,
             techTreePanY: uiOwner.techTreePanY,
@@ -3242,12 +3247,13 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
 
     getTabLocks() {
           const tabIds = ['resources', 'buildings', 'tech', 'events', 'civilization', 'military'];
-          const canOpenTab = this.lastGame?.tutorialController?.canOpenTab;
+          const tutorialController = this.getTutorialController();
+          const canOpenTab = tutorialController?.canOpenTab;
           if (typeof canOpenTab !== 'function') {
             return tabIds.map((id) => ({ id, disabled: false, isLocked: false }));
           }
           return tabIds.map((id) => {
-            const allowed = Boolean(canOpenTab.call(this.lastGame.tutorialController, id));
+            const allowed = Boolean(canOpenTab.call(tutorialController, id));
             return {
               id,
               disabled: !allowed,

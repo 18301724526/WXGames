@@ -311,7 +311,7 @@
         host.showFloatingText(result.message || t('command.formation.saved'));
         host.log(result.message || t('command.formation.saved'));
         if (!tutorialHandled) {
-          host.tutorialController?.sync?.(host.tutorial);
+          (host.getTutorialController?.() || host.tutorialController)?.sync?.(host.tutorial);
           host.renderCanvasSurface(host.getState()?.currentTab);
         }
         return true;

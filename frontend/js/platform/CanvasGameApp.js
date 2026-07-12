@@ -413,7 +413,12 @@
           this.stateNormalizer = options.stateNormalizer || null;
           this.stateManager = options.stateManager || null;
           const TutorialGuideControllerCtor = options.tutorialControllerClass || TutorialGuideControllerBase || null;
-          this.tutorialController = options.tutorialController || (TutorialGuideControllerCtor ? new TutorialGuideControllerCtor({ game: this }) : null);
+          const tutorialControllerEnabled = options.tutorialControllerEnabled !== false;
+          this.tutorialController = options.tutorialController || (
+            tutorialControllerEnabled && TutorialGuideControllerCtor
+              ? new TutorialGuideControllerCtor({ game: this })
+              : null
+          );
           this.tutorialRenderer = options.tutorialRenderer || null;
           this.eventController = options.eventController || null;
           this.buildingController = options.buildingController || null;
@@ -482,6 +487,10 @@
           this.ensureWorldMapRuntime();
         }
 
+
+    getTutorialController() {
+          return this.tutorialController || null;
+        }
 
     getStateHost() {
           return StateWriter.getStateHost(this);
@@ -967,7 +976,7 @@
                   this.loading = { visible: false, percentage: 100, message: '' };
                   if (this.canvasShell?.loading) this.canvasShell.loading = { visible: false, percentage: 100, message: '' };
                 }
-                this.tutorialController?.sync?.(nextTutorial);
+                this.getTutorialController()?.sync?.(nextTutorial);
                 this.setPendingBuildingAction(null, { render: false });
                 global.WorldMarchTrace?.log?.('app:applyState:after', {
                   after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
@@ -1117,7 +1126,7 @@
                   state: beforeRenderStateSummary,
                   mapHomeActive: Boolean(this.mapHomeActive),
                 });
-                this.tutorialController?.sync?.(nextTutorial);
+                this.getTutorialController()?.sync?.(nextTutorial);
                 this.updateSyncInterval();
                 this.hasServerState = true;
                 if (this.loading.visible || this.canvasShell?.loading?.visible) {
@@ -1217,7 +1226,7 @@
 
     getEffectiveTutorialState(tutorial) {
                 const nextTutorial = tutorial || { completed: false, currentStep: 0, phaseCompleted: { newbie: false, era2: false } };
-                const tutorialSteps = this.tutorialController?.constructor?.TUTORIAL_STEPS || TutorialGuideControllerBase?.TUTORIAL_STEPS || {};
+                const tutorialSteps = this.getTutorialController()?.constructor?.TUTORIAL_STEPS || TutorialGuideControllerBase?.TUTORIAL_STEPS || {};
                 if (!nextTutorial.completed && TutorialFlowShared.stepEquals(nextTutorial.currentStep, tutorialSteps.farmBuilt) && this.isEra2AdvanceReady()) {
                   return {
                     ...nextTutorial,
@@ -1733,7 +1742,7 @@
                   isMapHome: homeView.isMapHome,
                   territoryUiState: territoryUiState || this.territoryUiState || {},
                   targetPicker: this.getTargetPickerSnapshot?.() || null,
-                  tutorial: this.tutorialController?.state || this.tutorial || {},
+                  tutorial: this.getTutorialController()?.state || this.tutorial || {},
                   tutorialIntro: this.tutorialIntro || null,
                   tutorialAdvisorDialogue: this.tutorialAdvisorDialogue || null,
                   worldMapRuntimeContext: this.worldMapRuntime?.getLastTileMapContext?.()
@@ -2698,7 +2707,7 @@
                   this.pendingTutorialAdvisorDialogue = action === 'build' && buildingId === 'house';
                   try {
                     const handled = await this.commandService.handleBuildingSuccess(result, action, buildingId);
-                    this.tutorialController?.sync?.(this.tutorial);
+                    this.getTutorialController()?.sync?.(this.tutorial);
                     this.maybeShowHouseBuiltAdvisor(action, buildingId);
                     return handled;
                   } finally {
@@ -2710,7 +2719,7 @@
                   this.applyApiState(result);
                   this.showFloatingText(action === 'upgrade' ? t('command.building.upgradeSuccess') : t('command.building.buildSuccess'));
                   this.log(t('command.success.detail', { message: result?.message || '' }));
-                  this.tutorialController?.sync?.(this.tutorial);
+                  this.getTutorialController()?.sync?.(this.tutorial);
                   this.maybeShowHouseBuiltAdvisor(action, buildingId);
                   return true;
                 } finally {
@@ -2719,7 +2728,7 @@
               }
 
     maybeShowHouseBuiltAdvisor(action, buildingId) {
-                const steps = this.tutorialController?.constructor?.TUTORIAL_STEPS || {};
+                const steps = this.getTutorialController()?.constructor?.TUTORIAL_STEPS || {};
                 if (action !== 'build' || buildingId !== 'house') return false;
                 if (!TutorialFlowShared.stepEquals(this.tutorial?.currentStep, steps.houseBuilt)) return false;
                 return this.showHouseBuiltAdvisorDialogue();
@@ -2827,7 +2836,7 @@
                 try {
                   const result = await this.getGameApi().advanceEra();
                   this.applyApiState(result);
-                  this.tutorialController?.sync?.(this.tutorial);
+                  this.getTutorialController()?.sync?.(this.tutorial);
                   this.emitTutorialEvent('eraAdvanced', { result });
                   this.log(t('command.era.entered', { message: result.message || this.state.currentEraName || '' }));
                   this.showFloatingText(result.message || this.state.currentEraName || t('command.era.advanced', {}));
@@ -2875,7 +2884,7 @@
                     selectedWorldActorId: '',
                     selectedWorldMissionId: '',
                   });
-                  this.tutorialController?.sync?.(this.tutorial);
+                  this.getTutorialController()?.sync?.(this.tutorial);
                   this.emitTutorialEvent('exploreStarted', { result });
                   this.showFloatingText(result.message || t('command.worldMarch.started', {}));
                   this.log(result.message || t('command.worldMarch.started', {}));
@@ -2968,7 +2977,7 @@
                   const api = this.getGameApi();
                   const result = await api.claimTaskReward(taskId, category || 'main');
                   this.applyApiState(result);
-                  this.tutorialController?.sync?.(this.tutorial);
+                  this.getTutorialController()?.sync?.(this.tutorial);
                   this.emitTutorialEvent('taskRewardClaimed', { result });
                   if (!this.canvasShell?.showRewardReveal?.(result.rewardReveal) && result.rewardReveal) {
                     this.openRewardRevealSnapshot?.({ ...result.rewardReveal, createdAt: this.runtime?.now?.() || Date.now() });
@@ -3172,7 +3181,7 @@
                     : await api.renameCity(prompt.territoryId, name);
                   this.closeNaming();
                   this.applyApiState(result);
-                  this.tutorialController?.sync?.(this.tutorial || this.state?.tutorial || {});
+                  this.getTutorialController()?.sync?.(this.tutorial || this.state?.tutorial || {});
                   this.showFloatingText(result.message);
                   this.log(t('command.success.detail', { message: result.message || '' }));
                 } catch (error) {
