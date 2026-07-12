@@ -1704,18 +1704,18 @@
   TutorialHostContext.resetRenderRefreshDropTrace = resetRenderRefreshDropTrace;
   TutorialHostContext.getAdvanceWatchdogTrace = getAdvanceWatchdogTraceSnapshot;
   TutorialHostContext.resetAdvanceWatchdogTrace = resetAdvanceWatchdogTrace;
+  const nodeProcess = global.process || null;
   if (
-    typeof process !== 'undefined'
-    && process?.env?.TUTORIAL_WITNESS_ASSERT_ZERO === '1'
+    nodeProcess?.env?.TUTORIAL_WITNESS_ASSERT_ZERO === '1'
     && !global.__tutorialHostContextExitGuardInstalled
   ) {
     global.__tutorialHostContextExitGuardInstalled = true;
-    process.on('exit', () => {
+    nodeProcess.on('exit', () => {
       const witness = TutorialHostContext.getDivergenceWitness();
       if (witness.count === 0) return;
       console.error(`[tutorial-host-context-witness] expected 0, received ${witness.count}`);
       console.error(JSON.stringify(witness.traces.slice(0, 10), null, 2));
-      process.exitCode = 1;
+      nodeProcess.exitCode = 1;
     });
   }
   global.TutorialHostContext = TutorialHostContext;

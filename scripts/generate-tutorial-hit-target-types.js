@@ -73,16 +73,6 @@ function staticStrings(node) {
   return [];
 }
 
-function objectType(node) {
-  if (node?.type !== 'ObjectExpression') return '';
-  const property = node.properties.find((entry) => {
-    if (entry.type !== 'Property') return false;
-    if (!entry.computed && entry.key?.type === 'Identifier') return entry.key.name === 'type';
-    return entry.key?.type === 'Literal' && entry.key.value === 'type';
-  });
-  return staticString(property?.value);
-}
-
 function objectTypes(node) {
   if (node?.type !== 'ObjectExpression') return [];
   const property = node.properties.find((entry) => {
@@ -91,28 +81,6 @@ function objectTypes(node) {
     return entry.key?.type === 'Literal' && entry.key.value === 'type';
   });
   return staticStrings(property?.value);
-}
-
-function collectStaticActionTypes(ast) {
-  const definitions = new Map();
-  visit(ast, (node) => {
-    if (node.type !== 'VariableDeclarator' || node.id?.type !== 'Identifier') return;
-    const type = objectType(node.init);
-    if (type) definitions.set(node.id.name, type);
-  });
-  return definitions;
-}
-
-function resolveActionType(node, definitions) {
-  const direct = objectType(node);
-  if (direct) return direct;
-  if (node?.type === 'Identifier') return definitions.get(node.name) || '';
-  if (node?.type === 'ConditionalExpression') {
-    const consequent = resolveActionType(node.consequent, definitions);
-    const alternate = resolveActionType(node.alternate, definitions);
-    return consequent && consequent === alternate ? consequent : '';
-  }
-  return '';
 }
 
 function location(parsed, node) {

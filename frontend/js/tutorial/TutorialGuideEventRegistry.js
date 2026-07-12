@@ -39,18 +39,6 @@
     return LocaleText ? LocaleText.t(key, params) : key;
   }
 
-  const CanvasModalSnapshotAdapter = (() => {
-    if (global.CanvasModalSnapshotAdapter) return global.CanvasModalSnapshotAdapter;
-    if (typeof module !== 'undefined' && module.exports) {
-      try {
-        return require('../platform/CanvasModalSnapshotAdapter');
-      } catch (_error) {
-        return null;
-      }
-    }
-    return null;
-  })();
-
   var StateWriter = global.StateWriter;
   if (typeof module !== 'undefined' && module.exports && !StateWriter) {
     StateWriter = require('../state/StateWriter');
