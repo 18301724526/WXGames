@@ -911,11 +911,13 @@
 
     isTaskCenterOpen() {
       const g = this.game || {};
-      const owner = g.lastGame || g;
-      if (CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen(owner, 'showTaskCenter')) return true;
+      const shell = g.canvasShell || {};
+      // CanvasActionController 写 openBlockingPanelSnapshot(this.host) → host=canvasShell
+      if (CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen(shell, 'showTaskCenter')) return true;
+      if (CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen(g.lastGame || g, 'showTaskCenter')) return true;
       if (CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen(g, 'showTaskCenter')) return true;
       // 兜底:openTaskCenter 同时会设 activeTaskCenterTab(host/game/canvasShell 多处)
-      return Boolean(g.activeTaskCenterTab || owner.activeTaskCenterTab || g.canvasShell?.activeTaskCenterTab);
+      return Boolean(g.activeTaskCenterTab || shell.activeTaskCenterTab || (g.lastGame || {}).activeTaskCenterTab);
     }
 
     isCityManagementOpen() {
