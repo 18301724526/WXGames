@@ -49,12 +49,10 @@ test('task claim steps switch between fixed open and claim targets', () => {
   });
 });
 
-test('panel steps emit instructions only while the named panel is closed', () => {
+test('single-phase panel steps emit instructions only while the named panel is closed', () => {
   const runner = StepScriptRunner.create();
   const panelSteps = [
-    ['era2AdvanceReady', 'civilization'],
     ['eraAdvancedTo2', 'events'],
-    ['era3AdvanceReady', 'civilization'],
     ['famousSeekCompleted', 'tech'],
     ['finalTechOpened', 'tech'],
   ];
@@ -65,5 +63,47 @@ test('panel steps emit instructions only while the named panel is closed', () =>
     assert.equal(closed.instructions[0].type, 'ensureSurfaceThenHighlight');
     assert.equal(closed.instructions[0].panel, panel);
     assert.equal(open.handled, false);
+  });
+});
+
+test('era advance steps open civilization first, then highlight advanceEra', () => {
+  const runner = StepScriptRunner.create();
+  const eraSteps = [
+    [
+      'era2AdvanceReady',
+      'era2-open-civilization',
+      'era2-advance',
+      'tutorial.guide.openCivilizationForEra2',
+      'tutorial.guide.advanceToEra2',
+    ],
+    [
+      'era3AdvanceReady',
+      'era3-open-civilization',
+      'era3-advance',
+      'tutorial.guide.openCivilizationForEra3',
+      'tutorial.guide.advanceToEra3',
+    ],
+  ];
+
+  eraSteps.forEach(([stepKey, openRuleId, advanceRuleId, openMessageKey, advanceMessageKey]) => {
+    const closed = runner.evaluate({ stepKey, config, ctx: createContext({ commandPanel: '' }) });
+    const open = runner.evaluate({ stepKey, config, ctx: createContext({ commandPanel: 'civilization' }) });
+
+    assert.equal(closed.matchedRuleId, openRuleId);
+    assert.deepEqual(closed.instructions[0], {
+      type: 'highlightActionWait',
+      target: 'openCommandPanel',
+      messageKey: openMessageKey,
+      eventName: 'commandPanelOpened',
+      panel: 'civilization',
+    });
+    assert.equal(open.matchedRuleId, advanceRuleId);
+    assert.deepEqual(open.instructions[0], {
+      type: 'highlightActionWait',
+      target: 'advanceEra',
+      messageKey: advanceMessageKey,
+      eventName: 'eraAdvanced',
+      panel: '',
+    });
   });
 });

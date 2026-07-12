@@ -20,17 +20,32 @@
       ]),
     }),
     era2AdvanceReady: Object.freeze({
-      type: 'ensureSurfaceThenHighlight',
-      ruleId: 'era2-open-civilization',
-      when: Object.freeze({
-        query: 'isCommandPanelOpen',
-        args: Object.freeze(['civilization']),
-        equals: false,
-      }),
-      panel: 'civilization',
-      target: 'openCommandPanel',
-      messageKey: 'tutorial.guide.openCivilizationForEra2',
-      eventName: 'commandPanelOpened',
+      type: 'highlightActionWait',
+      clauses: Object.freeze([
+        Object.freeze({
+          ruleId: 'era2-open-civilization',
+          when: Object.freeze({
+            query: 'isCommandPanelOpen',
+            args: Object.freeze(['civilization']),
+            equals: false,
+          }),
+          panel: 'civilization',
+          target: 'openCommandPanel',
+          messageKey: 'tutorial.guide.openCivilizationForEra2',
+          eventName: 'commandPanelOpened',
+        }),
+        Object.freeze({
+          ruleId: 'era2-advance',
+          when: Object.freeze({
+            query: 'isCommandPanelOpen',
+            args: Object.freeze(['civilization']),
+            equals: true,
+          }),
+          target: 'advanceEra',
+          messageKey: 'tutorial.guide.advanceToEra2',
+          eventName: 'eraAdvanced',
+        }),
+      ]),
     }),
     eraAdvancedTo2: Object.freeze({
       type: 'ensureSurfaceThenHighlight',
@@ -65,17 +80,32 @@
       ]),
     }),
     era3AdvanceReady: Object.freeze({
-      type: 'ensureSurfaceThenHighlight',
-      ruleId: 'era3-open-civilization',
-      when: Object.freeze({
-        query: 'isCommandPanelOpen',
-        args: Object.freeze(['civilization']),
-        equals: false,
-      }),
-      panel: 'civilization',
-      target: 'openCommandPanel',
-      messageKey: 'tutorial.guide.openCivilizationForEra3',
-      eventName: 'commandPanelOpened',
+      type: 'highlightActionWait',
+      clauses: Object.freeze([
+        Object.freeze({
+          ruleId: 'era3-open-civilization',
+          when: Object.freeze({
+            query: 'isCommandPanelOpen',
+            args: Object.freeze(['civilization']),
+            equals: false,
+          }),
+          panel: 'civilization',
+          target: 'openCommandPanel',
+          messageKey: 'tutorial.guide.openCivilizationForEra3',
+          eventName: 'commandPanelOpened',
+        }),
+        Object.freeze({
+          ruleId: 'era3-advance',
+          when: Object.freeze({
+            query: 'isCommandPanelOpen',
+            args: Object.freeze(['civilization']),
+            equals: true,
+          }),
+          target: 'advanceEra',
+          messageKey: 'tutorial.guide.advanceToEra3',
+          eventName: 'eraAdvanced',
+        }),
+      ]),
     }),
     era3Advanced: Object.freeze({
       type: 'highlightActionWait',

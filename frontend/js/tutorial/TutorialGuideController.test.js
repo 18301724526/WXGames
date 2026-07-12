@@ -511,9 +511,8 @@ test('TutorialGuideController guides farm, forest event, lumbermill, and second 
 
   game.state.currentTab = 'civilization';
   game.openBlockingPanelSnapshot('activeCommandPanel', 'civilization');
-  const era2IdleCallCount = calls.length;
-  assert.equal(controller.refreshCurrentHighlight(), false);
-  assert.equal(calls.length, era2IdleCallCount);
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'advanceEra' });
 
   controller.onEraAdvanced({
     tutorial: { completed: false, currentStep: TutorialGuideController.TUTORIAL_STEPS.eraAdvancedTo2 },
@@ -664,9 +663,8 @@ test('TutorialGuideController guides era three, scout famous card, and army form
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'openCommandPanel', panel: 'civilization' });
 
   game.openBlockingPanelSnapshot('activeCommandPanel', 'civilization');
-  const era3IdleCallCount = calls.length;
-  assert.equal(controller.refreshCurrentHighlight(), false);
-  assert.equal(calls.length, era3IdleCallCount);
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'advanceEra' });
 
   controller.onEraAdvanced({
     tutorial: {

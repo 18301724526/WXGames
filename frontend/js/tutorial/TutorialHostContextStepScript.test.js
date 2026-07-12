@@ -139,18 +139,8 @@ test('task-panel steps execute engine projections without entering the legacy re
   assert.equal(trace.steps.eraAdvancedTo1.last.ruleId, 'first-era-claim-supplies');
 });
 
-test('engine-owned step stays idle without legacy fallback when its projection is empty', (t) => {
+test('engine-owned era advance step projects advanceEra without legacy fallback', () => {
   TutorialHostContext.resetStepScriptTrace();
-  const traceEvents = [];
-  const previousTrace = global.TutorialHostContextTrace;
-  global.TutorialHostContextTrace = {
-    log(eventName, detail) {
-      traceEvents.push({ eventName, detail });
-    },
-  };
-  t.after(() => {
-    global.TutorialHostContextTrace = previousTrace;
-  });
   let modalWriteCount = 0;
   const harness = createHarness({
     stepKey: 'era2AdvanceReady',
@@ -160,21 +150,20 @@ test('engine-owned step stays idle without legacy fallback when its projection i
     },
   });
 
-  assert.equal(harness.context.refreshCurrentHighlight(), false);
+  assert.equal(harness.context.refreshCurrentHighlight(), true);
   assert.equal(harness.legacyRefreshCount(), 0);
   assert.equal(modalWriteCount, 0);
-  assert.deepEqual(harness.calls, []);
+  assert.equal(harness.calls.length, 1);
+  assert.equal(harness.calls[0].type, 'advanceEra');
+  assert.deepEqual(harness.calls[0].allowedAction, { type: 'advanceEra' });
 
   const trace = TutorialHostContext.getStepScriptTrace();
   assert.equal(trace.steps.era2AdvanceReady.count, 1);
-  assert.equal(trace.steps.era2AdvanceReady.last.ruleId, '');
-  assert.equal(trace.steps.era2AdvanceReady.last.outcome, 'scripted-step-idle');
-  assert.equal(traceEvents.length, 1);
-  assert.equal(traceEvents[0].eventName, 'scripted-step-idle');
-  assert.equal(traceEvents[0].detail.stepKey, 'era2AdvanceReady');
+  assert.equal(trace.steps.era2AdvanceReady.last.ruleId, 'era2-advance');
+  assert.equal(trace.steps.era2AdvanceReady.last.outcome, '');
 });
 
-test('fulfilled scripted ensure remains converged across repeated refreshes', (t) => {
+test('opened civilization keeps projecting advanceEra across repeated refreshes', (t) => {
   TutorialHostContext.resetStepScriptTrace();
   const tutorial = { completed: false, currentStep: 'era2AdvanceReady' };
   const canvasShell = {};
@@ -213,18 +202,18 @@ test('fulfilled scripted ensure remains converged across repeated refreshes', (t
   };
 
   for (let refreshIndex = 0; refreshIndex < 3; refreshIndex += 1) {
-    assert.equal(context.refreshCurrentHighlight(), false);
+    assert.equal(context.refreshCurrentHighlight(), true);
   }
 
   const trace = TutorialHostContext.getStepScriptTrace();
   assert.equal(context.isCommandPanelOpen('civilization'), true);
   assert.equal(trace.totalEvaluations, 3);
   assert.equal(trace.steps.era2AdvanceReady.count, 3);
-  assert.equal(trace.steps.era2AdvanceReady.last.ruleId, '');
-  assert.equal(trace.steps.era2AdvanceReady.last.outcome, 'scripted-step-idle');
+  assert.equal(trace.steps.era2AdvanceReady.last.ruleId, 'era2-advance');
+  assert.equal(trace.steps.era2AdvanceReady.last.outcome, '');
   assert.equal(legacyRefreshCount, 0);
   assert.equal(actionCount, 0);
-  assert.equal(notifyCount, 0);
+  assert.equal(notifyCount, 3);
 });
 
 test('legacy modal overlays keep priority while engine evaluation is still traced', () => {

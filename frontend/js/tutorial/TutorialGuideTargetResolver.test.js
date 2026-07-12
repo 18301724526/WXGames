@@ -14,6 +14,7 @@ function attachTutorialController(host) {
 }
 
 const S2_HIGHLIGHT_PANEL_EXPECTATIONS = Object.freeze({
+  advanceEra: '',
   buildBuilding: '',
   claimConquest: '',
   claimEvent: '',

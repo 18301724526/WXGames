@@ -1535,6 +1535,27 @@
     renderStepScriptHighlight(instruction = {}) {
       const target = String(instruction.target || '');
       const message = t(instruction.messageKey || '');
+      if (target === 'openCommandPanel') {
+        const panel = String(instruction.panel || '');
+        if (!panel) throw new TypeError('Tutorial StepScript openCommandPanel target is missing panel');
+        this.requestAction('prepareCommandPanelGuide', panel);
+        return this.requestAction(
+          'showHighlight',
+          'openCommandPanel',
+          (action) => !isVisuallyDisabled(action) && action.panel === panel,
+          message,
+          { type: 'openCommandPanel', panel },
+        );
+      }
+      if (target === 'advanceEra') {
+        return this.requestAction(
+          'showHighlight',
+          'advanceEra',
+          (action) => !isVisuallyDisabled(action),
+          message,
+          { type: 'advanceEra' },
+        );
+      }
       if (target === 'openTaskCenter') {
         return this.requestAction(
           'showHighlight',
