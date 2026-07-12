@@ -410,7 +410,9 @@
           ? SharedChangeEventBus
           : SharedChangeEventBus?.createEventBus?.());
       this.changeEventBus = changeEventBus || null;
-      this.changeEventBusUnsubscribe = this.eventRegistry?.subscribeToBus?.(this.changeEventBus, this) || null;
+      this.changeEventBusUnsubscribe = (options.subscribeToBus === false)
+        ? null
+        : (this.eventRegistry?.subscribeToBus?.(this.changeEventBus, this) || null);
     }
 
     disconnectChangeEventBus() {
@@ -428,6 +430,7 @@
     requestHighlightRefresh(eventName = '', _change = {}) {
       if (getActiveRenderPhase(this)) {
         recordRenderRefreshDrop(this, eventName);
+        if (eventName === 'modal.changed') this.scheduleTrailingHighlightRefresh();
         return false;
       }
       if (eventName === 'state.changed' && getHighlightRefreshTransaction(this).active) {
@@ -907,7 +910,12 @@
     }
 
     isTaskCenterOpen() {
-      return CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen(this.game, 'showTaskCenter');
+      const g = this.game || {};
+      const owner = g.lastGame || g;
+      if (CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen(owner, 'showTaskCenter')) return true;
+      if (CanvasModalSnapshotAdapter.isBlockingPanelSnapshotOpen(g, 'showTaskCenter')) return true;
+      // 兜底:openTaskCenter 同时会设 activeTaskCenterTab(host/game/canvasShell 多处)
+      return Boolean(g.activeTaskCenterTab || owner.activeTaskCenterTab || g.canvasShell?.activeTaskCenterTab);
     }
 
     isCityManagementOpen() {

@@ -45,7 +45,7 @@
     if (options.context) return options.context;
     const TutorialHostContext = global.TutorialHostContext
       || (typeof module !== 'undefined' && module.exports ? require('./TutorialHostContext') : null);
-    return TutorialHostContext ? new TutorialHostContext({ game: options.game || null }) : null;
+    return TutorialHostContext ? new TutorialHostContext({ game: options.game || null, subscribeToBus: false }) : null;
   }
 
   class TutorialIntroOverlay {

@@ -74,7 +74,7 @@
       const TutorialHostContext = global.TutorialHostContext
         || (typeof module !== 'undefined' && module.exports ? require('./TutorialHostContext') : null);
       this.host = TutorialHostContext
-        ? new TutorialHostContext({ game: candidate?.game || options.game || null, targetResolver: this })
+        ? new TutorialHostContext({ game: candidate?.game || options.game || null, targetResolver: this, subscribeToBus: false })
         : candidate;
     }
 
