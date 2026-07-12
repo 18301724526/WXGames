@@ -447,10 +447,6 @@
     requestHighlightRefresh(eventName = '', _change = {}) {
       if (getActiveRenderPhase(this)) {
         recordRenderRefreshDrop(this, eventName);
-        if (eventName === 'modal.changed') {
-          this.highlightRefreshPending = true;
-          this.scheduleTrailingHighlightRefresh();
-        }
         return false;
       }
       if (eventName === 'state.changed' && getHighlightRefreshTransaction(this).active) {

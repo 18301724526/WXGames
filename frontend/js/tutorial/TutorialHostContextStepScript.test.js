@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const TutorialHostContext = require('./TutorialHostContext');
 const ChangeEventBus = require('../state/ChangeEventBus');
+const CanvasModalSnapshotAdapter = require('../platform/CanvasModalSnapshotAdapter');
 const TutorialGuideEventRegistry = require('./TutorialGuideEventRegistry');
 const TutorialGuideFlowRegistry = require('./TutorialGuideFlowRegistry');
 const TutorialFlowShared = require('../../../shared/tutorialFlowConfig');
@@ -233,7 +234,8 @@ test('synchronous modal refresh reentry is traced and coalesced into one trailin
   context.disconnectChangeEventBus();
 });
 
-test('render-phase modal change schedules exactly one trailing refresh', (t) => {
+test('render-phase modal change is dropped without pending or trailing refresh', (t) => {
+  TutorialHostContext.resetRenderRefreshDropTrace();
   const previousGuard = global.TutorialRenderPhaseGuard;
   let renderPhase = '';
   global.TutorialRenderPhaseGuard = {
@@ -249,6 +251,7 @@ test('render-phase modal change schedules exactly one trailing refresh', (t) => 
   const bus = ChangeEventBus.createEventBus();
   const microtasks = [];
   let refreshCount = 0;
+  let trailingScheduleCount = 0;
   const game = {
     tutorial,
     state: { tutorial },
@@ -272,35 +275,113 @@ test('render-phase modal change schedules exactly one trailing refresh', (t) => 
     targetResolver: null,
     queryTable: null,
   });
+  context.scheduleTrailingHighlightRefresh = () => {
+    trailingScheduleCount += 1;
+    return true;
+  };
 
   renderPhase = 'renderCanvasSurface';
-  bus.emit('modal.changed', { source: 'test-render-phase', subtype: 'modal:cityManagement' });
+  const result = context.requestHighlightRefresh('modal.changed', {
+    source: 'test-render-phase',
+    subtype: 'modal:cityManagement',
+  });
   renderPhase = '';
 
+  assert.equal(result, false);
   assert.equal(refreshCount, 0);
-  assert.equal(microtasks.length, 1);
-  assert.equal(context.highlightRefreshPending, true);
-  microtasks.shift()();
-  assert.equal(refreshCount, 1);
+  assert.equal(trailingScheduleCount, 0);
   assert.equal(microtasks.length, 0);
   assert.equal(context.highlightRefreshPending, false);
   assert.equal(context.highlightRefreshTrailingScheduled, false);
+  assert.deepEqual(TutorialHostContext.getRenderRefreshDropTrace(), {
+    schema: 'tutorial-render-refresh-drop-trace/v1',
+    count: 1,
+    traces: [{
+      stepKey: 'cityEntered',
+      eventName: 'modal.changed',
+      renderPhase: 'renderCanvasSurface',
+    }],
+  });
   context.disconnectChangeEventBus();
 });
 
-test('render-phase modal reentry during a trailing refresh is dropped without rescheduling', (t) => {
-  TutorialHostContext.resetRefreshReentryTrace();
-  const previousGuard = global.TutorialRenderPhaseGuard;
-  let renderPhase = '';
-  global.TutorialRenderPhaseGuard = {
-    getActivePhase() {
-      return renderPhase;
+test('non-render modal change refreshes immediately', () => {
+  const tutorial = { completed: false, currentStep: 'cityEntered' };
+  let refreshCount = 0;
+  let trailingScheduleCount = 0;
+  const context = new TutorialHostContext({
+    state: tutorial,
+    game: { tutorial, state: { tutorial } },
+    eventRegistry: { subscribeToBus: () => null },
+    stepScriptConfig: {},
+    flowRegistry: {
+      refresh() {
+        refreshCount += 1;
+        return true;
+      },
     },
+    targetResolver: null,
+    queryTable: null,
+  });
+  context.scheduleTrailingHighlightRefresh = () => {
+    trailingScheduleCount += 1;
+    return true;
   };
-  t.after(() => {
-    global.TutorialRenderPhaseGuard = previousGuard;
+
+  assert.equal(context.requestHighlightRefresh('modal.changed', {
+    source: 'test-non-render-phase',
+    subtype: 'modal:taskCenter',
+  }), true);
+  assert.equal(refreshCount, 1);
+  assert.equal(trailingScheduleCount, 0);
+  assert.equal(context.highlightRefreshPending, false);
+});
+
+test('step6 openTaskCenter completion switches to claim on a non-render refresh', () => {
+  TutorialHostContext.resetStepScriptTrace();
+  const tutorial = { completed: false, currentStep: 'eraAdvancedTo1' };
+  const canvasShell = {};
+  const game = { canvasShell, tutorial, state: { tutorial } };
+  const allowedActions = [];
+  const context = new TutorialHostContext({
+    state: tutorial,
+    game,
+    eventRegistry: { subscribeToBus: () => null },
+    flowRegistry: {
+      refresh() {
+        throw new Error('step6 must stay on StepScripts');
+      },
+    },
+    targetResolver: {
+      showHighlight(_type, _predicate, _message, allowedAction) {
+        allowedActions.push(allowedAction);
+        return true;
+      },
+    },
   });
 
+  assert.equal(context.refreshCurrentHighlight(), true);
+  assert.deepEqual(allowedActions.at(-1), { type: 'openTaskCenter' });
+
+  CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(canvasShell, 'showTaskCenter', true);
+  assert.equal(context.isTaskCenterOpen(), true);
+  assert.equal(context.requestHighlightRefresh('modal.changed', {
+    source: 'openTaskCenter:completed',
+    subtype: 'modal:taskCenter',
+  }), true);
+  assert.deepEqual(allowedActions.at(-1), {
+    type: 'claimTaskReward',
+    taskId: 'main_first_supplies',
+    category: 'main',
+  });
+
+  const trace = TutorialHostContext.getStepScriptTrace();
+  assert.equal(trace.steps.eraAdvancedTo1.first.ruleId, 'first-era-open-task-center');
+  assert.equal(trace.steps.eraAdvancedTo1.last.ruleId, 'first-era-claim-supplies');
+});
+
+test('transaction reentry during a trailing refresh is self-dropped without rescheduling', () => {
+  TutorialHostContext.resetRefreshReentryTrace();
   const tutorial = { completed: false, currentStep: 'cityEntered' };
   const bus = ChangeEventBus.createEventBus();
   const microtasks = [];
@@ -329,12 +410,7 @@ test('render-phase modal reentry during a trailing refresh is dropped without re
         if (refreshCount === 1) {
           bus.emit('modal.changed', { source: 'test-trailing-reentry', subtype: 'modal:cityManagement' });
         } else if (refreshCount === 2) {
-          renderPhase = 'renderCanvasSurface';
-          try {
-            bus.emit('modal.changed', { source: 'test-trailing-self', subtype: 'modal:cityManagement' });
-          } finally {
-            renderPhase = '';
-          }
+          bus.emit('modal.changed', { source: 'test-trailing-self', subtype: 'modal:cityManagement' });
         }
         activeDepth -= 1;
         return true;
@@ -356,6 +432,7 @@ test('render-phase modal reentry during a trailing refresh is dropped without re
   assert.equal(context.highlightRefreshTrailingScheduled, false);
   assert.deepEqual(TutorialHostContext.getRefreshReentryTrace().traces, [
     { stepKey: 'cityEntered', phase: 'primary', trailingScheduled: true },
+    { stepKey: 'cityEntered', phase: 'trailing', trailingScheduled: false },
     { stepKey: 'cityEntered', phase: 'trailing-self-drop', trailingScheduled: false },
   ]);
   context.disconnectChangeEventBus();
