@@ -2,9 +2,17 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const TutorialIntroOverlay = require('./TutorialIntroOverlay');
+const TutorialGuideController = require('./TutorialGuideController');
+
+function attachTutorialController(game) {
+  const controller = new TutorialGuideController({ game });
+  game.tutorialController = controller;
+  controller.sync(game.state?.tutorial || game.tutorial || {});
+  return game;
+}
 
 function createOverlayGame(state = {}) {
-  return {
+  return attachTutorialController({
     hasServerState: true,
     state: {
       gameDay: 1,
@@ -17,7 +25,7 @@ function createOverlayGame(state = {}) {
     canvasShell: {
       renderActive() {},
     },
-  };
+  });
 }
 
 test('TutorialIntroOverlay delays enter-city completion until the fade transition ends', async () => {
@@ -39,7 +47,7 @@ test('TutorialIntroOverlay delays enter-city completion until the fade transitio
       setItem() {},
       removeItem() {},
     },
-    game: {
+    context: attachTutorialController({
       hasServerState: true,
       state: {
         gameDay: 1,
@@ -52,7 +60,7 @@ test('TutorialIntroOverlay delays enter-city completion until the fade transitio
           renders.push(options);
         },
       },
-    },
+    }).tutorialController,
   });
 
   assert.equal(overlay.start(), true);
@@ -102,7 +110,7 @@ test('TutorialIntroOverlay does not start over later server tutorial guides', ()
       setItem() {},
       removeItem() {},
     },
-    game,
+    context: game.tutorialController,
   });
 
   assert.equal(overlay.shouldStart(), false);
@@ -118,7 +126,7 @@ test('TutorialIntroOverlay allows initial server tutorial steps only', () => {
       setItem() {},
       removeItem() {},
     },
-    game: createOverlayGame({ tutorial: { completed: false, currentStep: 1 } }),
+    context: createOverlayGame({ tutorial: { completed: false, currentStep: 1 } }).tutorialController,
   });
 
   assert.equal(overlay.shouldStart(), true);

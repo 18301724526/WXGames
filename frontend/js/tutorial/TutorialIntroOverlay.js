@@ -41,18 +41,14 @@
   };
   const MAX_INTRO_TUTORIAL_STEP = TutorialFlowShared?.TUTORIAL_STEPS?.tutorialStarted || 'tutorialStarted';
 
-  function createHostContext(options = {}) {
-    if (options.context) return options.context;
-    const TutorialHostContext = global.TutorialHostContext
-      || (typeof module !== 'undefined' && module.exports ? require('./TutorialHostContext') : null);
-    return TutorialHostContext ? new TutorialHostContext({ game: options.game || null, subscribeToBus: false }) : null;
-  }
-
   class TutorialIntroOverlay {
     constructor(options = {}) {
+      const candidate = options.context || options.host || options.controller || null;
       this.runtime = options.runtime || global;
       this.storage = options.storage || null;
-      this.context = createHostContext(options);
+      this.resolveContext = typeof options.resolveContext === 'function'
+        ? options.resolveContext
+        : () => candidate;
       this.running = false;
       this.step = STEPS.done;
       this.startedAt = 0;
@@ -63,6 +59,10 @@
       this.timer = null;
       this.frameTimer = null;
       this.completedThisSession = false;
+    }
+
+    get context() {
+      return this.resolveContext?.() || null;
     }
 
     static get storageKey() {

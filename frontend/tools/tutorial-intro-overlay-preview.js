@@ -28,9 +28,12 @@
     },
   };
 
+  window.Game.tutorialController = new window.TutorialGuideController({ game: window.Game });
+  window.Game.tutorialController.sync(window.Game.state.tutorial || {});
+
   const overlay = new window.TutorialIntroOverlay({
     runtime: window,
-    game: window.Game,
+    resolveContext: () => window.Game.tutorialController,
   });
   window.Game.tutorialIntroOverlay = overlay;
   overlay.start(window.Game.state);

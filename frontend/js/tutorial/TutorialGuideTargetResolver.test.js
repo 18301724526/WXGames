@@ -4,7 +4,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const TutorialGuideTargetResolver = require('./TutorialGuideTargetResolver');
+const TutorialGuideController = require('./TutorialGuideController');
 const taskPanelStepScripts = require('../tutorial-config/TaskPanelStepScripts');
+
+function attachTutorialController(host) {
+  const controller = new TutorialGuideController({ game: host.game });
+  host.game.tutorialController = controller;
+  return controller;
+}
 
 const S2_HIGHLIGHT_PANEL_EXPECTATIONS = Object.freeze({
   buildBuilding: '',
@@ -118,7 +125,8 @@ test('TutorialGuideTargetResolver retries target lookup after render and shows h
       },
     },
   };
-  const resolver = new TutorialGuideTargetResolver({ host });
+  const controller = attachTutorialController(host);
+  const resolver = new TutorialGuideTargetResolver({ host: controller });
 
   assert.equal(resolver.showHighlight(
     'buildBuilding',
@@ -133,7 +141,7 @@ test('TutorialGuideTargetResolver retries target lookup after render and shows h
     'showTutorialHighlight',
   ]);
   assert.equal(calls.at(-1)[2].allowedAction.buildingId, 'house');
-  assert.equal(host.retryingHighlightAfterRender, false);
+  assert.equal(controller.retryingHighlightAfterRender, false);
 });
 
 test('TutorialGuideTargetResolver reprojects modal targets without rendering the base surface', () => {
@@ -170,7 +178,8 @@ test('TutorialGuideTargetResolver reprojects modal targets without rendering the
       },
     },
   };
-  const resolver = new TutorialGuideTargetResolver({ host });
+  const controller = attachTutorialController(host);
+  const resolver = new TutorialGuideTargetResolver({ host: controller });
 
   assert.equal(resolver.showHighlight(
     'seekFamousPerson',
@@ -184,13 +193,13 @@ test('TutorialGuideTargetResolver reprojects modal targets without rendering the
     ['getCanvasTarget', 'seekFamousPerson'],
     ['showTutorialHighlight', 'seek famous', 'seekFamousPerson', 'seekFamousPerson'],
   ]);
-  assert.equal(host.retryingHighlightAfterRender, false);
+  assert.equal(controller.retryingHighlightAfterRender, false);
 });
 
 test('TutorialGuideTargetResolver hides stale highlight when target is unavailable', () => {
   const calls = [];
   const resolver = new TutorialGuideTargetResolver({
-    host: {
+    host: attachTutorialController({
       game: {
         canvasShell: {
           getCanvasTarget() {
@@ -201,7 +210,7 @@ test('TutorialGuideTargetResolver hides stale highlight when target is unavailab
           },
         },
       },
-    },
+    }),
   });
 
   assert.equal(resolver.showHighlight('missing', null, 'missing', { type: 'missing' }), false);
@@ -221,14 +230,14 @@ test('TutorialGuideTargetResolver rejects visualDisabled command highlight targe
     },
   };
   const resolver = new TutorialGuideTargetResolver({
-    host: {
+    host: attachTutorialController({
       game: {
         canvasShell: shell,
         renderCanvasSurface() {
           calls.push(['renderCanvasSurface']);
         },
       },
-    },
+    }),
   });
 
   assert.equal(resolver.showHighlight(
@@ -242,13 +251,13 @@ test('TutorialGuideTargetResolver rejects visualDisabled command highlight targe
 
 test('TutorialGuideTargetResolver normalizes rects and checks viewport visibility', () => {
   const resolver = new TutorialGuideTargetResolver({
-    host: {
+    host: attachTutorialController({
       game: {
         canvasShell: {
           runtime: { width: 200, height: 100 },
         },
       },
-    },
+    }),
   });
 
   assert.deepEqual(resolver.getCanvasTargetRect({ x: 10, y: 20, width: 30, height: 40 }), {
@@ -279,7 +288,7 @@ test('TutorialGuideTargetResolver shows open-world-site highlight only for visib
     },
   };
   const resolver = new TutorialGuideTargetResolver({
-    host: { game: { canvasShell: shell } },
+    host: attachTutorialController({ game: { canvasShell: shell } }),
   });
 
   assert.equal(resolver.showOpenWorldSiteHighlight({
@@ -320,12 +329,12 @@ test('TutorialGuideTargetResolver prefers live world-site anchors over stale hit
     },
   };
   const resolver = new TutorialGuideTargetResolver({
-    host: {
+    host: attachTutorialController({
       game: {
         state: { territoryState: { worldMap: { tiles: [] } } },
         canvasShell: shell,
       },
-    },
+    }),
   });
 
   assert.equal(resolver.showOpenWorldSiteHighlight({
@@ -371,7 +380,7 @@ test('TutorialGuideTargetResolver does not fall back to hit targets when live an
     },
   };
   const resolver = new TutorialGuideTargetResolver({
-    host: { game: { state: {}, canvasShell: shell } },
+    host: attachTutorialController({ game: { state: {}, canvasShell: shell } }),
   });
 
   assert.equal(resolver.showOpenWorldSiteHighlight({ siteId: 'city-1' }), false);

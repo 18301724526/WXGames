@@ -187,7 +187,7 @@ class H5GameHost extends CanvasGameAppBase {
     this.tutorialIntroOverlay = new window.TutorialIntroOverlay({
       runtime: window,
       storage: window.localStorage || null,
-      game: this,
+      resolveContext: () => this.tutorialController,
     });
     return this.tutorialIntroOverlay;
   }

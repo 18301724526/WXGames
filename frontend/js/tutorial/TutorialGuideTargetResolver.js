@@ -66,23 +66,18 @@
   class TutorialGuideTargetResolver {
     constructor(options = {}) {
       const candidate = options.context || options.host || options.controller || null;
-      this.observerHost = candidate;
-      if (typeof candidate?.queryCanvasTarget === 'function') {
-        this.host = candidate;
-        return;
-      }
-      const TutorialHostContext = global.TutorialHostContext
-        || (typeof module !== 'undefined' && module.exports ? require('./TutorialHostContext') : null);
-      this.host = TutorialHostContext
-        ? new TutorialHostContext({ game: candidate?.game || options.game || null, targetResolver: this, subscribeToBus: false })
-        : candidate;
+      this.resolveHost = typeof options.resolveHost === 'function'
+        ? options.resolveHost
+        : () => candidate;
+    }
+
+    get host() {
+      return this.resolveHost?.() || null;
     }
 
     setRetryingHighlight(value) {
-      if (this.host) this.host.retryingHighlightAfterRender = value;
-      if (this.observerHost && this.observerHost !== this.host) {
-        this.observerHost.retryingHighlightAfterRender = value;
-      }
+      const host = this.host;
+      if (host) host.retryingHighlightAfterRender = value;
     }
 
     getActiveRenderTab() {

@@ -426,6 +426,7 @@
           ? SharedChangeEventBus
           : SharedChangeEventBus?.createEventBus?.());
       this.changeEventBus = changeEventBus || null;
+      // Historical compatibility only; auxiliary tutorial objects no longer create host contexts.
       this.changeEventBusUnsubscribe = (options.subscribeToBus === false)
         ? null
         : (this.eventRegistry?.subscribeToBus?.(this.changeEventBus, this) || null);
