@@ -912,7 +912,12 @@
     }
 
     getActiveCommandPanel() {
-      return getCommandPanelValue(this.game);
+      const g = this.game || {};
+      const shell = g.canvasShell || null;
+      return (shell && getCommandPanelValue(shell))
+        || getCommandPanelValue(g.lastGame || g)
+        || getCommandPanelValue(g)
+        || '';
     }
 
     isCommandPanelOpen(panelId) {

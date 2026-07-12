@@ -60,6 +60,62 @@ function createHarness(options = {}) {
   };
 }
 
+function createCommandPanelQueryContext(game) {
+  return new TutorialHostContext({ game, subscribeToBus: false });
+}
+
+test('command panel query reads the canvas shell modal owner first', (t) => {
+  const canvasShell = {};
+  const game = { canvasShell };
+  t.after(() => {
+    CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(canvasShell, 'activeCommandPanel');
+  });
+  CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(
+    canvasShell,
+    'activeCommandPanel',
+    'civilization',
+  );
+
+  const context = createCommandPanelQueryContext(game);
+
+  assert.equal(context.isCommandPanelOpen('civilization'), true);
+});
+
+test('command panel query preserves game and lastGame fallbacks', (t) => {
+  const gameOwned = { canvasShell: {} };
+  CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(
+    gameOwned,
+    'activeCommandPanel',
+    'civilization',
+  );
+  assert.equal(
+    createCommandPanelQueryContext(gameOwned).isCommandPanelOpen('civilization'),
+    true,
+  );
+  CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(gameOwned, 'activeCommandPanel');
+
+  const lastGame = {};
+  const lastGameOwned = { canvasShell: {}, lastGame };
+  t.after(() => {
+    CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(lastGame, 'activeCommandPanel');
+  });
+  CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(
+    lastGame,
+    'activeCommandPanel',
+    'civilization',
+  );
+  assert.equal(
+    createCommandPanelQueryContext(lastGameOwned).isCommandPanelOpen('civilization'),
+    true,
+  );
+});
+
+test('command panel query stays false when no owner has the panel open', () => {
+  const context = createCommandPanelQueryContext({ canvasShell: {}, lastGame: {} });
+
+  assert.equal(context.isCommandPanelOpen('civilization'), false);
+});
+
 test('task-panel steps execute engine projections without entering the legacy registry', () => {
   TutorialHostContext.resetStepScriptTrace();
   const harness = createHarness();
@@ -118,37 +174,57 @@ test('engine-owned step stays idle without legacy fallback when its projection i
   assert.equal(traceEvents[0].detail.stepKey, 'era2AdvanceReady');
 });
 
-test('fulfilled scripted ensure remains converged across repeated refreshes', () => {
-  let modalWriteCount = 0;
-  let emittedEventCount = 0;
-  const harness = createHarness({
-    stepKey: 'era2AdvanceReady',
-    queryState: { commandPanel: '' },
-    onLegacyRefresh({ queryState }) {
-      queryState.commandPanel = '';
-      modalWriteCount += 1;
-      emittedEventCount += 1;
+test('fulfilled scripted ensure remains converged across repeated refreshes', (t) => {
+  TutorialHostContext.resetStepScriptTrace();
+  const tutorial = { completed: false, currentStep: 'era2AdvanceReady' };
+  const canvasShell = {};
+  const game = { canvasShell, tutorial, state: { tutorial } };
+  let actionCount = 0;
+  let notifyCount = 0;
+  let legacyRefreshCount = 0;
+  t.after(() => {
+    CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(canvasShell, 'activeCommandPanel');
+  });
+  CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(
+    canvasShell,
+    'activeCommandPanel',
+    'civilization',
+  );
+  const context = new TutorialHostContext({
+    state: tutorial,
+    game,
+    subscribeToBus: false,
+    flowRegistry: {
+      refresh() {
+        legacyRefreshCount += 1;
+        return true;
+      },
+    },
+    targetResolver: {
+      showHighlight() {
+        notifyCount += 1;
+        return true;
+      },
     },
   });
-
-  assert.equal(harness.context.refreshCurrentHighlight(), true);
-  assert.deepEqual(harness.calls.at(-1).allowedAction, {
-    type: 'openCommandPanel',
-    panel: 'civilization',
-  });
-  harness.queryState.commandPanel = 'civilization';
-  const panelBefore = harness.queryState.commandPanel;
-  const actionCallCountBefore = harness.calls.length;
+  context.prepareCommandPanelGuide = () => {
+    actionCount += 1;
+    return true;
+  };
 
   for (let refreshIndex = 0; refreshIndex < 3; refreshIndex += 1) {
-    assert.equal(harness.context.refreshCurrentHighlight(), false);
+    assert.equal(context.refreshCurrentHighlight(), false);
   }
 
-  assert.equal(harness.queryState.commandPanel, panelBefore);
-  assert.equal(harness.legacyRefreshCount(), 0);
-  assert.equal(modalWriteCount, 0);
-  assert.equal(emittedEventCount, 0);
-  assert.equal(harness.calls.length, actionCallCountBefore);
+  const trace = TutorialHostContext.getStepScriptTrace();
+  assert.equal(context.isCommandPanelOpen('civilization'), true);
+  assert.equal(trace.totalEvaluations, 3);
+  assert.equal(trace.steps.era2AdvanceReady.count, 3);
+  assert.equal(trace.steps.era2AdvanceReady.last.ruleId, '');
+  assert.equal(trace.steps.era2AdvanceReady.last.outcome, 'scripted-step-idle');
+  assert.equal(legacyRefreshCount, 0);
+  assert.equal(actionCount, 0);
+  assert.equal(notifyCount, 0);
 });
 
 test('legacy modal overlays keep priority while engine evaluation is still traced', () => {
