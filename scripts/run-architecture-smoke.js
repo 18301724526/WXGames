@@ -97,7 +97,6 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-game-tutorial-awareness.js',
   'scripts/check-game-tutorial-awareness.test.js',
   'scripts/playtest-game-smoke.js',
-  'scripts/playtest-step-script-trace.js',
   'scripts/playtest-online-tutorial.js',
   'scripts/check-step5-action-descriptor-coverage.js',
   'scripts/check-step5-action-descriptor-coverage.test.js',
