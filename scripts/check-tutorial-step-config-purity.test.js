@@ -45,3 +45,21 @@ test('tutorial StepScript config purity FIRE rejects undeclared queries', () => 
   assert.equal(result.ok, false);
   assert.equal(result.violations.some((item) => item.includes('not in the E1 query table')), true);
 });
+
+test('tutorial StepScript config purity FIRE rejects effects outside the frozen host table', () => {
+  const result = inspectConfig(Object.freeze({
+    badStep: Object.freeze({
+      type: 'effectSequence',
+      ruleId: 'bad-rule',
+      effects: Object.freeze([
+        Object.freeze({ effect: 'ensureMapHomeGuideVisible' }),
+      ]),
+    }),
+  }));
+
+  assert.equal(result.ok, false);
+  assert.equal(
+    result.violations.some((item) => item.includes('not in the frozen host table')),
+    true,
+  );
+});

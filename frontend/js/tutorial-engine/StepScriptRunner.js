@@ -60,7 +60,10 @@
     }
 
     emitBeforeEffects(script = {}, evaluation = {}) {
-      const beforeEffects = Array.isArray(script.beforeEffects) ? script.beforeEffects : [];
+      const beforeEffects = this.typeRegistry.normalizeEffects?.(
+        script.beforeEffects || [],
+        'beforeEffects',
+      ) || [];
       if (this.beforeEffectsEmitted || beforeEffects.length === 0) return evaluation;
       this.beforeEffectsEmitted = true;
       return {

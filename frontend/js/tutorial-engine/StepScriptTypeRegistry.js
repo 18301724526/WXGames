@@ -5,6 +5,35 @@
     return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, copyData(entry)]));
   }
 
+  const EFFECT_SEQUENCE_EFFECTS = Object.freeze({
+    hideTutorialHighlight: Object.freeze({ methodName: 'hideTutorialHighlight' }),
+  });
+
+  function normalizeEffects(effects = [], valuePath = 'effects') {
+    if (!Array.isArray(effects)) {
+      throw new TypeError(`StepScript ${valuePath} must be an array`);
+    }
+    return effects.map((descriptor, index) => {
+      if (!descriptor || typeof descriptor !== 'object' || Array.isArray(descriptor)) {
+        throw new TypeError(`StepScript ${valuePath}[${index}] must be a data object`);
+      }
+      const effect = String(descriptor.effect || '');
+      const registration = EFFECT_SEQUENCE_EFFECTS[effect];
+      if (!registration) {
+        throw new TypeError(`StepScript ${valuePath}[${index}] unknown effect: ${effect || '(empty)'}`);
+      }
+      const args = descriptor.args === undefined ? [] : descriptor.args;
+      if (!Array.isArray(args)) {
+        throw new TypeError(`StepScript ${valuePath}[${index}].args must be an array`);
+      }
+      return {
+        effect,
+        methodName: registration.methodName,
+        args: copyData(args),
+      };
+    });
+  }
+
   function queryMatches(ctx, condition = {}) {
     if (!ctx || typeof ctx.queries !== 'function') {
       throw new TypeError(`StepScript query unavailable: ${condition.query || ''}`);
@@ -124,6 +153,55 @@
     };
   }
 
+  function effectSequenceOperations(script = {}) {
+    const operations = normalizeEffects(script.effects || []).map((effect) => ({
+      type: 'effects',
+      ...effect,
+    }));
+    const target = String(script.target || '');
+    const targetArgs = copyData(script.targetArgs || {});
+    const action = copyData(script.action || {});
+    const request = { target, targetArgs, action };
+    if (target) {
+      operations.push({
+        type: 'resolveTarget',
+        methodName: 'resolveStepScriptTarget',
+        request: copyData(request),
+      });
+    }
+    if (target || Object.keys(action).length > 0) {
+      operations.push({
+        type: 'requestAction',
+        methodName: 'renderStepScriptTarget',
+        request: copyData(request),
+      });
+    }
+    const eventName = String(script.eventName || '');
+    const nextStep = String(script.nextStep || '');
+    if (eventName) {
+      operations.push({
+        type: 'waitFor',
+        eventName,
+        eventFilter: copyData(script.eventFilter || {}),
+        nextStep,
+      });
+    } else if (nextStep) {
+      operations.push({ type: 'next', nextStep });
+    }
+    return operations;
+  }
+
+  function evaluateEffectSequence(script = {}, ctx = null) {
+    if (!matchesWhen(script.when, ctx)) return { matchedRuleId: '', instructions: [] };
+    return {
+      matchedRuleId: String(script.ruleId || ''),
+      instructions: [{
+        type: 'effectSequence',
+        operations: effectSequenceOperations(script),
+      }],
+    };
+  }
+
   function matchesEventFilter(expected, actual) {
     if (expected === undefined) return true;
     if (!expected || typeof expected !== 'object') return Object.is(actual, expected);
@@ -153,15 +231,31 @@
     };
   }
 
+  function matchEffectSequenceEvent(script = {}, eventName = '', payload = {}) {
+    if (
+      String(script.eventName || '') !== String(eventName || '')
+      || !matchesEventFilter(script.eventFilter, payload)
+    ) {
+      return null;
+    }
+    return {
+      matchedRuleId: String(script.ruleId || ''),
+      nextCursor: '',
+      nextStep: String(script.nextStep || ''),
+    };
+  }
+
   const SCRIPT_TYPES = Object.freeze({
     highlightActionWait: evaluateHighlightActionWait,
     ensureSurfaceThenHighlight: evaluateEnsureSurfaceThenHighlight,
     waitEventThenNext: evaluateWaitEventThenNext,
     orderedTargetFlow: evaluateOrderedTargetFlow,
+    effectSequence: evaluateEffectSequence,
   });
 
   const EVENT_MATCHERS = Object.freeze({
     orderedTargetFlow: matchOrderedTargetFlowEvent,
+    effectSequence: matchEffectSequenceEvent,
   });
 
   const SCRIPT_TYPE_NAMES = Object.freeze(Object.keys(SCRIPT_TYPES));
@@ -177,11 +271,14 @@
   const api = {
     SCRIPT_TYPES,
     SCRIPT_TYPE_NAMES,
+    EFFECT_SEQUENCE_EFFECTS,
     copyData,
+    effectSequenceOperations,
     get,
     matchEvent,
     matchesEventFilter,
     matchesWhen,
+    normalizeEffects,
   };
 
   global.TutorialStepScriptTypeRegistry = api;

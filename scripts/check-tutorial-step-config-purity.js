@@ -33,7 +33,9 @@ const ALLOWED_SCRIPT_TYPES = new Set([
   'ensureSurfaceThenHighlight',
   'waitEventThenNext',
   'orderedTargetFlow',
+  'effectSequence',
 ]);
+const ALLOWED_EFFECT_KEYS = new Set(['hideTutorialHighlight']);
 const ALLOWED_QUERY_NAMES = new Set(['isTaskCenterOpen', 'isCommandPanelOpen']);
 const ALLOWED_SCRIPT_KEYS = new Set([
   'type',
@@ -52,6 +54,7 @@ const ALLOWED_SCRIPT_KEYS = new Set([
   'nextCursor',
   'nextStep',
   'beforeEffects',
+  'effects',
 ]);
 const ALLOWED_CLAUSE_KEYS = new Set([
   'ruleId',
@@ -68,6 +71,7 @@ const ALLOWED_CLAUSE_KEYS = new Set([
   'nextStep',
 ]);
 const ALLOWED_WHEN_KEYS = new Set(['query', 'args', 'equals']);
+const ALLOWED_EFFECT_DESCRIPTOR_KEYS = new Set(['effect', 'args']);
 
 function inspectFrozenData(value, valuePath = 'config', violations = []) {
   if (typeof value === 'function') {
@@ -102,6 +106,31 @@ function inspectWhen(when, valuePath, violations) {
   }
 }
 
+function inspectEffects(effects, valuePath, violations) {
+  if (!Array.isArray(effects)) {
+    violations.push(`${valuePath} must be an array`);
+    return;
+  }
+  effects.forEach((descriptor, index) => {
+    const descriptorPath = `${valuePath}[${index}]`;
+    if (!descriptor || typeof descriptor !== 'object' || Array.isArray(descriptor)) {
+      violations.push(`${descriptorPath} must be a data object`);
+      return;
+    }
+    Object.keys(descriptor).forEach((key) => {
+      if (!ALLOWED_EFFECT_DESCRIPTOR_KEYS.has(key)) {
+        violations.push(`${descriptorPath}.${key} is not an allowed effect field`);
+      }
+    });
+    if (!ALLOWED_EFFECT_KEYS.has(descriptor.effect)) {
+      violations.push(`${descriptorPath}.effect is not in the frozen host table: ${descriptor.effect || '(empty)'}`);
+    }
+    if (descriptor.args !== undefined && !Array.isArray(descriptor.args)) {
+      violations.push(`${descriptorPath}.args must be an array`);
+    }
+  });
+}
+
 function inspectEntry(entry, valuePath, allowedKeys, violations, ruleIds) {
   if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
     violations.push(`${valuePath} must be a data object`);
@@ -112,6 +141,10 @@ function inspectEntry(entry, valuePath, allowedKeys, violations, ruleIds) {
   });
   if (entry.ruleId) ruleIds.push(entry.ruleId);
   if (entry.when !== undefined) inspectWhen(entry.when, `${valuePath}.when`, violations);
+  if (entry.beforeEffects !== undefined) {
+    inspectEffects(entry.beforeEffects, `${valuePath}.beforeEffects`, violations);
+  }
+  if (entry.effects !== undefined) inspectEffects(entry.effects, `${valuePath}.effects`, violations);
   [
     'ruleId',
     'panel',

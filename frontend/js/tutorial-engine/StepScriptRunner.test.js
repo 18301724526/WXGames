@@ -14,12 +14,13 @@ function createQueryContext(state) {
   };
 }
 
-test('StepScript type registry exposes the four S9a C1 types', () => {
+test('StepScript type registry exposes the five S9a C2 types', () => {
   assert.deepEqual(StepScriptTypeRegistry.SCRIPT_TYPE_NAMES, [
     'highlightActionWait',
     'ensureSurfaceThenHighlight',
     'waitEventThenNext',
     'orderedTargetFlow',
+    'effectSequence',
   ]);
 });
 
@@ -150,7 +151,7 @@ test('orderedTargetFlow emits frozen beforeEffects only once per step entry', ()
   const config = {
     effectfulFlow: {
       type: 'orderedTargetFlow',
-      beforeEffects: [{ effect: 'prepareSurface' }],
+      beforeEffects: [{ effect: 'hideTutorialHighlight' }],
       clauses: [{ ruleId: 'target', target: 'hitTarget:target' }],
     },
   };
@@ -171,6 +172,53 @@ test('orderedTargetFlow emits frozen beforeEffects only once per step entry', ()
     'beforeEffects',
     'orderedTargetFlow',
   ]);
+});
+
+test('effectSequence preserves effects, target resolution, action request, and wait order', () => {
+  const config = {
+    sequenceStep: {
+      type: 'effectSequence',
+      ruleId: 'sequence-rule',
+      effects: [{ effect: 'hideTutorialHighlight', args: [{ source: 'unit' }] }],
+      target: 'hitTarget:selectWorldMarchTarget',
+      targetArgs: { targetAlias: 'firstExploreCityCoord' },
+      action: { type: 'selectWorldMarchTarget' },
+      eventName: 'worldMarchTargetSelected',
+      nextStep: 'pickerStep',
+    },
+  };
+
+  const projection = StepScriptRunner.create().evaluate({
+    stepKey: 'sequenceStep',
+    config,
+  });
+  const operations = projection.instructions[0].operations;
+
+  assert.deepEqual(operations.map((operation) => operation.type), [
+    'effects',
+    'resolveTarget',
+    'requestAction',
+    'waitFor',
+  ]);
+  assert.equal(operations[0].methodName, 'hideTutorialHighlight');
+  assert.equal(operations[1].methodName, 'resolveStepScriptTarget');
+  assert.equal(operations[2].methodName, 'renderStepScriptTarget');
+  assert.equal(operations[3].nextStep, 'pickerStep');
+});
+
+test('effectSequence FIRE rejects effects outside the frozen host table', () => {
+  assert.throws(
+    () => StepScriptRunner.create().evaluate({
+      stepKey: 'badSequence',
+      config: {
+        badSequence: {
+          type: 'effectSequence',
+          effects: [{ effect: 'ensureMapHomeGuideVisible' }],
+        },
+      },
+    }),
+    /unknown effect: ensureMapHomeGuideVisible/,
+  );
 });
 
 test('highlightActionWait evaluates ordered when-to-target clauses', () => {
