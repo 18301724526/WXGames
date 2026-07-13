@@ -32,6 +32,7 @@ const ALLOWED_SCRIPT_TYPES = new Set([
   'highlightActionWait',
   'ensureSurfaceThenHighlight',
   'waitEventThenNext',
+  'orderedTargetFlow',
 ]);
 const ALLOWED_QUERY_NAMES = new Set(['isTaskCenterOpen', 'isCommandPanelOpen']);
 const ALLOWED_SCRIPT_KEYS = new Set([
@@ -43,6 +44,14 @@ const ALLOWED_SCRIPT_KEYS = new Set([
   'target',
   'messageKey',
   'eventName',
+  'eventFilter',
+  'targetArgs',
+  'action',
+  'cursorKey',
+  'initialCursor',
+  'nextCursor',
+  'nextStep',
+  'beforeEffects',
 ]);
 const ALLOWED_CLAUSE_KEYS = new Set([
   'ruleId',
@@ -51,6 +60,12 @@ const ALLOWED_CLAUSE_KEYS = new Set([
   'target',
   'messageKey',
   'eventName',
+  'eventFilter',
+  'targetArgs',
+  'action',
+  'cursor',
+  'nextCursor',
+  'nextStep',
 ]);
 const ALLOWED_WHEN_KEYS = new Set(['query', 'args', 'equals']);
 
@@ -97,7 +112,18 @@ function inspectEntry(entry, valuePath, allowedKeys, violations, ruleIds) {
   });
   if (entry.ruleId) ruleIds.push(entry.ruleId);
   if (entry.when !== undefined) inspectWhen(entry.when, `${valuePath}.when`, violations);
-  ['ruleId', 'panel', 'target', 'messageKey', 'eventName'].forEach((key) => {
+  [
+    'ruleId',
+    'panel',
+    'target',
+    'messageKey',
+    'eventName',
+    'cursorKey',
+    'initialCursor',
+    'cursor',
+    'nextCursor',
+    'nextStep',
+  ].forEach((key) => {
     if (entry[key] !== undefined && typeof entry[key] !== 'string') {
       violations.push(`${valuePath}.${key} must be a string`);
     }

@@ -14,11 +14,162 @@ function createQueryContext(state) {
   };
 }
 
-test('StepScript type registry exposes the three S7 budgeted types', () => {
+test('StepScript type registry exposes the four S9a C1 types', () => {
   assert.deepEqual(StepScriptTypeRegistry.SCRIPT_TYPE_NAMES, [
     'highlightActionWait',
     'ensureSurfaceThenHighlight',
     'waitEventThenNext',
+    'orderedTargetFlow',
+  ]);
+});
+
+function createTargetContext(availability = {}, calls = []) {
+  return {
+    resolveTarget(methodName, request) {
+      calls.push({ methodName, target: request.target });
+      return { available: availability[request.target] === true };
+    },
+  };
+}
+
+test('orderedTargetFlow selects the first available target in declaration order', () => {
+  const calls = [];
+  const config = {
+    formationStep: {
+      type: 'orderedTargetFlow',
+      clauses: [
+        { ruleId: 'toggle', target: 'hitTarget:toggle', action: { type: 'toggle' } },
+        { ruleId: 'save', target: 'hitTarget:save', action: { type: 'save' } },
+        { ruleId: 'later', target: 'hitTarget:later', action: { type: 'later' } },
+      ],
+    },
+  };
+
+  const projection = StepScriptRunner.create().evaluate({
+    stepKey: 'formationStep',
+    config,
+    ctx: createTargetContext({ 'hitTarget:save': true, 'hitTarget:later': true }, calls),
+  });
+
+  assert.equal(projection.matchedRuleId, 'save');
+  assert.deepEqual(calls.map((call) => call.target), ['hitTarget:toggle', 'hitTarget:save']);
+  assert.deepEqual(projection.instructions[0].action, { type: 'save' });
+});
+
+test('orderedTargetFlow commits its client cursor before reprojecting an event match', () => {
+  const calls = [];
+  const config = {
+    eventStep: {
+      type: 'orderedTargetFlow',
+      cursorKey: 'eventFlow',
+      initialCursor: 'pending',
+      clauses: [
+        {
+          cursor: 'pending',
+          ruleId: 'open',
+          target: 'hitTarget:open',
+          eventName: 'modal.changed',
+          eventFilter: { operation: 'open', payload: { eventId: 'evt-1' } },
+          nextCursor: 'opened',
+        },
+        {
+          cursor: 'opened',
+          ruleId: 'claim',
+          target: 'hitTarget:claim',
+          eventName: 'eventClaimed',
+        },
+      ],
+    },
+  };
+  const runner = StepScriptRunner.create();
+  const input = {
+    stepKey: 'eventStep',
+    config,
+    ctx: createTargetContext({ 'hitTarget:open': true, 'hitTarget:claim': true }, calls),
+  };
+
+  assert.equal(runner.evaluate(input).matchedRuleId, 'open');
+  calls.length = 0;
+  const transition = runner.handleEvent({
+    ...input,
+    eventName: 'modal.changed',
+    payload: { operation: 'open', payload: { eventId: 'evt-1', extra: true } },
+  });
+
+  assert.equal(transition.handled, true);
+  assert.equal(transition.nextCursor, 'opened');
+  assert.equal(transition.projection.trace.cursor, 'opened');
+  assert.equal(transition.projection.matchedRuleId, 'claim');
+  assert.deepEqual(calls.map((call) => call.target), ['hitTarget:claim']);
+});
+
+test('orderedTargetFlow projects nextStep when no target is available', () => {
+  const config = {
+    exhaustedStep: {
+      type: 'orderedTargetFlow',
+      nextStep: 'doneStep',
+      clauses: [{ ruleId: 'missing', target: 'hitTarget:missing' }],
+    },
+  };
+
+  const projection = StepScriptRunner.create().evaluate({
+    stepKey: 'exhaustedStep',
+    config,
+    ctx: createTargetContext(),
+  });
+
+  assert.deepEqual(projection.instructions, [{ type: 'nextStep', nextStep: 'doneStep' }]);
+});
+
+test('orderedTargetFlow repeated projections are idempotent and resolve once per candidate', () => {
+  const calls = [];
+  const config = {
+    stableFlow: {
+      type: 'orderedTargetFlow',
+      clauses: [
+        { ruleId: 'first', target: 'hitTarget:first' },
+        { ruleId: 'second', target: 'hitTarget:second' },
+      ],
+    },
+  };
+  const runner = StepScriptRunner.create();
+  const input = {
+    stepKey: 'stableFlow',
+    config,
+    ctx: createTargetContext({ 'hitTarget:second': true }, calls),
+  };
+  const expected = runner.evaluate(input);
+
+  for (let index = 0; index < 7; index += 1) {
+    assert.deepEqual(runner.evaluate(input), expected);
+  }
+  assert.equal(calls.length, 16);
+});
+
+test('orderedTargetFlow emits frozen beforeEffects only once per step entry', () => {
+  const config = {
+    effectfulFlow: {
+      type: 'orderedTargetFlow',
+      beforeEffects: [{ effect: 'prepareSurface' }],
+      clauses: [{ ruleId: 'target', target: 'hitTarget:target' }],
+    },
+  };
+  const runner = StepScriptRunner.create();
+  const input = {
+    stepKey: 'effectfulFlow',
+    config,
+    ctx: createTargetContext({ 'hitTarget:target': true }),
+  };
+
+  assert.deepEqual(runner.evaluate(input).trace.instructionTypes, [
+    'beforeEffects',
+    'orderedTargetFlow',
+  ]);
+  assert.deepEqual(runner.evaluate(input).trace.instructionTypes, ['orderedTargetFlow']);
+  runner.evaluate({ stepKey: 'other', config: {}, ctx: input.ctx });
+  assert.deepEqual(runner.evaluate(input).trace.instructionTypes, [
+    'beforeEffects',
+    'orderedTargetFlow',
   ]);
 });
 

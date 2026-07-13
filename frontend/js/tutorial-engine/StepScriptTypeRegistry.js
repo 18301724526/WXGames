@@ -75,10 +75,93 @@
     };
   }
 
+  function resolveOrderedTarget(ctx, clause = {}) {
+    if (!ctx || typeof ctx.resolveTarget !== 'function') {
+      throw new TypeError(`StepScript target resolver unavailable: ${clause.target || ''}`);
+    }
+    const resolution = ctx.resolveTarget('resolveStepScriptTarget', {
+      target: String(clause.target || ''),
+      targetArgs: copyData(clause.targetArgs || {}),
+      action: copyData(clause.action || {}),
+    });
+    return resolution === true || resolution?.available === true;
+  }
+
+  function cursorMatches(clause = {}, runtime = {}) {
+    const clauseCursor = String(clause.cursor || '');
+    return !clauseCursor || clauseCursor === String(runtime.cursor || '');
+  }
+
+  function orderedTargetInstruction(clause = {}) {
+    return {
+      type: 'orderedTargetFlow',
+      target: String(clause.target || ''),
+      targetArgs: copyData(clause.targetArgs || {}),
+      action: copyData(clause.action || {}),
+      messageKey: String(clause.messageKey || ''),
+      eventName: String(clause.eventName || ''),
+      eventFilter: copyData(clause.eventFilter || {}),
+      nextCursor: String(clause.nextCursor || ''),
+      nextStep: String(clause.nextStep || ''),
+    };
+  }
+
+  function evaluateOrderedTargetFlow(script = {}, ctx = null, runtime = {}) {
+    const clauses = Array.isArray(script.clauses) ? script.clauses : [];
+    const clause = clauses.find((candidate) => (
+      cursorMatches(candidate, runtime) && resolveOrderedTarget(ctx, candidate)
+    ));
+    if (clause) {
+      return {
+        matchedRuleId: String(clause.ruleId || script.ruleId || ''),
+        instructions: [orderedTargetInstruction(clause)],
+      };
+    }
+    const nextStep = String(script.nextStep || '');
+    return {
+      matchedRuleId: String(script.ruleId || ''),
+      instructions: nextStep ? [{ type: 'nextStep', nextStep }] : [],
+    };
+  }
+
+  function matchesEventFilter(expected, actual) {
+    if (expected === undefined) return true;
+    if (!expected || typeof expected !== 'object') return Object.is(actual, expected);
+    if (!actual || typeof actual !== 'object') return false;
+    if (Array.isArray(expected)) {
+      return Array.isArray(actual)
+        && expected.length === actual.length
+        && expected.every((entry, index) => matchesEventFilter(entry, actual[index]));
+    }
+    return Object.entries(expected).every(([key, value]) => (
+      matchesEventFilter(value, actual[key])
+    ));
+  }
+
+  function matchOrderedTargetFlowEvent(script = {}, eventName = '', payload = {}, runtime = {}) {
+    const clauses = Array.isArray(script.clauses) ? script.clauses : [];
+    const clause = clauses.find((candidate) => (
+      cursorMatches(candidate, runtime)
+      && String(candidate.eventName || '') === String(eventName || '')
+      && matchesEventFilter(candidate.eventFilter, payload)
+    ));
+    if (!clause) return null;
+    return {
+      matchedRuleId: String(clause.ruleId || script.ruleId || ''),
+      nextCursor: String(clause.nextCursor || ''),
+      nextStep: String(clause.nextStep || ''),
+    };
+  }
+
   const SCRIPT_TYPES = Object.freeze({
     highlightActionWait: evaluateHighlightActionWait,
     ensureSurfaceThenHighlight: evaluateEnsureSurfaceThenHighlight,
     waitEventThenNext: evaluateWaitEventThenNext,
+    orderedTargetFlow: evaluateOrderedTargetFlow,
+  });
+
+  const EVENT_MATCHERS = Object.freeze({
+    orderedTargetFlow: matchOrderedTargetFlowEvent,
   });
 
   const SCRIPT_TYPE_NAMES = Object.freeze(Object.keys(SCRIPT_TYPES));
@@ -87,11 +170,17 @@
     return SCRIPT_TYPES[scriptType] || null;
   }
 
+  function matchEvent(scriptType = '', script = {}, eventName = '', payload = {}, runtime = {}) {
+    return EVENT_MATCHERS[scriptType]?.(script, eventName, payload, runtime) || null;
+  }
+
   const api = {
     SCRIPT_TYPES,
     SCRIPT_TYPE_NAMES,
     copyData,
     get,
+    matchEvent,
+    matchesEventFilter,
     matchesWhen,
   };
 
