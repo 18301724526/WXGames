@@ -1051,11 +1051,11 @@ function evaluateActionOutcome(before = {}, after = {}, action = {}) {
       // picker instead; that is a valid intermediate step (the next iteration clicks
       // the site candidate). Only a FRESHLY opened picker counts as progress — an
       // already-open picker would otherwise turn every click into a false pass.
-      const pickerOpened = (after.targetPickerKind === 'worldTargetPicker'
+      const worldTargetPickerBecameVisible = (after.targetPickerKind === 'worldTargetPicker'
         || (after.worldTargetPickerCandidates || []).length > 0)
         && !(before.worldTargetPickerCandidates || []).length
         && before.targetPickerKind !== 'worldTargetPicker';
-      return (siteId && selected === siteId) || after.cityManagementOpen || pickerOpened || stepAdvanced || before.tutorialIntro?.step !== after.tutorialIntro?.step
+      return (siteId && selected === siteId) || after.cityManagementOpen || worldTargetPickerBecameVisible || stepAdvanced || before.tutorialIntro?.step !== after.tutorialIntro?.step
         ? pass('world site opened, picker opened, or intro advanced')
         : fail('world site did not open');
     }
@@ -1109,13 +1109,17 @@ function evaluateActionOutcome(before = {}, after = {}, action = {}) {
       return !after.armyFormationEditor?.open || stepAdvanced || apiOk
         ? pass('formation saved')
         : fail('formation editor did not save/close');
-    case 'selectWorldMarchTarget':
-      return after.territoryUiState?.worldMarchTarget || stepAdvanced
+    case 'selectWorldMarchTarget': {
+      const target = after.territoryUiState?.worldMarchTarget;
+      const targetMatches = target
+        && Number(target.q) === Number(action.targetQ ?? action.q)
+        && Number(target.r) === Number(action.targetR ?? action.r);
+      return targetMatches
         ? pass('world march target selected')
-        : fail('world march target was not selected');
+        : fail('world march target missing or changed after selection');
+    }
     case 'openWorldMarchFormationPicker':
       return after.targetPickerKind === 'worldMarchFormation'
-        || after.territoryUiState?.worldMarchTarget?.pickerOpen
         ? pass('world march formation picker opened')
         : fail('world march picker did not open');
     case 'startWorldMarch': {
@@ -1729,12 +1733,12 @@ async function chooseNextAction(page, iteration) {
       targets: state.hitTargets.map((item) => item.action).slice(-100),
     });
   }
-  if (stepIs(STEPS.scoutWorldPanelOpened) && !state.territoryUiState?.worldMarchTarget?.pickerOpen) {
+  if (stepIs(STEPS.scoutWorldPanelOpened) && !state.targetPickerKind) {
     return clickByPredicate(page, `open-world-march-picker-${iteration}`, (action) => (
       action.type === 'openWorldMarchFormationPicker' && !action.disabled
     ));
   }
-  if (stepIs(STEPS.scoutWorldPanelOpened) && state.territoryUiState?.worldMarchTarget?.pickerOpen) {
+  if (stepIs(STEPS.scoutWorldPanelOpened) && state.targetPickerKind === 'worldMarchFormation') {
     return clickByPredicate(page, `start-world-march-${iteration}`, (action) => (
       action.type === 'startWorldMarch' && !action.disabled
     ));
