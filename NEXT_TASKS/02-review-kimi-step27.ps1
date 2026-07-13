@@ -7,7 +7,7 @@
 3e2bac03fb3afe7e5aee3eff12b40fc12387f362
 
 当前仓库 HEAD 可能包含该提交之后的纯交接文档、提示词、架构 HTML 或 skill 文件提交。
-先确认 3c009575 是当前 HEAD 的祖先，并确认 3c009575..HEAD 没有 frontend/backend/shared/scripts 产品变更；满足时无需 checkout，可继续复核。若存在产品变更则停止并报告。
+先确认 3e2bac03 是当前 HEAD 的祖先，并确认 3e2bac03..HEAD 没有 frontend/backend/shared/scripts 产品变更；满足时无需 checkout，可继续复核。若存在产品变更则停止并报告。
 
 目标是机械验证，不因 82 个测试全绿直接判定。
 
