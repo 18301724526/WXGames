@@ -8,6 +8,7 @@ const H5CanvasRuntime = require('../H5CanvasRuntime');
 const ModalStore = require('../../state/ModalStore');
 const TutorialGuideController = require('../../tutorial/TutorialGuideController');
 const { makeModalOwnerHost } = require('../../../test-support/CanvasOwnerTestHarness');
+const HudOverlayCanvasRenderer = require('./HudOverlayCanvasRenderer');
 const TutorialCanvasRenderer = require('./TutorialCanvasRenderer');
 const TutorialHighlightLayer = require('./TutorialHighlightLayer');
 
@@ -486,6 +487,93 @@ function projectStep23Highlight() {
   };
 }
 
+function createBlockingOverlayFeature() {
+  const { runtime } = createRuntime();
+  const mainHud = runtime.ensureLayerCanvas(
+    'mainHud',
+    CanvasLayerRegistry.getLayerOptions('mainHud'),
+  );
+  const tutorialSpine = runtime.ensureLayerCanvas(
+    'tutorialSpine',
+    CanvasLayerRegistry.getLayerOptions('tutorialSpine'),
+  );
+  const tutorialDialogue = runtime.ensureLayerCanvas(
+    'tutorialDialogue',
+    CanvasLayerRegistry.getLayerOptions('tutorialDialogue'),
+  );
+  const calls = [];
+  const drawBlockingSurface = (ctx, color) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, runtime.width, runtime.height);
+  };
+  const host = createTutorialHost(runtime, mainHud.getContext('2d'), {
+    calls,
+    beginFrame() { calls.push('beginFrame'); },
+    clear() {
+      calls.push('clear');
+      this.ctx.clearRect(0, 0, this.width, this.height);
+    },
+    endFrame() { calls.push('endFrame'); },
+    setHitTargets(targets = []) {
+      calls.push('setHitTargets');
+      this.hitTargets.length = 0;
+      targets.forEach((target) => this.hitTargets.push(target));
+    },
+    renderLoginPanel() {
+      calls.push('renderLoginPanel');
+      drawBlockingSurface(this.ctx, '#8a2040');
+    },
+    renderLoadingScreen() {
+      calls.push('renderLoadingScreen');
+      drawBlockingSurface(this.ctx, '#205a8a');
+    },
+    renderEntityBattleOverlay() {
+      calls.push('renderEntityBattleOverlay');
+      drawBlockingSurface(this.ctx, '#207a42');
+    },
+    renderBattleSceneOverlay() {
+      calls.push('renderBattleSceneOverlay');
+      drawBlockingSurface(this.ctx, '#7a5520');
+    },
+  });
+  const tutorialRenderer = new TutorialCanvasRenderer({
+    host,
+    advisorRenderer: { disposeTutorialAdvisorSpine() { return false; } },
+  });
+  host.renderTutorialHighlight = (highlight) => {
+    calls.push('renderTutorialHighlight');
+    return tutorialRenderer.renderTutorialHighlight(highlight);
+  };
+  const hudRenderer = new HudOverlayCanvasRenderer({ host });
+  const highlight = {
+    rect: { left: 40, top: 45, width: 70, height: 50 },
+    message: 'Stale highlight.',
+    allowedAction: { type: 'openFamousPersonDetail', personId: 'fp-scout' },
+    pulseStartedAt: 900,
+  };
+
+  const spineCtx = tutorialSpine.getContext('2d');
+  spineCtx.fillStyle = '#22cc66';
+  spineCtx.fillRect(4, 4, 10, 10);
+  runtime.refreshLayerPresentCache('tutorialSpine');
+  const dialogueCtx = tutorialDialogue.getContext('2d');
+  dialogueCtx.fillStyle = '#3388ff';
+  dialogueCtx.fillRect(24, 4, 10, 10);
+  tutorialRenderer.renderTutorialHighlight(highlight);
+  runtime.compositeStage();
+
+  return {
+    calls,
+    highlight,
+    host,
+    hudRenderer,
+    mainHud,
+    runtime,
+    tutorialDialogue,
+    tutorialSpine,
+  };
+}
+
 test('final stage composite keeps tutorial gold perimeter above an opaque panel overlay', () => {
   const { runtime } = createRuntime();
   const mainHud = runtime.ensureLayerCanvas(
@@ -800,4 +888,57 @@ test('browser and minigame manifests load TutorialHighlightLayer before Tutorial
 
   assert.ok(browserLayerIndex >= 0 && browserLayerIndex < browserRendererIndex);
   assert.ok(minigameLayerIndex >= 0 && minigameLayerIndex < minigameRendererIndex);
+});
+
+[
+  {
+    name: 'login',
+    options: { auth: { view: { loginPanelVisible: true } } },
+    renderCall: 'renderLoginPanel',
+    surfaceColor: [138, 32, 64, 255],
+  },
+  {
+    name: 'loading',
+    options: { loading: { visible: true } },
+    renderCall: 'renderLoadingScreen',
+    surfaceColor: [32, 90, 138, 255],
+  },
+  {
+    name: 'entity battle',
+    options: { entityBattle: { visible: true } },
+    renderCall: 'renderEntityBattleOverlay',
+    surfaceColor: [32, 122, 66, 255],
+  },
+  {
+    name: 'battle scene',
+    options: { battleScene: { visible: true } },
+    renderCall: 'renderBattleSceneOverlay',
+    surfaceColor: [122, 85, 32, 255],
+  },
+].forEach((scenario) => {
+  test(`${scenario.name} early return clears stale tutorial highlight before the final composite`, () => {
+    const feature = createBlockingOverlayFeature();
+
+    feature.hudRenderer.renderHudOverlay({}, {
+      ...scenario.options,
+      tutorialHighlight: feature.highlight,
+    });
+    feature.runtime.compositeStage();
+
+    const highlightLayer = feature.runtime.getLayerCanvas('tutorialHighlight');
+    const goldCount = countGoldPerimeterPixels(
+      feature.runtime.canvas,
+      { x: 40, y: 45, width: 70, height: 50 },
+    );
+    assert.equal(goldCount, 0, `expected no stale final-composite gold pixels, got ${goldCount}`);
+    assert.equal(feature.runtime.getLayerCompositeState('tutorialHighlight').visible, false);
+    assert.equal(countMatchingPixels(highlightLayer, ([, , , alpha]) => alpha > 0), 0);
+    assert.deepEqual(getPixel(feature.mainHud, 170, 170), scenario.surfaceColor);
+    assert.deepEqual(getPixel(feature.runtime.canvas, 170, 170), scenario.surfaceColor);
+    assert.equal(feature.calls.includes(scenario.renderCall), true);
+    assert.deepEqual(getPixel(feature.tutorialSpine, 6, 6), [34, 204, 102, 255]);
+    assert.deepEqual(getPixel(feature.tutorialDialogue, 26, 6), [51, 136, 255, 255]);
+    assert.deepEqual(getPixel(feature.runtime.canvas, 6, 6), [34, 204, 102, 255]);
+    assert.deepEqual(getPixel(feature.runtime.canvas, 26, 6), [51, 136, 255, 255]);
+  });
 });

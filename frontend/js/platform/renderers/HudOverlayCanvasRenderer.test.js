@@ -31,6 +31,7 @@ function createHost(overrides = {}) {
     renderArmyFormationEditor(...args) { calls.push(['renderArmyFormationEditor', args]); },
     renderBattleSceneOverlay(...args) { calls.push(['renderBattleSceneOverlay', args]); },
     renderCitySwitcherMenu(...args) { calls.push(['renderCitySwitcherMenu', args]); },
+    renderEntityBattleOverlay(...args) { calls.push(['renderEntityBattleOverlay', args]); },
     renderEventModal(...args) { calls.push(['renderEventModal', args]); },
     renderFamousPersonsPanel(...args) { calls.push(['renderFamousPersonsPanel', args]); },
     renderFloatingAdvisorButton(...args) { calls.push(['renderFloatingAdvisorButton', args]); },
@@ -90,7 +91,14 @@ test('HudOverlayCanvasRenderer preserves login early-return flow', () => {
 
   renderer.renderHudOverlay({}, options);
 
-  assert.deepEqual(callNames(host), ['beginFrame', 'setHitTargets', 'clear', 'renderLoginPanel', 'endFrame']);
+  assert.deepEqual(callNames(host), [
+    'beginFrame',
+    'setHitTargets',
+    'clear',
+    'renderTutorialHighlight',
+    'renderLoginPanel',
+    'endFrame',
+  ]);
   assert.deepEqual(host.hitTargets, []);
 });
 
@@ -104,6 +112,43 @@ test('HudOverlayCanvasRenderer preserves battle early-return flow', () => {
   assert.equal(callNames(host).includes('clear'), true);
   assert.equal(callNames(host).includes('renderBattleSceneOverlay'), true);
   assert.equal(callNames(host).includes('renderTopBar'), false);
+  assert.ok(callNames(host).indexOf('renderTutorialHighlight') < callNames(host).indexOf('renderBattleSceneOverlay'));
+});
+
+test('HudOverlayCanvasRenderer clears stale highlight before every blocking early-return overlay', () => {
+  const scenarios = [
+    {
+      options: { auth: { view: { loginPanelVisible: true } } },
+      renderCall: 'renderLoginPanel',
+    },
+    {
+      options: { loading: { visible: true } },
+      renderCall: 'renderLoadingScreen',
+    },
+    {
+      options: { entityBattle: { visible: true } },
+      renderCall: 'renderEntityBattleOverlay',
+    },
+    {
+      options: { battleScene: { visible: true } },
+      renderCall: 'renderBattleSceneOverlay',
+    },
+  ];
+
+  scenarios.forEach((scenario) => {
+    const host = createHost();
+    const renderer = createRenderer(host);
+    renderer.renderHudOverlay({}, {
+      ...scenario.options,
+      tutorialHighlight: { rect: { left: 10, top: 20, width: 30, height: 40 } },
+    });
+
+    const names = callNames(host);
+    const clearCall = host.calls.find((call) => call[0] === 'renderTutorialHighlight');
+    assert.deepEqual(clearCall[1], [null]);
+    assert.ok(names.indexOf('renderTutorialHighlight') < names.indexOf(scenario.renderCall));
+    assert.equal(names.includes('renderTopBar'), false);
+  });
 });
 
 test('HudOverlayCanvasRenderer preserves map-home HUD overlay sequence', () => {

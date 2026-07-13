@@ -151,24 +151,28 @@
       if (!options.preserveCanvas) this.clear();
       if (options.auth?.view?.loginPanelVisible) {
         if (options.preserveCanvas) this.clear();
+        this.renderTutorialHighlight(null);
         this.renderLoginPanel(options.auth);
         this.endFrame(options);
         return;
       }
       if (options.loading?.visible) {
         if (options.preserveCanvas) this.clear();
+        this.renderTutorialHighlight(null);
         this.renderLoadingScreen(options.loading);
         this.endFrame(options);
         return;
       }
       if (options.entityBattle?.visible) {
         if (options.preserveCanvas) this.clear();
+        this.renderTutorialHighlight(null);
         this.renderEntityBattleOverlay(state, options);
         this.endFrame(options);
         return;
       }
       if (options.battleScene?.visible) {
         if (options.preserveCanvas) this.clear();
+        this.renderTutorialHighlight(null);
         this.renderBattleSceneOverlay(state, options);
         this.endFrame(options);
         return;
