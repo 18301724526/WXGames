@@ -164,6 +164,103 @@
         }),
       ]),
     }),
+    famousCardViewed: Object.freeze({
+      type: 'ensureSurfaceThenHighlight',
+      legacyFallbackWhenIdle: true,
+      clauses: Object.freeze([
+        Object.freeze({
+          ruleId: 'scout-open-formation',
+          target: 'hitTarget:openArmyFormation',
+          targetArgs: Object.freeze({ cityAlias: 'capitalCity', slot: 1 }),
+          action: Object.freeze({
+            type: 'openArmyFormation',
+            cityAlias: 'capitalCity',
+            slot: 1,
+          }),
+          messageKey: 'tutorial.guide.openFirstFormation',
+          eventName: 'armyFormationOpened',
+        }),
+        Object.freeze({
+          ruleId: 'scout-switch-city-military-tab',
+          target: 'hitTarget:switchCityManagementTab',
+          targetArgs: Object.freeze({ tab: 'military' }),
+          action: Object.freeze({ type: 'switchCityManagementTab', tab: 'military' }),
+          messageKey: 'tutorial.guide.switchCityMilitaryTab',
+          eventName: 'cityManagementOpened',
+        }),
+      ]),
+    }),
+    formationPanelOpened: Object.freeze({
+      type: 'orderedTargetFlow',
+      ruleId: 'scout-formation-member-or-save',
+      clauses: Object.freeze([
+        Object.freeze({
+          target: 'hitTarget:toggleArmyFormationMember',
+          targetArgs: Object.freeze({ personAlias: 'scoutFamousPerson' }),
+          action: Object.freeze({
+            type: 'toggleArmyFormationMember',
+            personAlias: 'scoutFamousPerson',
+          }),
+          messageKey: 'tutorial.guide.pickScoutLeader',
+        }),
+        Object.freeze({
+          target: 'hitTarget:autoReplenishArmyFormation',
+          action: Object.freeze({ type: 'autoReplenishArmyFormation' }),
+          messageKey: 'tutorial.highlight.replenishScoutFormation',
+        }),
+        Object.freeze({
+          target: 'hitTarget:saveArmyFormation',
+          action: Object.freeze({ type: 'saveArmyFormation' }),
+          messageKey: 'tutorial.guide.saveScoutFormation',
+          eventName: 'armyFormationSaved',
+        }),
+      ]),
+    }),
+    scoutFormationSaved: Object.freeze({
+      type: 'effectSequence',
+      ruleId: 'scout-select-world-target',
+      beforeEffects: Object.freeze([
+        Object.freeze({ effect: 'clearWorldMarchTarget' }),
+      ]),
+      target: 'hitTarget:selectWorldMarchTarget',
+      targetArgs: Object.freeze({ targetAlias: 'firstExploreCityCoord' }),
+      action: Object.freeze({
+        type: 'selectWorldMarchTarget',
+        targetAlias: 'firstExploreCityCoord',
+      }),
+      messageKey: 'tutorial.guide.selectScoutTarget',
+      eventName: 'worldMarchTargetSelected',
+    }),
+    scoutWorldPanelOpened: Object.freeze({
+      type: 'orderedTargetFlow',
+      cursorKey: 'scoutWorldMarchFlow',
+      initialCursor: 'targetSelected',
+      clauses: Object.freeze([
+        Object.freeze({
+          cursor: 'targetSelected',
+          ruleId: 'scout-open-world-formation-picker',
+          target: 'hitTarget:openWorldMarchFormationPicker',
+          action: Object.freeze({ type: 'openWorldMarchFormationPicker' }),
+          messageKey: 'tutorial.guide.openMarchFormationPicker',
+          eventName: 'modal.changed',
+          eventFilter: Object.freeze({
+            operation: 'open',
+            subtype: 'modal:targetPicker',
+            payload: Object.freeze({ pickerKind: 'worldMarchFormation' }),
+          }),
+          nextCursor: 'formationPickerOpen',
+        }),
+        Object.freeze({
+          cursor: 'formationPickerOpen',
+          ruleId: 'scout-start-world-march',
+          target: 'hitTarget:startWorldMarch',
+          targetArgs: Object.freeze({ formationSlot: 1 }),
+          action: Object.freeze({ type: 'startWorldMarch', formationSlot: 1 }),
+          messageKey: 'tutorial.guide.startScoutMarch',
+          eventName: 'exploreStarted',
+        }),
+      ]),
+    }),
     famousSeekCompleted: Object.freeze({
       type: 'ensureSurfaceThenHighlight',
       ruleId: 'final-tech-open',

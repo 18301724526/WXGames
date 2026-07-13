@@ -14,7 +14,7 @@ function createContext(state = {}) {
   };
 }
 
-test('task-panel StepScript config owns 10 step keys', () => {
+test('task-panel StepScript config owns 14 step keys', () => {
   assert.deepEqual(Object.keys(config), [
     'eraAdvancedTo1',
     'era2AdvanceReady',
@@ -24,6 +24,10 @@ test('task-panel StepScript config owns 10 step keys', () => {
     'era3Advanced',
     'barracksBuilt',
     'firstArmyClaimed',
+    'famousCardViewed',
+    'formationPanelOpened',
+    'scoutFormationSaved',
+    'scoutWorldPanelOpened',
     'famousSeekCompleted',
     'finalTechOpened',
   ]);

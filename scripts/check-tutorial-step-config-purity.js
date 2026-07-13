@@ -25,6 +25,12 @@ const EXPECTED_RULE_IDS = Object.freeze([
   'first-army-claim',
   'scout-officer-open-task-center',
   'scout-officer-claim',
+  'scout-switch-city-military-tab',
+  'scout-open-formation',
+  'scout-formation-member-or-save',
+  'scout-select-world-target',
+  'scout-open-world-formation-picker',
+  'scout-start-world-march',
   'final-tech-open',
 ]);
 
@@ -35,7 +41,7 @@ const ALLOWED_SCRIPT_TYPES = new Set([
   'orderedTargetFlow',
   'effectSequence',
 ]);
-const ALLOWED_EFFECT_KEYS = new Set(['hideTutorialHighlight']);
+const ALLOWED_EFFECT_KEYS = new Set(['hideTutorialHighlight', 'clearWorldMarchTarget']);
 const ALLOWED_QUERY_NAMES = new Set(['isTaskCenterOpen', 'isCommandPanelOpen']);
 const ALLOWED_SCRIPT_KEYS = new Set([
   'type',
@@ -55,6 +61,7 @@ const ALLOWED_SCRIPT_KEYS = new Set([
   'nextStep',
   'beforeEffects',
   'effects',
+  'legacyFallbackWhenIdle',
 ]);
 const ALLOWED_CLAUSE_KEYS = new Set([
   'ruleId',
@@ -161,6 +168,12 @@ function inspectEntry(entry, valuePath, allowedKeys, violations, ruleIds) {
       violations.push(`${valuePath}.${key} must be a string`);
     }
   });
+  if (
+    entry.legacyFallbackWhenIdle !== undefined
+    && typeof entry.legacyFallbackWhenIdle !== 'boolean'
+  ) {
+    violations.push(`${valuePath}.legacyFallbackWhenIdle must be a boolean`);
+  }
 }
 
 function inspectConfig(config = {}) {

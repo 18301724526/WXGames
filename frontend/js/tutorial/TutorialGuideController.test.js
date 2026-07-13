@@ -592,10 +592,27 @@ test('TutorialGuideController guides era three, scout famous card, and army form
         closeFamousPersons: { type: 'closeFamousPersons' },
         openWorldSite: { type: 'openWorldSite', siteId: 'capital' },
         enterCity: { type: 'enterCity', cityId: 'capital' },
-        switchCityManagementTab: { type: 'switchCityManagementTab', tab: 'military' },
-        openArmyFormation: { type: 'openArmyFormation', cityId: 'capital', slot: 1 },
-        toggleArmyFormationMember: { type: 'toggleArmyFormationMember', personId: 'fp-scout' },
-        autoReplenishArmyFormation: { type: 'autoReplenishArmyFormation' },
+        switchCityManagementTab:
+          game.isBlockingPanelSnapshotOpen('showCityManagement')
+          && game.activeCityManagementTab !== 'military'
+            ? { type: 'switchCityManagementTab', tab: 'military' }
+            : null,
+        openArmyFormation:
+          game.isBlockingPanelSnapshotOpen('showCityManagement')
+          && game.activeCityManagementTab === 'military'
+            ? { type: 'openArmyFormation', cityId: 'capital', slot: 1 }
+            : null,
+        toggleArmyFormationMember: {
+          type: 'toggleArmyFormationMember',
+          personId: 'fp-scout',
+          tutorialTargetDisabled: shell.armyFormationEditor.memberIds.includes('fp-scout'),
+        },
+        autoReplenishArmyFormation: {
+          type: 'autoReplenishArmyFormation',
+          tutorialTargetDisabled: Boolean(
+            shell.armyFormationEditor.soldierDraftAssignments?.['fp-scout'],
+          ),
+        },
         saveArmyFormation: { type: 'saveArmyFormation' },
         selectWorldMarchTarget: { type: 'selectWorldMarchTarget', targetQ: 2, targetR: -1 },
       };
@@ -821,10 +838,10 @@ test('TutorialGuideController guides era three, scout famous card, and army form
   assert.equal(game.state.militaryView, 'world');
   assert.equal(game.territoryUiState.selectedSiteId, '');
   assert.equal(game.territoryUiState.worldMarchTarget, null);
-  assert.equal(game.territoryUiState.selectedWorldActorId, '');
+  assert.equal(game.territoryUiState.selectedWorldActorId, 'old-march');
   assert.equal(shell.territoryUiState.selectedSiteId, '');
   assert.equal(shell.territoryUiState.worldMarchTarget, null);
-  assert.equal(shell.territoryUiState.selectedWorldActorId, '');
+  assert.equal(shell.territoryUiState.selectedWorldActorId, 'old-march');
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'selectWorldMarchTarget' });
 });
 
@@ -862,7 +879,9 @@ test('TutorialGuideController clears stale highlight when the next target is una
 
 test('TutorialGuideController guides scout formation into map march and claim', async () => {
   const calls = [];
-  const territoryUiState = {};
+  const territoryUiState = {
+    worldMarchTarget: { q: 9, r: 9, tileId: 'stale-target' },
+  };
   const shell = {
     activeCommandPanel: '',
     territoryUiState,
@@ -928,8 +947,16 @@ test('TutorialGuideController guides scout formation into map march and claim', 
 
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'selectWorldMarchTarget' });
-  assert.equal(game.mapHomeActive, true);
-  assert.equal(game.state.currentTab, 'military');
+  assert.equal(territoryUiState.worldMarchTarget, null);
+
+  territoryUiState.worldMarchTarget = { q: 8, r: 8, tileId: 'second-stale-target' };
+  assert.equal(controller.refreshCurrentHighlight(), true);
+  assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'selectWorldMarchTarget' });
+  assert.deepEqual(territoryUiState.worldMarchTarget, {
+    q: 8,
+    r: 8,
+    tileId: 'second-stale-target',
+  });
 
   game.territoryUiState.worldMarchTarget = { q: 2, r: -1, tileId: 'tile_2_-1' };
   shell.territoryUiState.worldMarchTarget = game.territoryUiState.worldMarchTarget;
@@ -942,6 +969,11 @@ test('TutorialGuideController guides scout formation into map march and claim', 
   game.territoryUiState.worldMarchTarget = { q: 2, r: -1, tileId: 'tile_2_-1' };
   shell.territoryUiState.worldMarchTarget = game.territoryUiState.worldMarchTarget;
   targetPickerSnapshot = { pickerKind: 'worldMarchFormation', target: game.territoryUiState.worldMarchTarget, visible: true };
+  controller.handleEvent('modal.changed', {
+    operation: 'open',
+    subtype: 'modal:targetPicker',
+    payload: { pickerKind: 'worldMarchFormation' },
+  });
   assert.equal(controller.refreshCurrentHighlight(), true);
   assert.deepEqual(calls.at(-1).options.allowedAction, { type: 'startWorldMarch', formationSlot: 1 });
 

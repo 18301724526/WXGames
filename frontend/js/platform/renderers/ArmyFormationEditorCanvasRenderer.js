@@ -213,6 +213,7 @@
         { x: autoX, y: autoY, width: 60, height: 24 },
         {
           type: 'autoReplenishArmyFormation',
+          tutorialTargetDisabled: draftAssigned > 0,
           visualDisabled: selectedMembers.length <= 0 || editor.saving,
           commandDisabled: editor.saving
             ? 'IN_FLIGHT'
@@ -270,7 +271,11 @@
           });
           this.addHitTarget(
             { x: innerX, y: rowY, width: innerWidth, height: rowHeight },
-            disabled ? { type: 'blockCanvasModal' } : { type: 'toggleArmyFormationMember', personId: person.id },
+            disabled ? { type: 'blockCanvasModal' } : {
+              type: 'toggleArmyFormationMember',
+              personId: person.id,
+              tutorialTargetDisabled: selected,
+            },
           );
         });
       }

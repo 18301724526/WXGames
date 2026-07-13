@@ -121,7 +121,8 @@ function scanTutorialConfigSource(parsed) {
       : staticString(node.key);
     if (key !== 'target') return;
     const target = staticString(node.value);
-    const type = target.split(':')[0];
+    const parts = target.split(':');
+    const type = parts[0] === 'hitTarget' ? parts[1] : parts[0];
     if (type) references.push({ type, via: 'StepScript.target', location: location(parsed, node) });
   });
   return references;

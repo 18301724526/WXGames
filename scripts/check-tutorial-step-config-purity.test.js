@@ -10,9 +10,9 @@ test('tutorial StepScript config purity gate accepts the live frozen config', ()
   const result = inspectConfig(config);
 
   assert.equal(result.ok, true, JSON.stringify(result.violations, null, 2));
-  assert.equal(result.stepKeyCount, 10);
-  assert.equal(result.ruleOccurrenceCount, 17);
-  assert.equal(result.uniqueRuleIds.length, 16);
+  assert.equal(result.stepKeyCount, 14);
+  assert.equal(result.ruleOccurrenceCount, 23);
+  assert.equal(result.uniqueRuleIds.length, 22);
 });
 
 test('tutorial StepScript config purity FIRE rejects predicates and functions', () => {

@@ -117,6 +117,18 @@
     return null;
   })();
 
+  const TutorialActionMatches = (() => {
+    if (global.TutorialActionMatches) return global.TutorialActionMatches;
+    if (typeof module !== 'undefined' && module.exports) {
+      try {
+        return require('../platform/TutorialActionMatches');
+      } catch (_error) {
+        return null;
+      }
+    }
+    return null;
+  })();
+
   const StateWriter = (() => {
     if (global.StateWriter) return global.StateWriter;
     if (typeof module !== 'undefined' && module.exports) {
@@ -580,6 +592,11 @@
 
     hideTutorialHighlight() {
       this.game?.canvasShell?.hideTutorialHighlight?.();
+      return true;
+    }
+
+    clearWorldMarchTarget() {
+      TerritoryUiStateStore?.patch?.(this.game, { worldMarchTarget: null });
       return true;
     }
 
@@ -1532,6 +1549,105 @@
       return projection;
     }
 
+    handleStepScriptEvent(eventName = '', payload = {}) {
+      const stepKey = this.getCurrentStep();
+      if (!this.stepScriptRunner?.handleEvent || !this.hasStepScript(stepKey)) return null;
+      const transition = this.stepScriptRunner.handleEvent({
+        stepKey,
+        config: this.stepScriptConfig,
+        ctx: this,
+        eventName,
+        payload,
+      });
+      if (transition?.projection?.trace) recordStepScriptTrace(transition.projection.trace);
+      return transition;
+    }
+
+    resolveStepScriptParams(params = {}, options = {}) {
+      const resolved = { ...(params || {}) };
+      let available = true;
+      if (Object.prototype.hasOwnProperty.call(resolved, 'cityAlias')) {
+        const alias = String(resolved.cityAlias || '');
+        delete resolved.cityAlias;
+        if (alias === 'capitalCity') resolved.cityId = this.getCapitalCityId();
+        else available = false;
+      }
+      if (Object.prototype.hasOwnProperty.call(resolved, 'personAlias')) {
+        const alias = String(resolved.personAlias || '');
+        delete resolved.personAlias;
+        const personId = alias === 'scoutFamousPerson' ? this.getScoutFamousPersonId() : '';
+        if (personId) resolved.personId = personId;
+        else available = false;
+      }
+      if (Object.prototype.hasOwnProperty.call(resolved, 'targetAlias')) {
+        const alias = String(resolved.targetAlias || '');
+        delete resolved.targetAlias;
+        if (options.omitTargetAlias === true && alias === 'firstExploreCityCoord') {
+          return { available, params: resolved };
+        }
+        const target = alias === 'firstExploreCityCoord' ? this.getFirstExploreCityTarget() : null;
+        if (target) {
+          resolved.targetQ = target.q;
+          resolved.targetR = target.r;
+        } else {
+          available = false;
+        }
+      }
+      return { available, params: resolved };
+    }
+
+    createStepScriptTargetSpec(request = {}, options = {}) {
+      const descriptor = String(request.target || '');
+      const [kind, targetType] = descriptor.split(':', 2);
+      if (kind !== 'hitTarget' || !targetType) {
+        throw new TypeError(`Tutorial StepScript unsupported target descriptor: ${descriptor}`);
+      }
+      const targetArgs = this.resolveStepScriptParams(request.targetArgs || {}, options);
+      const action = this.resolveStepScriptParams(request.action || {}, options);
+      const available = targetArgs.available && action.available;
+      const allowedAction = {
+        type: targetType,
+        ...targetArgs.params,
+        ...action.params,
+      };
+      const predicate = (candidate = {}) => (
+        !isVisuallyDisabled(candidate)
+        && candidate.tutorialTargetDisabled !== true
+        && TutorialActionMatches?.actionMatches?.(candidate, allowedAction) === true
+      );
+      return { available, targetType, allowedAction, predicate };
+    }
+
+    resolveStepScriptTarget(request = {}) {
+      const spec = this.createStepScriptTargetSpec(request);
+      if (!spec.available) return { available: false, target: null };
+      return this.targetResolver?.resolveTarget?.({
+        kind: 'hitTarget',
+        type: spec.targetType,
+        predicate: spec.predicate,
+        allowedAction: spec.allowedAction,
+      }) || { available: false, target: null };
+    }
+
+    renderStepScriptTarget(request = {}) {
+      const show = (options = {}) => {
+        const spec = this.createStepScriptTargetSpec(request, options);
+        if (!spec.available) return false;
+        return this.requestAction(
+          'showHighlight',
+          spec.targetType,
+          spec.predicate,
+          t(request.messageKey || ''),
+          spec.allowedAction,
+        );
+      };
+      if (show()) return true;
+      const targetAlias = String(request.targetArgs?.targetAlias || request.action?.targetAlias || '');
+      return targetAlias === 'firstExploreCityCoord'
+        ? show({ omitTargetAlias: true })
+        : false;
+    }
+
     renderStepScriptHighlight(instruction = {}) {
       const target = String(instruction.target || '');
       const message = t(instruction.messageKey || '');
@@ -1584,6 +1700,9 @@
         return this.renderStepScriptHighlight(instruction);
       }
       if (instruction.type === 'ensureSurfaceThenHighlight') {
+        if (String(instruction.target || '').startsWith('hitTarget:')) {
+          return this.renderStepScriptTarget(instruction);
+        }
         const panel = String(instruction.panel || '');
         if (instruction.target !== 'openCommandPanel' || !panel) {
           throw new TypeError('Tutorial StepScript ensureSurfaceThenHighlight target is invalid');
@@ -1601,7 +1720,38 @@
         this.requestAction('hideTutorialHighlight');
         return false;
       }
+      if (instruction.type === 'beforeEffects') {
+        return (instruction.effects || []).reduce((handled, effect) => (
+          this.effects(effect.methodName, ...(effect.args || [])) || handled
+        ), false);
+      }
+      if (instruction.type === 'orderedTargetFlow') {
+        return this.renderStepScriptTarget(instruction);
+      }
+      if (instruction.type === 'effectSequence') {
+        return (instruction.operations || []).reduce((handled, operation) => {
+          if (operation.type === 'effects') {
+            return this.effects(operation.methodName, ...(operation.args || [])) || handled;
+          }
+          if (operation.type === 'resolveTarget') {
+            this.resolveTarget(operation.methodName, operation.request || {});
+            return handled;
+          }
+          if (operation.type === 'requestAction') {
+            return this.requestAction(operation.methodName, operation.request || {}) || handled;
+          }
+          if (operation.type === 'next') return this.next(operation.nextStep) || handled;
+          return handled;
+        }, false);
+      }
+      if (instruction.type === 'nextStep') return this.next(instruction.nextStep);
       throw new TypeError(`Tutorial StepScript unknown instruction: ${instruction.type || ''}`);
+    }
+
+    renderStepScriptProjection(projection = {}) {
+      return (projection.instructions || []).reduce((handled, instruction) => (
+        this.renderStepScriptInstruction(instruction) || handled
+      ), false);
     }
 
     isLegacyOverlayActive() {
@@ -1670,12 +1820,13 @@
         if (!this.hasStepScript(stepKey)) return this.refreshLegacyHighlight();
         const projection = this.evaluateStepScript(stepKey);
         if (this.isLegacyOverlayActive()) return this.refreshLegacyHighlight();
-        const instruction = projection?.instructions?.[0] || null;
-        if (!instruction) {
+        if (!projection?.instructions?.length) {
           recordStepScriptIdleTrace(stepKey, projection);
-          return false;
+          return this.stepScriptConfig?.[stepKey]?.legacyFallbackWhenIdle === true
+            ? this.refreshLegacyHighlight()
+            : false;
         }
-        return this.renderStepScriptInstruction(instruction) || false;
+        return this.renderStepScriptProjection(projection) || false;
       } finally {
         this.highlightRefreshActive = false;
         transaction.active = false;

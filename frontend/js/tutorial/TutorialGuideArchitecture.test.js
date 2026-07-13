@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const TutorialHostContext = require('./TutorialHostContext');
+const TaskPanelStepScripts = require('../tutorial-config/TaskPanelStepScripts');
 
 const tutorialRoot = __dirname;
 
@@ -133,6 +134,10 @@ test('TutorialHostContext owns StepScript division while registries retain resid
   assert.match(contextSource, /refreshLegacyHighlight\(/);
   assert.match(flowSource, /function createDefaultRules/);
   assert.match(eventSource, /function createDefaultHandlers/);
-  assert.match(flowSource, /formationPanelOpened/);
+  assert.doesNotMatch(flowSource, /formationPanelOpened/);
+  assert.equal(
+    TaskPanelStepScripts.formationPanelOpened.ruleId,
+    'scout-formation-member-or-save',
+  );
   assert.match(eventSource, /armyFormationSaved/);
 });

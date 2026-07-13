@@ -108,10 +108,6 @@
     return (host) => host.isCityManagementTabOpen?.(tab);
   }
 
-  function getArmyFormationEditor(host) {
-    return host.getArmyFormationEditor?.() || {};
-  }
-
   function renderOpenCommandPanel(host, panel, message) {
     host.prepareCommandPanelGuide?.(panel);
     return host.showHighlight(
@@ -144,42 +140,6 @@
       (action) => !isVisuallyDisabled(action) && (!scoutPersonId || action.personId === scoutPersonId),
       t('tutorial.guide.openScoutFamousDetail'),
       { type: 'openFamousPersonDetail', personId: scoutPersonId },
-    );
-  }
-
-  function renderScoutFormationMemberOrSave(host) {
-    const scoutPersonId = host.getScoutFamousPersonId?.() || '';
-    const editor = getArmyFormationEditor(host);
-    const memberIds = Array.isArray(editor.memberIds) ? editor.memberIds.map(String) : [];
-    if (scoutPersonId && !memberIds.includes(scoutPersonId)) {
-      return host.showHighlight(
-        'toggleArmyFormationMember',
-        (action) => !isVisuallyDisabled(action) && action.personId === scoutPersonId,
-        t('tutorial.guide.pickScoutLeader'),
-        { type: 'toggleArmyFormationMember', personId: scoutPersonId },
-      );
-    }
-    // Middle branch: the scout is in the formation but has no soldiers drafted
-    // yet - guide the auto-replenish button so the first-army reserve is
-    // assigned before saving.
-    const scoutDraftSoldiers = Number(
-      editor.soldierDraftAssignments?.[scoutPersonId] ??
-        editor.soldierAssignments?.[scoutPersonId] ??
-        0,
-    );
-    if (scoutPersonId && memberIds.includes(scoutPersonId) && scoutDraftSoldiers <= 0) {
-      return host.showHighlight(
-        'autoReplenishArmyFormation',
-        (action) => !isVisuallyDisabled(action),
-        t('tutorial.highlight.replenishScoutFormation'),
-        { type: 'autoReplenishArmyFormation' },
-      );
-    }
-    return host.showHighlight(
-      'saveArmyFormation',
-      (action) => !isVisuallyDisabled(action),
-      t('tutorial.guide.saveScoutFormation'),
-      { type: 'saveArmyFormation' },
     );
   }
 
@@ -523,105 +483,6 @@
         id: 'scout-focus-capital',
         matches: famousClosedAndCityClosed,
         render: (host) => host.focusCapitalSite?.(host.getCapitalCityId?.()) || false,
-      },
-      {
-        id: 'scout-switch-city-military-tab',
-        matches: all(
-          famousCardViewed,
-          isCityManagementOpen,
-          not(isCityManagementTabOpen('military')),
-        ),
-        render: (host) =>
-          host.showHighlight(
-            'switchCityManagementTab',
-            (action) => !isVisuallyDisabled(action) && action.tab === 'military',
-            t('tutorial.guide.switchCityMilitaryTab'),
-            { type: 'switchCityManagementTab', tab: 'military' },
-          ),
-      },
-      {
-        id: 'scout-open-formation',
-        matches: all(
-          famousCardViewed,
-          isCityManagementOpen,
-          isCityManagementTabOpen('military'),
-          (host) => !getArmyFormationEditor(host).open,
-        ),
-        render: (host) =>
-          host.showHighlight(
-            'openArmyFormation',
-            (action) => !isVisuallyDisabled(action) && Number(action.slot || 1) === 1,
-            t('tutorial.guide.openFirstFormation'),
-            { type: 'openArmyFormation', cityId: host.getCapitalCityId?.(), slot: 1 },
-          ),
-      },
-      {
-        id: 'scout-formation-member-or-save',
-        matches: all(
-          stepIs(steps.formationPanelOpened),
-          (host) => getArmyFormationEditor(host).open,
-        ),
-        render: renderScoutFormationMemberOrSave,
-      },
-      {
-        id: 'scout-select-world-target',
-        matches: stepIs(steps.scoutFormationSaved),
-        render: (host) => {
-          host.ensureMapHomeGuideVisible?.({ clearWorldMarchTarget: true });
-          // S5 (R-route): steer the target selection to the PRE-PLACED first city's tile so the guided
-          // march heads toward it and its vision discovery fires. The city coord is carried in the grant.
-          // If that specific tile's selectWorldMarchTarget action is present (its tile is on-screen /
-          // revealed), highlight it; otherwise fall back to the generic target highlight so the player is
-          // never left without a prompt while the city tile is still fogged.
-          const target = host.getFirstExploreCityTarget?.();
-          if (target) {
-            const steered = host.showHighlight(
-              'selectWorldMarchTarget',
-              (action) =>
-                !isVisuallyDisabled(action)
-                && Number(action.targetQ ?? action.q ?? action.x) === target.q
-                && Number(action.targetR ?? action.r ?? action.y) === target.r,
-              t('tutorial.guide.selectScoutTarget'),
-              { type: 'selectWorldMarchTarget', targetQ: target.q, targetR: target.r },
-            );
-            if (steered) return true;
-          }
-          return host.showHighlight(
-            'selectWorldMarchTarget',
-            (action) => !isVisuallyDisabled(action),
-            t('tutorial.guide.selectScoutTarget'),
-            { type: 'selectWorldMarchTarget' },
-          );
-        },
-      },
-      {
-        id: 'scout-open-world-formation-picker',
-        matches: all(
-          stepIs(steps.scoutWorldPanelOpened),
-          (host) => !host.isWorldMarchFormationPickerOpen?.(),
-        ),
-        render: (host) => {
-          host.ensureMapHomeGuideVisible?.();
-          return host.showHighlight(
-            'openWorldMarchFormationPicker',
-            (action) => !isVisuallyDisabled(action),
-            t('tutorial.guide.openMarchFormationPicker'),
-            { type: 'openWorldMarchFormationPicker' },
-          );
-        },
-      },
-      {
-        id: 'scout-start-world-march',
-        matches: all(stepIs(steps.scoutWorldPanelOpened), (host) =>
-          host.isWorldMarchFormationPickerOpen?.(),
-        ),
-        render: (host) =>
-          host.showHighlight(
-            'startWorldMarch',
-            (action) => !isVisuallyDisabled(action) && Number(action.formationSlot || action.slot || 1) === 1,
-            t('tutorial.guide.startScoutMarch'),
-            { type: 'startWorldMarch', formationSlot: 1 },
-          ),
       },
       {
         id: 'scout-explore-active',

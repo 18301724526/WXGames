@@ -46,6 +46,7 @@ test('StepScript target fields stay in the tutorial hit-target inventory', () =>
       [configFile]: [
         "const config = { target: 'openTaskCenter' };",
         "const claim = { target: 'claimTaskReward:main_first_supplies' };",
+        "const descriptor = { target: 'hitTarget:claimTaskReward' };",
       ].join('\n'),
     },
   });

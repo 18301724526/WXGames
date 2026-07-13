@@ -7,6 +7,7 @@
 
   const EFFECT_SEQUENCE_EFFECTS = Object.freeze({
     hideTutorialHighlight: Object.freeze({ methodName: 'hideTutorialHighlight' }),
+    clearWorldMarchTarget: Object.freeze({ methodName: 'clearWorldMarchTarget' }),
   });
 
   function normalizeEffects(effects = [], valuePath = 'effects') {
@@ -79,15 +80,26 @@
   }
 
   function evaluateEnsureSurfaceThenHighlight(script = {}, ctx = null) {
-    if (!matchesWhen(script.when, ctx)) return { matchedRuleId: '', instructions: [] };
+    const clauses = Array.isArray(script.clauses) ? script.clauses : null;
+    const clause = clauses
+      ? clauses.find((candidate) => (
+          matchesWhen(candidate?.when, ctx) && resolveOrderedTarget(ctx, candidate)
+        ))
+      : script;
+    if (!clause || !matchesWhen(clause.when, ctx)) {
+      return { matchedRuleId: '', instructions: [] };
+    }
     return {
-      matchedRuleId: String(script.ruleId || ''),
+      matchedRuleId: String(clause.ruleId || script.ruleId || ''),
       instructions: [{
         type: 'ensureSurfaceThenHighlight',
-        panel: String(script.panel || ''),
-        target: String(script.target || ''),
-        messageKey: String(script.messageKey || ''),
-        eventName: String(script.eventName || ''),
+        panel: String(clause.panel || script.panel || ''),
+        target: String(clause.target || script.target || ''),
+        targetArgs: copyData(clause.targetArgs || script.targetArgs || {}),
+        action: copyData(clause.action || script.action || {}),
+        messageKey: String(clause.messageKey || script.messageKey || ''),
+        eventName: String(clause.eventName || script.eventName || ''),
+        eventFilter: copyData(clause.eventFilter || script.eventFilter || {}),
       }],
     };
   }
@@ -161,7 +173,12 @@
     const target = String(script.target || '');
     const targetArgs = copyData(script.targetArgs || {});
     const action = copyData(script.action || {});
-    const request = { target, targetArgs, action };
+    const request = {
+      target,
+      targetArgs,
+      action,
+      messageKey: String(script.messageKey || ''),
+    };
     if (target) {
       operations.push({
         type: 'resolveTarget',

@@ -259,7 +259,7 @@
     },
     {
       "file": "frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.js",
-      "sha256": "0af225b6165b989dcca257dd75f70f60fc699ba4a32ce45f5994c94a4124ec91"
+      "sha256": "8a5059c41559456712b431556cc92044f666ecefbded641065b88243ad4293a2"
     },
     {
       "file": "frontend/js/platform/renderers/BattleCanvasModel.js",
@@ -631,11 +631,11 @@
     },
     {
       "file": "frontend/js/tutorial/TutorialGuideEventRegistry.js",
-      "sha256": "5d03fc5e4cec4afcc2f8052e83c0c943fc8cb5cc2ef6065fab42a21fdab6a9fb"
+      "sha256": "7e0281942b963d67350d136e703e301a83add64cd62becef6bbfa932dc82f791"
     },
     {
       "file": "frontend/js/tutorial/TutorialGuideFlowRegistry.js",
-      "sha256": "3b58369a27d61d27ea9a50bf5d36ecebec9babe3557d900e572bdb716f883a62"
+      "sha256": "d3974ef5c9fd6c8ff1de5a1fc925a7ad2dc0d2126fdb8fe64442f1c4f1bec834"
     },
     {
       "file": "frontend/js/tutorial/TutorialGuideStepPolicy.js",
@@ -647,7 +647,7 @@
     },
     {
       "file": "frontend/js/tutorial/TutorialHostContext.js",
-      "sha256": "60edf7d25225f1637dc983285b4a3b0fb579fc7e2581f88dba3f524663e8fb7a"
+      "sha256": "6bedb32834e72dc0cfef15c8041c7893e997a721ccc983d6f8ffde81a11f3894"
     },
     {
       "file": "frontend/js/tutorial/TutorialIntroOverlay.js",
@@ -655,7 +655,7 @@
     },
     {
       "file": "frontend/js/tutorial-config/TaskPanelStepScripts.js",
-      "sha256": "13ab442aa3f132c00ec248675557921639360322b0713102b3582b2ae7848357"
+      "sha256": "0c8856a0658feb7e8f4014673d60e0c1b8177f141a8d33cd483f319fc05e8a35"
     }
   ],
   "counts": {
@@ -664,7 +664,7 @@
     "tutorialConfigFiles": 1,
     "registrationSites": 204,
     "registeredTypes": 114,
-    "tutorialReferenceSites": 54,
+    "tutorialReferenceSites": 53,
     "tutorialTypes": 29,
     "missingTypes": 0
   },
@@ -685,7 +685,7 @@
         {
           "type": "advanceEra",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:126"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:122"
         }
       ],
       "registrations": [
@@ -701,17 +701,17 @@
         {
           "type": "assignJob",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:302"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:262"
         },
         {
           "type": "assignJob",
           "via": "getCanvasTarget",
-          "location": "frontend/js/tutorial/TutorialHostContext.js:1278"
+          "location": "frontend/js/tutorial/TutorialHostContext.js:1295"
         },
         {
           "type": "assignJob",
           "via": "getCanvasTarget",
-          "location": "frontend/js/tutorial/TutorialHostContext.js:1280"
+          "location": "frontend/js/tutorial/TutorialHostContext.js:1297"
         }
       ],
       "registrations": [
@@ -730,8 +730,8 @@
       "references": [
         {
           "type": "autoReplenishArmyFormation",
-          "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:171"
+          "via": "StepScript.target",
+          "location": "frontend/js/tutorial-config/TaskPanelStepScripts.js:207"
         }
       ],
       "registrations": [
@@ -747,12 +747,12 @@
         {
           "type": "buildBuilding",
           "via": "getCanvasTarget",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:312"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:272"
         },
         {
           "type": "buildBuilding",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialHostContext.js:1509"
+          "location": "frontend/js/tutorial/TutorialHostContext.js:1526"
         }
       ],
       "registrations": [
@@ -768,7 +768,7 @@
         {
           "type": "chooseWorldTarget",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:195"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:155"
         }
       ],
       "registrations": [
@@ -784,7 +784,7 @@
         {
           "type": "claimConquest",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:643"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:504"
         }
       ],
       "registrations": [
@@ -800,7 +800,7 @@
         {
           "type": "claimEvent",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:438"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:398"
         }
       ],
       "registrations": [
@@ -852,7 +852,7 @@
         {
           "type": "closeFamousPersonDetail",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:497"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:457"
         }
       ],
       "registrations": [
@@ -868,7 +868,7 @@
         {
           "type": "closeFamousPersons",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:508"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:468"
         }
       ],
       "registrations": [
@@ -884,7 +884,7 @@
         {
           "type": "conquer",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:214"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:174"
         }
       ],
       "registrations": [
@@ -900,7 +900,7 @@
         {
           "type": "enterCity",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialHostContext.js:1332"
+          "location": "frontend/js/tutorial/TutorialHostContext.js:1349"
         }
       ],
       "registrations": [
@@ -931,8 +931,8 @@
       "references": [
         {
           "type": "openArmyFormation",
-          "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:551"
+          "via": "StepScript.target",
+          "location": "frontend/js/tutorial-config/TaskPanelStepScripts.js:173"
         }
       ],
       "registrations": [
@@ -956,12 +956,12 @@
         {
           "type": "openCommandPanel",
           "via": "StepScript.target",
-          "location": "frontend/js/tutorial-config/TaskPanelStepScripts.js:176"
+          "location": "frontend/js/tutorial-config/TaskPanelStepScripts.js:273"
         },
         {
           "type": "openCommandPanel",
           "via": "StepScript.target",
-          "location": "frontend/js/tutorial-config/TaskPanelStepScripts.js:189"
+          "location": "frontend/js/tutorial-config/TaskPanelStepScripts.js:286"
         },
         {
           "type": "openCommandPanel",
@@ -981,7 +981,7 @@
         {
           "type": "openCommandPanel",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:117"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:113"
         }
       ],
       "registrations": [
@@ -1005,7 +1005,7 @@
         {
           "type": "openEvent",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:427"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:387"
         }
       ],
       "registrations": [
@@ -1021,7 +1021,7 @@
         {
           "type": "openFamousPersonDetail",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:142"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:138"
         }
       ],
       "registrations": [
@@ -1041,17 +1041,17 @@
         {
           "type": "openFamousPersons",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:132"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:128"
         },
         {
           "type": "openFamousPersons",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:703"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:564"
         },
         {
           "type": "openFamousPersons",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:714"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:575"
         }
       ],
       "registrations": [
@@ -1106,8 +1106,8 @@
       "references": [
         {
           "type": "openWorldMarchFormationPicker",
-          "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:605"
+          "via": "StepScript.target",
+          "location": "frontend/js/tutorial-config/TaskPanelStepScripts.js:242"
         }
       ],
       "registrations": [
@@ -1155,7 +1155,7 @@
         {
           "type": "renameCity",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:227"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:187"
         }
       ],
       "registrations": [
@@ -1175,12 +1175,12 @@
         {
           "type": "requestNamingInput",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:239"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:199"
         },
         {
           "type": "requestNamingInput",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:263"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:223"
         }
       ],
       "registrations": [
@@ -1195,14 +1195,14 @@
       "references": [
         {
           "type": "saveArmyFormation",
-          "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:178"
+          "via": "StepScript.target",
+          "location": "frontend/js/tutorial-config/TaskPanelStepScripts.js:212"
         }
       ],
       "registrations": [
         {
           "type": "saveArmyFormation",
-          "location": "frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.js:298"
+          "location": "frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.js:303"
         }
       ]
     },
@@ -1212,7 +1212,7 @@
         {
           "type": "seekFamousPerson",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:725"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:586"
         }
       ],
       "registrations": [
@@ -1227,13 +1227,8 @@
       "references": [
         {
           "type": "selectWorldMarchTarget",
-          "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:578"
-        },
-        {
-          "type": "selectWorldMarchTarget",
-          "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:589"
+          "via": "StepScript.target",
+          "location": "frontend/js/tutorial-config/TaskPanelStepScripts.js:225"
         }
       ],
       "registrations": [
@@ -1248,8 +1243,8 @@
       "references": [
         {
           "type": "startWorldMarch",
-          "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:619"
+          "via": "StepScript.target",
+          "location": "frontend/js/tutorial-config/TaskPanelStepScripts.js:256"
         }
       ],
       "registrations": [
@@ -1265,12 +1260,12 @@
         {
           "type": "submitNaming",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:246"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:206"
         },
         {
           "type": "submitNaming",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:270"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:230"
         }
       ],
       "registrations": [
@@ -1285,18 +1280,18 @@
       "references": [
         {
           "type": "switchCityManagementTab",
-          "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:281"
+          "via": "StepScript.target",
+          "location": "frontend/js/tutorial-config/TaskPanelStepScripts.js:185"
         },
         {
           "type": "switchCityManagementTab",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:535"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:241"
         },
         {
           "type": "switchCityManagementTab",
           "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:679"
+          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:540"
         }
       ],
       "registrations": [
@@ -1311,14 +1306,14 @@
       "references": [
         {
           "type": "toggleArmyFormationMember",
-          "via": "showHighlight",
-          "location": "frontend/js/tutorial/TutorialGuideFlowRegistry.js:155"
+          "via": "StepScript.target",
+          "location": "frontend/js/tutorial-config/TaskPanelStepScripts.js:198"
         }
       ],
       "registrations": [
         {
           "type": "toggleArmyFormationMember",
-          "location": "frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.js:273"
+          "location": "frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.js:274"
         }
       ]
     }

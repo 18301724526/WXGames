@@ -247,12 +247,15 @@
         return host.state;
       },
 
-      armyFormationOpened: (host) =>
-        advanceIf(
+      armyFormationOpened: async (host) => {
+        const result = await advanceIf(
           host,
           () => stepEquals(getStep(host), steps.famousCardViewed),
           steps.formationPanelOpened,
-        ),
+        );
+        host.refreshCurrentHighlight?.();
+        return result;
+      },
 
       armyFormationSaved: (host, payload = {}) => {
         syncFromResult(host, payload.result || payload);
@@ -262,7 +265,7 @@
           stepEquals(step, steps.scoutWorldPanelOpened)
         ) {
           host.closeArmyFormationEditorEverywhere?.();
-          host.ensureMapHomeGuideVisible?.({ clearWorldMarchTarget: true });
+          host.ensureMapHomeGuideVisible?.();
           host.refreshCurrentHighlight?.();
           return true;
         }
@@ -295,12 +298,15 @@
         return host.state;
       },
 
-      worldMarchTargetSelected: (host) =>
-        advanceIf(
+      worldMarchTargetSelected: async (host) => {
+        const result = await advanceIf(
           host,
           () => stepEquals(getStep(host), steps.scoutFormationSaved),
           steps.scoutWorldPanelOpened,
-        ),
+        );
+        host.refreshCurrentHighlight?.();
+        return result;
+      },
 
       exploreStarted: (host, payload = {}) => {
         syncFromResult(host, payload.result || payload);
@@ -341,13 +347,19 @@
     subscribeToBus(bus, host) {
       if (!bus || typeof bus.subscribe !== 'function') return () => false;
       const unsubscribers = EVENT_NAMES.map((eventName) => (
-        bus.subscribe(eventName, (payload = {}) => (
-          this.handle(host, eventName, payload)
-        ))
+        bus.subscribe(eventName, (payload = {}) => {
+          const scriptTransition = host?.handleStepScriptEvent?.(eventName, payload) || null;
+          const result = this.handle(host, eventName, payload);
+          return result === undefined ? scriptTransition?.handled === true : result;
+        })
       ));
       ['state.changed', 'modal.changed'].forEach((eventName) => {
         unsubscribers.push(bus.subscribe(eventName, (change = {}) => {
           if (host?.isChangeEventRelevant?.(eventName, change) === false) return false;
+          const scriptTransition = host?.handleStepScriptEvent?.(eventName, change) || null;
+          if (scriptTransition?.handled) {
+            return host?.renderStepScriptProjection?.(scriptTransition.projection) || true;
+          }
           if (typeof host?.requestHighlightRefresh === 'function') {
             return host.requestHighlightRefresh(eventName, change);
           }

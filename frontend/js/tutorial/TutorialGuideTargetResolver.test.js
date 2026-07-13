@@ -15,6 +15,7 @@ function attachTutorialController(host) {
 
 const S2_HIGHLIGHT_PANEL_EXPECTATIONS = Object.freeze({
   advanceEra: '',
+  autoReplenishArmyFormation: '',
   buildBuilding: '',
   claimConquest: '',
   claimEvent: '',
@@ -27,10 +28,12 @@ const S2_HIGHLIGHT_PANEL_EXPECTATIONS = Object.freeze({
   openFamousPersons: '',
   openTaskCenter: '',
   openWorldMarchFormationPicker: '',
+  saveArmyFormation: '',
   seekFamousPerson: 'famousPersons',
   selectWorldMarchTarget: '',
   startWorldMarch: '',
   switchCityManagementTab: '',
+  toggleArmyFormationMember: '',
 });
 
 test('legacy and StepScript highlights have an explicit panel coverage decision for every type', () => {
@@ -40,7 +43,10 @@ test('legacy and StepScript highlights have an explicit panel coverage decision 
     .map((rule) => rule.kind.slice('highlight:'.length));
   const stepScriptTargets = Object.values(taskPanelStepScripts).flatMap((script) => (
     Array.isArray(script.clauses) ? script.clauses : [script]
-  )).map((entry) => String(entry.target || '').split(':')[0]).filter(Boolean);
+  )).map((entry) => {
+    const [kind, value] = String(entry.target || '').split(':', 2);
+    return kind === 'hitTarget' ? value : kind;
+  }).filter(Boolean);
   const highlightTypes = [...new Set([...legacyHighlightTypes, ...stepScriptTargets])].sort();
   assert.deepEqual(Object.keys(S2_HIGHLIGHT_PANEL_EXPECTATIONS).sort(), highlightTypes);
   const panelTable = TutorialGuideTargetResolver.MODAL_TARGET_PANEL_BY_ACTION_TYPE;

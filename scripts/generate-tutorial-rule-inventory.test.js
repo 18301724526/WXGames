@@ -23,6 +23,12 @@ const MIGRATED_RULE_IDS = Object.freeze([
   'first-army-claim',
   'scout-officer-open-task-center',
   'scout-officer-claim',
+  'scout-switch-city-military-tab',
+  'scout-open-formation',
+  'scout-formation-member-or-save',
+  'scout-select-world-target',
+  'scout-open-world-formation-picker',
+  'scout-start-world-march',
   'final-tech-open',
 ]);
 
@@ -30,7 +36,7 @@ test('tutorial rule inventory matches registry factory products and source locat
   const inventory = buildInventory();
   assert.ok(inventory.counts.flowRules > 0);
   assert.ok(inventory.counts.eventHandlers > 0);
-  assert.equal(inventory.counts.flowRules, 38);
+  assert.equal(inventory.counts.flowRules, 32);
   assert.equal(inventory.counts.eventHandlers, 18);
   assert.equal(inventory.flowRules.length, inventory.counts.flowRules);
   assert.equal(inventory.eventHandlers.length, inventory.counts.eventHandlers);
