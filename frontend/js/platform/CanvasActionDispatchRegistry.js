@@ -130,10 +130,6 @@
       return typeof context.closeCommandPanel === 'function' ? context.closeCommandPanel(action) : false;
     },
 
-    closeRewardReveal(context = {}, action = {}) {
-      return typeof context.closeRewardReveal === 'function' ? context.closeRewardReveal(action) : false;
-    },
-
     openCitySwitcher(context = {}, action = {}) {
       return typeof context.openCitySwitcher === 'function' ? context.openCitySwitcher(action) : false;
     },
@@ -309,7 +305,6 @@
     'closeResourceDetails',
     'openCommandPanel',
     'closeCommandPanel',
-    'closeRewardReveal',
     'openCitySwitcher',
     'closeCitySwitcher',
     'openSubcityList',

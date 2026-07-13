@@ -13,6 +13,7 @@ require('../ecs/mode/EcsModeRuntimeEntry');
 const WorldMapRenderSnapshot = require('../ecs/projection/WorldMapRenderSnapshot');
 const CanvasGameShell = require('./CanvasGameShell');
 const TutorialHostContext = require('../tutorial/TutorialHostContext');
+const CanvasActionDispatchRegistry = require('./CanvasActionDispatchRegistry');
 const CanvasActionDispatcher = require('./CanvasActionDispatcher');
 const CanvasPanelSurfaceManager = require('./CanvasPanelSurfaceManager');
 const BattleStore = require('../state/BattleStore');
@@ -124,6 +125,54 @@ test('CanvasGameShell falls back to controller for unsupported actions', () => {
     ['canHandle', 'externalWorldCommand', true],
     ['controller', 'externalWorldCommand', 'tap'],
   ]);
+});
+
+test('CanvasGameShell routes reward reveal close through the controller stable-state notifier', () => {
+  const action = { type: 'closeRewardReveal' };
+  const calls = [];
+  let notifierCalls = 0;
+  const shell = new CanvasGameShell({
+    actionDispatcher: new CanvasActionDispatcher({ registry: CanvasActionDispatchRegistry }),
+  });
+  shell.lastGame = {
+    getTutorialController() {
+      return {
+        refreshCurrentHighlight() {
+          notifierCalls += 1;
+          calls.push(['tutorial.refresh', shell.isRewardRevealSnapshotOpen()]);
+          shell.tutorialHighlight = {
+            allowedAction: { type: 'buildBuilding', buildingId: 'barracks' },
+          };
+          return true;
+        },
+      };
+    },
+  };
+  shell.renderActive = () => true;
+  shell.renderCanvasAction = () => true;
+  shell.tutorialHighlight = { allowedAction: action };
+  shell.openRewardRevealSnapshot({ rewardText: '+10' });
+
+  const originalCloseHandler = shell.actionController.handle_closeRewardReveal.bind(shell.actionController);
+  let closeHandlerCalls = 0;
+  shell.actionController.handle_closeRewardReveal = (closeAction) => {
+    closeHandlerCalls += 1;
+    return originalCloseHandler(closeAction);
+  };
+
+  assert.equal(CanvasActionDispatchRegistry.canHandle(action, shell), false);
+  assert.equal(shell.actionDispatcher.canHandle(action, shell), false);
+  assert.equal(shell.dispatchCanvasAction(action), true);
+  assert.equal(closeHandlerCalls, 1);
+  assert.equal(notifierCalls, 1);
+  assert.deepEqual(calls, [['tutorial.refresh', false]]);
+  assert.equal(shell.isRewardRevealSnapshotOpen(), false);
+  assert.deepEqual(shell.tutorialHighlight.allowedAction, {
+    type: 'buildBuilding',
+    buildingId: 'barracks',
+  });
+  assert.equal(CanvasActionDispatchRegistry.supportedActions().includes('closeRewardReveal'), false);
+  assert.equal(CanvasActionDispatcher.supportedActions().includes('closeRewardReveal'), false);
 });
 
 test('CanvasGameShell awaits world tile cache prewarm during asset preload', async () => {
