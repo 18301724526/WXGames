@@ -1436,11 +1436,17 @@
             CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this.host, 'showTaskCenter');
             const forwarded = this.forward(action);
             if (forwarded !== undefined) {
-              return this.finalizeForwarded(forwarded, () => this.afterHandled(action));
+              return this.finalizeForwarded(forwarded, () => {
+                this.notifyTutorialAfterEventAction();
+                this.afterHandled(action);
+              });
             }
             const game = this.getGameHost();
             if (typeof game?.claimTaskReward === 'function') {
-              return this.finalize(game.claimTaskReward(action.taskId, action.category));
+              return this.finalizeForwarded(
+                game.claimTaskReward(action.taskId, action.category),
+                () => this.notifyTutorialAfterEventAction(),
+              );
             }
             return this.finalize(this.claimTaskRewardDirect(action, false));
           }
@@ -1454,6 +1460,7 @@
             });
             if (result?.rewardReveal) this.host.openRewardRevealSnapshot?.(result.rewardReveal);
             else this.host.closeRewardRevealSnapshot?.();
+            if (result && result.success !== false) this.notifyTutorialAfterEventAction();
             return true;
           }
 
@@ -1638,10 +1645,16 @@
           }
 
     handle_closeRewardReveal(action) {
-            const closed = typeof this.host?.closeRewardReveal === 'function'
-              ? this.host.closeRewardReveal()
-              : (this.host.closeRewardRevealSnapshot?.(), true);
+            let closed;
+            if (typeof this.host?.closeRewardReveal === 'function') {
+              closed = this.host.closeRewardReveal();
+            } else {
+              const hadReveal = this.host?.isRewardRevealSnapshotOpen?.() === true;
+              this.host?.closeRewardRevealSnapshot?.();
+              closed = hadReveal && this.host?.isRewardRevealSnapshotOpen?.() !== true;
+            }
             if (closed) {
+              this.notifyTutorialAfterEventAction();
               this.afterHandled(action);
             }
             return closed !== false;
