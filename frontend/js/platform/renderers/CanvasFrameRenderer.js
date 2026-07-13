@@ -151,21 +151,25 @@
       this.setHitTargets([]);
       this.clear();
       if (options.auth?.view?.loginPanelVisible) {
+        this.renderTutorialHighlight(null);
         this.renderLoginPanel(options.auth);
         this.endFrame(options);
         return undefined;
       }
       if (options.loading?.visible) {
+        this.renderTutorialHighlight(null);
         this.renderLoadingScreen(options.loading);
         this.endFrame(options);
         return undefined;
       }
       if (options.entityBattle?.visible) {
+        this.renderTutorialHighlight(null);
         this.renderEntityBattleOverlay(state, options);
         this.endFrame(options);
         return undefined;
       }
       if (options.battleScene?.visible) {
+        this.renderTutorialHighlight(null);
         this.renderBattleSceneOverlay(state, options);
         this.endFrame(options);
         return undefined;

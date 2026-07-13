@@ -8,6 +8,7 @@ const H5CanvasRuntime = require('../H5CanvasRuntime');
 const ModalStore = require('../../state/ModalStore');
 const TutorialGuideController = require('../../tutorial/TutorialGuideController');
 const { makeModalOwnerHost } = require('../../../test-support/CanvasOwnerTestHarness');
+const CanvasFrameRenderer = require('./CanvasFrameRenderer');
 const HudOverlayCanvasRenderer = require('./HudOverlayCanvasRenderer');
 const TutorialCanvasRenderer = require('./TutorialCanvasRenderer');
 const TutorialHighlightLayer = require('./TutorialHighlightLayer');
@@ -544,6 +545,7 @@ function createBlockingOverlayFeature() {
     calls.push('renderTutorialHighlight');
     return tutorialRenderer.renderTutorialHighlight(highlight);
   };
+  const frameRenderer = new CanvasFrameRenderer({ host });
   const hudRenderer = new HudOverlayCanvasRenderer({ host });
   const highlight = {
     rect: { left: 40, top: 45, width: 70, height: 50 },
@@ -564,6 +566,7 @@ function createBlockingOverlayFeature() {
 
   return {
     calls,
+    frameRenderer,
     highlight,
     host,
     hudRenderer,
@@ -890,7 +893,7 @@ test('browser and minigame manifests load TutorialHighlightLayer before Tutorial
   assert.ok(minigameLayerIndex >= 0 && minigameLayerIndex < minigameRendererIndex);
 });
 
-[
+const blockingOverlayScenarios = [
   {
     name: 'login',
     options: { auth: { view: { loginPanelVisible: true } } },
@@ -915,7 +918,9 @@ test('browser and minigame manifests load TutorialHighlightLayer before Tutorial
     renderCall: 'renderBattleSceneOverlay',
     surfaceColor: [122, 85, 32, 255],
   },
-].forEach((scenario) => {
+];
+
+blockingOverlayScenarios.forEach((scenario) => {
   test(`${scenario.name} early return clears stale tutorial highlight before the final composite`, () => {
     const feature = createBlockingOverlayFeature();
 
@@ -923,6 +928,31 @@ test('browser and minigame manifests load TutorialHighlightLayer before Tutorial
       ...scenario.options,
       tutorialHighlight: feature.highlight,
     });
+    feature.runtime.compositeStage();
+
+    const highlightLayer = feature.runtime.getLayerCanvas('tutorialHighlight');
+    const goldCount = countGoldPerimeterPixels(
+      feature.runtime.canvas,
+      { x: 40, y: 45, width: 70, height: 50 },
+    );
+    assert.equal(goldCount, 0, `expected no stale final-composite gold pixels, got ${goldCount}`);
+    assert.equal(feature.runtime.getLayerCompositeState('tutorialHighlight').visible, false);
+    assert.equal(countMatchingPixels(highlightLayer, ([, , , alpha]) => alpha > 0), 0);
+    assert.deepEqual(getPixel(feature.mainHud, 170, 170), scenario.surfaceColor);
+    assert.deepEqual(getPixel(feature.runtime.canvas, 170, 170), scenario.surfaceColor);
+    assert.equal(feature.calls.includes(scenario.renderCall), true);
+    assert.deepEqual(getPixel(feature.tutorialSpine, 6, 6), [34, 204, 102, 255]);
+    assert.deepEqual(getPixel(feature.tutorialDialogue, 26, 6), [51, 136, 255, 255]);
+    assert.deepEqual(getPixel(feature.runtime.canvas, 6, 6), [34, 204, 102, 255]);
+    assert.deepEqual(getPixel(feature.runtime.canvas, 26, 6), [51, 136, 255, 255]);
+  });
+});
+
+blockingOverlayScenarios.forEach((scenario) => {
+  test(`${scenario.name} CanvasFrameRenderer non-HUD early return clears stale tutorial highlight before the final composite`, () => {
+    const feature = createBlockingOverlayFeature();
+
+    feature.frameRenderer.render({}, scenario.options);
     feature.runtime.compositeStage();
 
     const highlightLayer = feature.runtime.getLayerCanvas('tutorialHighlight');

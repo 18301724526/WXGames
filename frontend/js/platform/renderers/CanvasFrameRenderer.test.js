@@ -75,6 +75,7 @@ function createHost(overrides = {}) {
     renderHudOverlay(...args) { calls.push(['renderHudOverlay', args]); },
     renderLoadingScreen(...args) { calls.push(['renderLoadingScreen', args]); },
     renderLoginPanel(...args) { calls.push(['renderLoginPanel', args]); },
+    renderEntityBattleOverlay(...args) { calls.push(['renderEntityBattleOverlay', args]); },
     renderMainPanel(...args) { calls.push(['renderMainPanel', args]); },
     renderMapCommandPanel(...args) { calls.push(['renderMapCommandPanel', args]); },
     renderMapHomeWorldView(...args) { calls.push(['renderMapHomeWorldView', args]); },
@@ -123,14 +124,46 @@ test('CanvasFrameRenderer delegates hud mode to hud overlay without clearing nor
   assert.deepEqual(host.calls[0][1], [{ resources: {} }, options]);
 });
 
-test('CanvasFrameRenderer preserves login and loading early return frame flow', () => {
-  const loginHost = createHost();
-  new CanvasFrameRenderer({ host: loginHost }).render({}, { auth: { view: { loginPanelVisible: true } } });
-  assert.deepEqual(callNames(loginHost), ['beginFrame', 'setHitTargets', 'clear', 'renderLoginPanel', 'endFrame']);
+[
+  {
+    name: 'login',
+    options: { auth: { view: { loginPanelVisible: true } } },
+    renderCall: 'renderLoginPanel',
+  },
+  {
+    name: 'loading',
+    options: { loading: { visible: true } },
+    renderCall: 'renderLoadingScreen',
+  },
+  {
+    name: 'entity battle',
+    options: { entityBattle: { visible: true } },
+    renderCall: 'renderEntityBattleOverlay',
+  },
+  {
+    name: 'battle scene',
+    options: { battleScene: { visible: true } },
+    renderCall: 'renderBattleSceneOverlay',
+  },
+].forEach((scenario) => {
+  test(`CanvasFrameRenderer clears tutorial highlight before the ${scenario.name} early return`, () => {
+    const host = createHost();
 
-  const loadingHost = createHost();
-  new CanvasFrameRenderer({ host: loadingHost }).render({}, { loading: { visible: true } });
-  assert.deepEqual(callNames(loadingHost), ['beginFrame', 'setHitTargets', 'clear', 'renderLoadingScreen', 'endFrame']);
+    new CanvasFrameRenderer({ host }).render({}, scenario.options);
+
+    assert.deepEqual(callNames(host), [
+      'beginFrame',
+      'setHitTargets',
+      'clear',
+      'renderTutorialHighlight',
+      scenario.renderCall,
+      'endFrame',
+    ]);
+    assert.deepEqual(
+      host.calls.find((call) => call[0] === 'renderTutorialHighlight')?.[1],
+      [null],
+    );
+  });
 });
 
 test('CanvasFrameRenderer preserves map-home military frame overlay sequence', () => {
