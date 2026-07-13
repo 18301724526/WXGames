@@ -55,9 +55,18 @@
       inputSurface: false,
       role: 'screen-panel-overlay',
     }),
+    tutorialHighlight: Object.freeze({
+      key: 'tutorialHighlight',
+      zIndex: 1002,
+      contextType: '2d',
+      pointerEvents: 'none',
+      cameraSpace: 'screen-overlay',
+      inputSurface: false,
+      role: 'tutorial-highlight-visual',
+    }),
     tutorialSpine: Object.freeze({
       key: 'tutorialSpine',
-      zIndex: 1002,
+      zIndex: 1003,
       contextType: 'webgl',
       pointerEvents: 'none',
       cameraSpace: 'screen-overlay',
@@ -66,7 +75,7 @@
     }),
     tutorialDialogue: Object.freeze({
       key: 'tutorialDialogue',
-      zIndex: 1003,
+      zIndex: 1004,
       contextType: '2d',
       pointerEvents: 'none',
       cameraSpace: 'screen-overlay',
@@ -79,7 +88,7 @@
   // surface and the engine composites them (in this order == z-order) onto the ONE visible
   // canvas each frame. zIndex values are kept for the legacy per-layer DOM fallback used
   // when OffscreenCanvas is unavailable.
-  const PHYSICAL_LAYER_ORDER = Object.freeze(['worldMap', 'worldFog', 'worldActor', 'worldActorSpine', 'mainHud', 'panelOverlay', 'tutorialSpine', 'tutorialDialogue']);
+  const PHYSICAL_LAYER_ORDER = Object.freeze(['worldMap', 'worldFog', 'worldActor', 'worldActorSpine', 'mainHud', 'panelOverlay', 'tutorialHighlight', 'tutorialSpine', 'tutorialDialogue']);
 
   const RENDER_QUEUE = Object.freeze([
     'worldPanel',

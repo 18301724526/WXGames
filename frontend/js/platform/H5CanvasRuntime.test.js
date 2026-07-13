@@ -252,7 +252,7 @@ test('H5CanvasRuntime clips fixed screen overlay layers to their declared rect',
 
   runtime.ensureCanvas();
   const spineCanvas = runtime.ensureLayerCanvas('tutorialSpine', {
-    zIndex: 1001,
+    zIndex: 1003,
     contextType: 'webgl',
     rect: { x: 18, y: 44, width: 108, height: 240 },
   });
@@ -292,24 +292,38 @@ test('H5CanvasRuntime appends layer canvases in physical z-order regardless of e
   // layer that is ensured LATER (portrait). DOM order must follow z-index so that
   // WebView compositors which break ties by document order still stack correctly.
   const dialogue = runtime.ensureLayerCanvas('tutorialDialogue', {
-    zIndex: 1002,
+    zIndex: 1004,
     contextType: '2d',
     rect: { x: 126, y: 560, width: 288, height: 136 },
   });
   const spine = runtime.ensureLayerCanvas('tutorialSpine', {
-    zIndex: 1001,
+    zIndex: 1003,
     contextType: 'webgl',
     rect: { x: 18, y: 44, width: 108, height: 240 },
+  });
+  const highlight = runtime.ensureLayerCanvas('tutorialHighlight', {
+    zIndex: 1002,
+    contextType: '2d',
+    rect: { x: 0, y: 0, width: 390, height: 693 },
+  });
+  const panel = runtime.ensureLayerCanvas('panelOverlay', {
+    zIndex: 1001,
+    contextType: '2d',
+    rect: { x: 0, y: 0, width: 390, height: 693 },
   });
 
   const order = document.body.children;
   const mainIndex = order.indexOf(mainCanvas);
+  const panelIndex = order.indexOf(panel);
+  const highlightIndex = order.indexOf(highlight);
   const spineIndex = order.indexOf(spine);
   const dialogueIndex = order.indexOf(dialogue);
 
-  assert.ok(mainIndex >= 0 && spineIndex >= 0 && dialogueIndex >= 0);
-  assert.ok(mainIndex < spineIndex, 'mainHud (1000) must precede tutorialSpine (1001) in DOM order');
-  assert.ok(spineIndex < dialogueIndex, 'tutorialSpine (1001) must precede tutorialDialogue (1002) in DOM order');
+  assert.ok([mainIndex, panelIndex, highlightIndex, spineIndex, dialogueIndex].every((index) => index >= 0));
+  assert.ok(mainIndex < panelIndex, 'mainHud (1000) must precede panelOverlay (1001) in DOM order');
+  assert.ok(panelIndex < highlightIndex, 'panelOverlay (1001) must precede tutorialHighlight (1002) in DOM order');
+  assert.ok(highlightIndex < spineIndex, 'tutorialHighlight (1002) must precede tutorialSpine (1003) in DOM order');
+  assert.ok(spineIndex < dialogueIndex, 'tutorialSpine (1003) must precede tutorialDialogue (1004) in DOM order');
 });
 
 test('H5CanvasRuntime orders layer inserts even when host.children is a live HTMLCollection', () => {
@@ -323,7 +337,7 @@ test('H5CanvasRuntime orders layer inserts even when host.children is a live HTM
   });
 
   const stored = [];
-  const higher = { style: { zIndex: '1002' } };
+  const higher = { style: { zIndex: '1004' } };
   const host = {
     get children() {
       // array-like collection object, deliberately NOT an Array instance
@@ -347,8 +361,8 @@ test('H5CanvasRuntime orders layer inserts even when host.children is a live HTM
   runtime.canvas = null;
   runtime.layerCanvases = new Map([['tutorialDialogue', higher]]);
 
-  const lower = { style: { zIndex: '1001' } };
-  runtime.insertLayerElementInStackOrder(host, lower, '1001');
+  const lower = { style: { zIndex: '1003' } };
+  runtime.insertLayerElementInStackOrder(host, lower, '1003');
 
   assert.equal(stored.indexOf(lower), 0, 'lower z-index element must be inserted before the higher one');
   assert.equal(stored.indexOf(higher), 1);
@@ -419,7 +433,7 @@ test('H5CanvasRuntime gives every layer an offscreen draw surface with no DOM ca
   const { runtime, document } = createOffscreenRuntime();
 
   const surface = runtime.ensureLayerCanvas('tutorialSpine', {
-    zIndex: 1001,
+    zIndex: 1003,
     contextType: 'webgl',
     pixelRatio: 2,
     rect: { x: 18, y: 44, width: 108, height: 240 },
@@ -440,7 +454,7 @@ test('H5CanvasRuntime gives every layer an offscreen draw surface with no DOM ca
   assert.deepEqual(domLayers, []);
   // re-ensure returns the SAME surface (stable identity for player reuse checks)
   const again = runtime.ensureLayerCanvas('tutorialSpine', {
-    zIndex: 1001,
+    zIndex: 1003,
     contextType: 'webgl',
     pixelRatio: 2,
     rect: { x: 18, y: 44, width: 108, height: 240 },
@@ -452,7 +466,7 @@ test('H5CanvasRuntime presentLayer composites the stage onto the visible canvas'
   const { runtime, recordingCtxByCanvas } = createOffscreenRuntime();
 
   const surface = runtime.ensureLayerCanvas('tutorialSpine', {
-    zIndex: 1001,
+    zIndex: 1003,
     contextType: 'webgl',
     pixelRatio: 1,
     rect: { x: 18, y: 44, width: 108, height: 240 },
@@ -476,7 +490,7 @@ test('H5CanvasRuntime refreshLayerPresentCache snapshots webgl layers without co
   const { runtime, recordingCtxByCanvas } = createOffscreenRuntime();
 
   const surface = runtime.ensureLayerCanvas('tutorialSpine', {
-    zIndex: 1001,
+    zIndex: 1003,
     contextType: 'webgl',
     rect: { x: 18, y: 44, width: 108, height: 240 },
   });
@@ -497,7 +511,7 @@ test('H5CanvasRuntime composites the full stack onto the visible canvas in physi
   const actorSurface = runtime.ensureLayerCanvas('worldActor', { zIndex: 999, padding: 120 });
   const hudSurface = runtime.ensureLayerCanvas('mainHud', { zIndex: 1000, pointerEvents: 'auto' });
   const dialogueSurface = runtime.ensureLayerCanvas('tutorialDialogue', {
-    zIndex: 1002,
+    zIndex: 1004,
     rect: { x: 0, y: 0, width: 390, height: 693 },
   });
 

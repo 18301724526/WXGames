@@ -55,16 +55,18 @@ test('CanvasLayerRegistry defines the mature engine physical canvas stack', () =
     'worldActorSpine',
     'mainHud',
     'panelOverlay',
+    'tutorialHighlight',
     'tutorialSpine',
     'tutorialDialogue',
   ]);
   // worldActorSpine shares worldActor's z-index (999): composite order is the array above, and
   // the DOM fallback breaks the tie by document order (which follows this same array).
-  assert.deepEqual(stack.map((layer) => layer.zIndex), [997, 998, 999, 999, 1000, 1001, 1002, 1003]);
+  assert.deepEqual(stack.map((layer) => layer.zIndex), [997, 998, 999, 999, 1000, 1001, 1002, 1003, 1004]);
   // PHYSICAL_LAYER_ORDER must stay monotonic (non-decreasing) in z-index: H5CanvasRuntime
   // inserts layer canvases into the DOM ordered by z-index so that document order matches this
   // canonical stack (guarding WebView compositors that break stacking-context ties by order).
   const zIndexes = stack.map((layer) => layer.zIndex);
+  assert.equal(zIndexes.every(Number.isInteger), true);
   assert.deepEqual(zIndexes, [...zIndexes].sort((a, b) => a - b));
   assert.equal(stack[0].cameraSpace, 'world');
   assert.equal(stack[1].cameraSpace, 'world-overlay');
@@ -79,8 +81,12 @@ test('CanvasLayerRegistry defines the mature engine physical canvas stack', () =
   assert.equal(stack[5].inputSurface, false);
   assert.equal(stack[6].cameraSpace, 'screen-overlay');
   assert.equal(stack[6].inputSurface, false);
+  assert.equal(stack[6].contextType, '2d');
+  assert.equal(stack[6].pointerEvents, 'none');
   assert.equal(stack[7].cameraSpace, 'screen-overlay');
   assert.equal(stack[7].inputSurface, false);
+  assert.equal(stack[8].cameraSpace, 'screen-overlay');
+  assert.equal(stack[8].inputSurface, false);
   assert.equal(stack.filter((layer) => layer.inputSurface).length, 1);
 });
 
@@ -89,10 +95,17 @@ test('CanvasLayerRegistry owns tutorial overlay layer options', () => {
     zIndex: 1001,
     pointerEvents: 'none',
   });
+  assert.deepEqual(CanvasLayerRegistry.getLayerOptions('tutorialHighlight', {
+    rect: { x: 0, y: 0, width: 390, height: 693 },
+  }), {
+    zIndex: 1002,
+    pointerEvents: 'none',
+    rect: { x: 0, y: 0, width: 390, height: 693 },
+  });
   assert.deepEqual(CanvasLayerRegistry.getLayerOptions('tutorialSpine', {
     rect: { x: 24, y: 360, width: 160, height: 280 },
   }), {
-    zIndex: 1002,
+    zIndex: 1003,
     contextType: 'webgl',
     pointerEvents: 'none',
     rect: { x: 24, y: 360, width: 160, height: 280 },
@@ -100,7 +113,7 @@ test('CanvasLayerRegistry owns tutorial overlay layer options', () => {
   assert.deepEqual(CanvasLayerRegistry.getLayerOptions('tutorialDialogue', {
     rect: { x: 0, y: 0, width: 390, height: 693 },
   }), {
-    zIndex: 1003,
+    zIndex: 1004,
     pointerEvents: 'none',
     rect: { x: 0, y: 0, width: 390, height: 693 },
   });

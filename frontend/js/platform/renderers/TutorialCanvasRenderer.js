@@ -10,7 +10,6 @@
     }
     return null;
   }
-
   const SharedUnitSpriteManifest = resolveRendererDependency('UnitSpriteManifest', '../../config/UnitSpriteManifest');
   const TUTORIAL_MARCH_UNIT_ID = 'tutorial_intro_soldier';
   const TUTORIAL_MARCH_UNIT_ANIMATION = 'move';
@@ -18,6 +17,7 @@
   const SharedTutorialIntroUnitRenderer = resolveRendererDependency('TutorialIntroUnitRenderer', './TutorialIntroUnitRenderer');
   const SharedTutorialAdvisorCanvasRenderer = resolveRendererDependency('TutorialAdvisorCanvasRenderer', './TutorialAdvisorCanvasRenderer');
   const SharedTutorialDialogueLayer = resolveRendererDependency('TutorialDialogueLayer', './TutorialDialogueLayer');
+  const SharedTutorialHighlightLayer = resolveRendererDependency('TutorialHighlightLayer', './TutorialHighlightLayer');
   const SharedTutorialAdvisorDialogueRenderer = resolveRendererDependency('TutorialAdvisorDialogueRenderer', './TutorialAdvisorDialogueRenderer');
   const CanvasLayerRegistry = resolveRendererDependency('CanvasLayerRegistry', '../CanvasLayerRegistry');
   class TutorialCanvasRenderer {
@@ -27,16 +27,14 @@
       const AdvisorRendererClass = options.advisorRendererClass || SharedTutorialAdvisorCanvasRenderer;
       this.advisorRenderer = options.advisorRenderer || (AdvisorRendererClass ? new AdvisorRendererClass({ host: this.host, drawingSurface: this.drawingSurface || this.host }) : null);
     }
-
     get bottomSafeArea() { return Number(this.host?.bottomSafeArea) || 0; }
-    get ctx() { return this.dialogueCtx || this.host?.ctx || null; }
+    get ctx() { return this.highlightCtx || this.dialogueCtx || this.host?.ctx || null; }
     get height() { return Number(this.host?.height) || 0; }
     get h5Runtime() { return this.host?.h5Runtime || null; }
     get hitTargets() { return this.host?.hitTargets || null; }
     get presenter() { return this.host?.presenter || null; }
     get width() { return Number(this.host?.width) || 0; }
     get worldMapRenderer() { return this.host?.worldMapRenderer || null; }
-
     addHitTarget(...args) { const surface = this.drawingSurface; return surface && typeof surface.addHitTarget === 'function' ? surface.addHitTarget(...args) : this.host?.addHitTarget?.(...args); }
     drawPanel(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawPanel === 'function' ? surface.drawPanel(...args) : this.host?.drawPanel?.(...args); }
     drawText(...args) { const surface = this.drawingSurface; return surface && typeof surface.drawText === 'function' ? surface.drawText(...args) : this.host?.drawText?.(...args); }
@@ -52,7 +50,6 @@
     setCanvasLayerVisible(...args) { return this.host?.setCanvasLayerVisible?.(...args) || this.h5Runtime?.setLayerVisible?.(...args) || false; }
     truncateText(...args) { const surface = this.drawingSurface; return surface && typeof surface.truncateText === 'function' ? surface.truncateText(...args) : this.host?.truncateText?.(...args) ?? String(args[0] ?? ''); }
     wrapTextLimit(...args) { const surface = this.drawingSurface; return surface && typeof surface.wrapTextLimit === 'function' ? surface.wrapTextLimit(...args) : this.host?.wrapTextLimit?.(...args) ?? [String(args[0] ?? '')].filter(Boolean); }
-
     render(state = {}, options = {}) {
       return this.renderTutorialIntro(state, options);
     }
@@ -385,7 +382,10 @@
     }
 
     renderTutorialHighlight(highlight = null) {
-      if (!highlight || !highlight.rect || !this.presenter || !this.ctx) return;
+      if (!highlight || !highlight.rect || !this.presenter || !this.ctx) {
+        SharedTutorialHighlightLayer?.clear?.(this, true);
+        return false;
+      }
       const now = this.getNow();
       const transition = highlight.transition || null;
       const rect = transition
@@ -432,42 +432,45 @@
         );
       }
 
-      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
-      this.ctx.fillRect(0, 0, this.width, overlay.y);
-      this.ctx.fillRect(0, overlay.y + overlay.height, this.width, Math.max(0, this.height - overlay.y - overlay.height));
-      this.ctx.fillRect(0, overlay.y, overlay.x, overlay.height);
-      this.ctx.fillRect(overlay.x + overlay.width, overlay.y, Math.max(0, this.width - overlay.x - overlay.width), overlay.height);
-
-      this.drawPanel(overlay.x, overlay.y, overlay.width, overlay.height, {
-        fill: `rgba(255, 247, 214, ${0.07 + pulse * 0.04})`,
-        stroke: `rgba(255, 215, 0, ${0.78 + pulse * 0.2})`,
-        radius: 16,
-        inset: 'rgba(255, 247, 214, 0.18)',
-      });
-      this.ctx.lineWidth = 3;
-      this.roundRectPath(overlay.x, overlay.y, overlay.width, overlay.height, 16);
-      this.ctx.strokeStyle = `rgba(255, 215, 0, ${0.78 + pulse * 0.2})`;
-      this.ctx.stroke();
-      this.ctx.lineWidth = 1;
-
-      this.drawPanel(bubble.x, bubble.y, bubble.width, bubble.height, {
-        fill: '#fff7d6',
-        stroke: 'rgba(255, 215, 0, 0.38)',
-        radius: 12,
-        inset: 'rgba(255, 255, 255, 0.26)',
-      });
-      const messageLines = this.wrapTextLimit(highlight.message || '', bubble.width - 28, 3, { size: 13 });
-      this.drawTextLines(messageLines, bubble.x + 14, bubble.y + 12, {
-        size: 13,
-        color: '#3b2f00',
-        lineHeight: 19,
-      });
-
-      this.drawText('👇', pointer.x + 12, pointer.y + 13, {
-        size: 24,
-        baseline: 'middle',
-        align: 'center',
-      });
+      const draw = () => {
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
+        this.ctx.fillRect(0, 0, this.width, overlay.y);
+        this.ctx.fillRect(0, overlay.y + overlay.height, this.width, Math.max(0, this.height - overlay.y - overlay.height));
+        this.ctx.fillRect(0, overlay.y, overlay.x, overlay.height);
+        this.ctx.fillRect(overlay.x + overlay.width, overlay.y, Math.max(0, this.width - overlay.x - overlay.width), overlay.height);
+        this.drawPanel(overlay.x, overlay.y, overlay.width, overlay.height, {
+          fill: `rgba(255, 247, 214, ${0.07 + pulse * 0.04})`,
+          stroke: `rgba(255, 215, 0, ${0.78 + pulse * 0.2})`,
+          radius: 16,
+          inset: 'rgba(255, 247, 214, 0.18)',
+        });
+        this.ctx.lineWidth = 3;
+        this.roundRectPath(overlay.x, overlay.y, overlay.width, overlay.height, 16);
+        this.ctx.strokeStyle = `rgba(255, 215, 0, ${0.78 + pulse * 0.2})`;
+        this.ctx.stroke();
+        this.ctx.lineWidth = 1;
+        this.drawPanel(bubble.x, bubble.y, bubble.width, bubble.height, {
+          fill: '#fff7d6',
+          stroke: 'rgba(255, 215, 0, 0.38)',
+          radius: 12,
+          inset: 'rgba(255, 255, 255, 0.26)',
+        });
+        const messageLines = this.wrapTextLimit(highlight.message || '', bubble.width - 28, 3, { size: 13 });
+        this.drawTextLines(messageLines, bubble.x + 14, bubble.y + 12, {
+          size: 13,
+          color: '#3b2f00',
+          lineHeight: 19,
+        });
+        this.drawText('👇', pointer.x + 12, pointer.y + 13, {
+          size: 24,
+          baseline: 'middle',
+          align: 'center',
+        });
+      };
+      const layerCtx = SharedTutorialHighlightLayer?.begin?.(this) || null;
+      if (layerCtx) SharedTutorialHighlightLayer.withHighlightContext(this, layerCtx, draw);
+      else draw();
+      return true;
     }
 
     addTutorialShield(rect = {}, options = {}) {
