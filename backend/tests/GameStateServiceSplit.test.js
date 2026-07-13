@@ -5,8 +5,6 @@ const GameStateService = require('../services/GameStateService');
 const GameStateNormalizer = require('../services/GameStateNormalizer');
 const ClientGameStateAssembler = require('../services/ClientGameStateAssembler');
 const GameStateMigrationPipeline = require('../services/GameStateMigrationPipeline');
-const TutorialService = require('../services/TutorialService');
-const WorldExplorerService = require('../services/WorldExplorerService');
 const { BuildingConfig } = require('../services/config/GameplayConfigRuntime');
 
 function clone(value) {
@@ -97,8 +95,8 @@ test('normalized client state keeps legacy iron and metal resources aligned', ()
   assert.ok(clientState.territoryState);
 });
 
-test('new tutorial client state exposes the first house before era one unlocks buildings', () => {
-  const initial = GameStateNormalizer.createInitialGameState('tutorial-house-client-test');
+test('new client state exposes the first house before era one unlocks buildings', () => {
+  const initial = GameStateNormalizer.createInitialGameState('house-client-test');
   const clientState = GameStateService.getClientGameState(initial);
 
   assert.equal(clientState.currentEra, 0);
@@ -113,7 +111,7 @@ test('initial game state can be created around an assigned real-world spawn', ()
       q: 48,
       r: -12,
       spawnKey: '48,-12',
-      tutorialTarget: { q: 49, r: -12 },
+      starterTarget: { q: 49, r: -12 },
     },
   });
   const capital = initial.territories.find((territory) => territory.id === 'capital');
@@ -199,24 +197,15 @@ test('initial game state keeps the legacy origin when no spawn assignment is pro
   assert.equal(initial.worldMap.tiles.some((tile) => tile.q === 0 && tile.r === 0 && tile.siteId === 'capital'), true);
 });
 
-test('guided first city flow grants no soldiers during state normalization', () => {
+test('neutral settlement state grants no soldiers during normalization', () => {
   const siteId = 'site_3_1';
   const rawState = {
-    playerId: 'tutorial-settlement-soldier-normalize-test',
+    playerId: 'settlement-soldier-normalize-test',
     activeCityId: 'capital',
     resources: { food: 0, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
     buildings: {},
     population: { total: 3, max: 3, maxPop: 3, farmers: 3 },
     military: { soldiers: 0, soldierCap: 0 },
-    tutorial: {
-      ...TutorialService.manualAdvance(
-        TutorialService.createInitialTutorialState(),
-        TutorialService.TUTORIAL_STEPS.firstCityDiscovered,
-      ),
-      grants: {
-        [WorldExplorerService.TUTORIAL_FIRST_SITE_GRANT_KEY]: { siteId },
-      },
-    },
     territories: [
       { id: 'capital', x: 0, y: 0, naturalName: 'Origin', cityName: 'Capital', type: 'capital', owner: 'player', status: 'occupied' },
       { id: siteId, x: 3, y: 1, naturalName: 'River Bend', type: 'town', owner: 'neutral', status: 'discovered', scale: 2 },
@@ -237,11 +226,9 @@ test('guided first city flow grants no soldiers during state normalization', () 
 
   const normalized = GameStateService.normalizeState(rawState);
 
-  // Settlement of the guided first empty city needs no soldiers, so normalization
-  // must not grant any: military stays exactly what training produced (here zero).
+  // Settlement needs no soldiers, so normalization must keep the trained amount at zero.
   assert.equal(normalized.military.soldiers, 0);
   assert.equal(normalized.military.soldierCap, 0);
   assert.equal(normalized.military.availableSoldiers, 0);
   assert.equal(normalized.cities.capital.military.soldiers, 0);
-  assert.equal(normalized.tutorial.grants.firstExploreEmptyCity.settlementSoldiersGranted, undefined);
 });

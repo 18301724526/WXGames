@@ -67,7 +67,6 @@
       if (!this.presenter || typeof this.presenter.buildCivilizationViewState !== 'function') return;
       const view = this.presenter.buildCivilizationViewState(
         state,
-        options.tutorial || state.tutorial || {},
         { canOpenCivilizationTab: options.canOpenCivilizationTab !== false },
       );
       const layout = this.getLayout();

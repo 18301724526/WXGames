@@ -4,9 +4,6 @@ const TaskCenterService = require('../../services/TaskCenterService');
 const { requireOwnerContext } = require('./CommandOwnerContext');
 const {
   generateCommandEvents,
-  isTutorialRuntimeEnabled,
-  normalizeResultTutorial,
-  syncEra2Tutorial,
 } = require('./GameCommandStateSupport');
 
 function markTaskRuntimeError(error) {
@@ -27,9 +24,6 @@ class TaskClaimCommandHandler {
       ownerKey: context.ownerResolution?.ownerKey,
       ownerKeys: context.ownerResolution?.ownerKeys,
     });
-    const tutorialEnabled = isTutorialRuntimeEnabled();
-    context.application.tutorialEnabled = tutorialEnabled;
-    context.application.tutorial = syncEra2Tutorial(context.state, this.gameStateService, { tutorialEnabled });
     return { success: true };
   }
 
@@ -46,14 +40,6 @@ class TaskClaimCommandHandler {
         payload.taskId,
         payload.category,
       );
-      context.state.tutorial = normalizeResultTutorial(
-        result,
-        context.state.tutorial || context.application.tutorial,
-        { tutorialEnabled: context.application.tutorialEnabled },
-      );
-      context.application.tutorial = syncEra2Tutorial(context.state, this.gameStateService, {
-        tutorialEnabled: context.application.tutorialEnabled,
-      });
       generateCommandEvents(context.state);
       return result;
     } catch (error) {

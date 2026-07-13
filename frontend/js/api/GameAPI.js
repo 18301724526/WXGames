@@ -906,13 +906,6 @@
         requestBody: { action: 'switchCity', cityId },
       });
     }
-    advanceTutorial(step, commandOptions = {}) {
-      return this.submitCommand('tutorialAdvance', { step }, {
-        ...commandOptions,
-        path: '/game/action',
-        requestBody: { action: 'tutorialAdvance', step },
-      });
-    }
   }
 
   global.GameAPI = GameAPI;

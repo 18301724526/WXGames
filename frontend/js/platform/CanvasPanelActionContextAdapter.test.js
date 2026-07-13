@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const buildPanelActionContext = require('./CanvasPanelActionContextAdapter');
 
 test('buildPanelActionContext separates game host from UI state owner', () => {
-  const game = { id: 'game', state: { currentTab: 'resources' }, tutorialController: { id: 'tutorial' } };
+  const game = { id: 'game', state: { currentTab: 'resources' } };
   const host = {
     id: 'shell',
     lastGame: game,
@@ -17,7 +17,6 @@ test('buildPanelActionContext separates game host from UI state owner', () => {
   assert.equal(context.getGameHost(), game);
   assert.equal(context.getUiStateOwner(), game);
   assert.equal(context.getState(), game.state);
-  assert.equal(context.getTutorialController(), game.tutorialController);
 });
 
 test('buildPanelActionContext falls back to host surfaces', () => {
@@ -35,7 +34,7 @@ test('buildPanelActionContext falls back to host surfaces', () => {
 
   assert.equal(context.getGameHost(), host);
   assert.equal(context.getUiStateOwner(), host);
-  assert.equal(context.t('guide.completeCurrentStep'), 't:guide.completeCurrentStep');
+  assert.equal(context.t('panel.blocked'), 't:panel.blocked');
   context.showFloatingText('blocked');
   assert.deepEqual(calls, [['float', 'blocked']]);
 });

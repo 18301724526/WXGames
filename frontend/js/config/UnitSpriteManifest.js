@@ -41,12 +41,6 @@
   });
 
   const UNIT_SPRITES = Object.freeze({
-    tutorial_intro_soldier: Object.freeze({
-      id: 'tutorial_intro_soldier',
-      label: 'Tutorial Intro Soldier',
-      spine: 'barbarian_infantry',
-      animations: BARBARIAN_MARCH_2D,
-    }),
     scout_squad_default: Object.freeze({
       id: 'scout_squad_default',
       label: 'Scout Squad',

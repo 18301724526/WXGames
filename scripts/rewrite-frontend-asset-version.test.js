@@ -51,8 +51,6 @@ function makeTempFrontend() {
     'js/platform/CanvasActionDescriptorRegistry.js',
     'js/platform/CanvasActionDispatchRegistry.js',
     'js/platform/CanvasActionDispatcher.js',
-    'js/platform/TutorialActionMatches.js',
-    'js/platform/renderers/TutorialHighlightLayer.js',
     'js/platform/CanvasModeOwnershipRuntime.js',
     'js/platform/CanvasModalSnapshotAdapter.js',
     'js/platform/CanvasGameShell.js',
@@ -63,7 +61,6 @@ function makeTempFrontend() {
   });
   fs.writeFileSync(path.join(repoRoot, 'shared', 'formationDeploymentEligibility.js'), 'window.FormationDeploymentEligibility={};');
   fs.writeFileSync(path.join(repoRoot, 'shared', 'featureFlags.js'), 'window.FeatureFlagCore={};');
-  fs.writeFileSync(path.join(repoRoot, 'shared', 'tutorialFlowConfig.js'), 'window.TutorialFlowShared={};');
   return { repoRoot, frontendDir: root };
 }
 
@@ -89,7 +86,6 @@ function writeIndex(root, overrides = {}) {
   <script src="js/ui/H5ShellAdapter.js?v=${version}"></script>
   <script src="shared/featureFlags.js?v=${version}"></script>
   <script src="shared/formationDeploymentEligibility.js?v=${version}"></script>
-  <script src="shared/tutorialFlowConfig.js?v=${version}"></script>
   <script src="js/shared/FormationDeploymentEligibilityAdapter.js?v=${version}"></script>
   <script src="js/state/UIStatePresenterDelegates.js?v=${version}"></script>
   <script src="js/state/UIStatePresenter.js?v=${version}"></script>
@@ -100,8 +96,6 @@ function writeIndex(root, overrides = {}) {
   <script src="js/platform/CanvasActionDescriptorRegistry.js?v=${version}"></script>
   <script src="js/platform/CanvasActionDispatchRegistry.js?v=${version}"></script>
   <script src="js/platform/CanvasActionDispatcher.js?v=${version}"></script>
-  <script src="js/platform/TutorialActionMatches.js?v=${version}"></script>
-  <script src="js/platform/renderers/TutorialHighlightLayer.js?v=${version}"></script>
   <script src="js/platform/CanvasModeOwnershipRuntime.js?v=${version}"></script>
   <script src="js/platform/CanvasModalSnapshotAdapter.js?v=${version}"></script>
   <script src="js/platform/CanvasGameShell.js?v=${version}"></script>
@@ -146,7 +140,7 @@ test('rewriteFrontendIndex and manifest guard require one deploy asset version',
     frontendDir,
     version: 'deploy-0123456789ab',
   });
-  assert.equal(result.updated, 31);
+  assert.equal(result.updated, 28);
 
   const html = fs.readFileSync(path.join(frontendDir, 'index.html'), 'utf8');
   assert.match(html, /style\.css\?v=deploy-0123456789ab/);
@@ -158,7 +152,7 @@ test('rewriteFrontendIndex and manifest guard require one deploy asset version',
     frontendDir,
     requireVersion: 'deploy-0123456789ab',
   });
-  assert.equal(manifest.localScriptCount, 30);
+  assert.equal(manifest.localScriptCount, 27);
   assert.equal(manifest.stylesheetCount, 1);
 });
 
@@ -191,5 +185,5 @@ test('manifest guard resolves deployed shared assets from repo shared directory'
     repoRoot,
     frontendDir,
   });
-  assert.equal(manifest.localScriptCount, 32);
+  assert.equal(manifest.localScriptCount, 29);
 });

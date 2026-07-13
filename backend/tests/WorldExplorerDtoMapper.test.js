@@ -152,7 +152,6 @@ test('WorldExplorerClientState keeps legacy API by delegating to DTO mapper afte
   const gameState = {
     worldMap: { seed: 'dto-test', tiles: [] },
     exploreMissions: [createMission()],
-    tutorial: { completed: true },
   };
   const now = new Date('2026-06-06T00:00:12.000Z');
   const viaClient = ClientState.getClientMission(gameState.exploreMissions[0], now);

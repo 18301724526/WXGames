@@ -77,12 +77,12 @@ test('spawn scorer treats world cities as exact tile blockers without capital sp
   assert.equal(nearby.valid, true);
   assert.equal(nearby.nearestCapitalDistance, Infinity);
   assert.notDeepEqual(
-    { q: nearby.tutorialTarget.q, r: nearby.tutorialTarget.r },
+    { q: nearby.starterTarget.q, r: nearby.starterTarget.r },
     { q: 5, r: 0 },
   );
 });
 
-test('spawn allocator selects a valid uncrowded candidate with tutorial target', (t) => {
+test('spawn allocator selects a valid uncrowded candidate with starter target', (t) => {
   const originalChooseTerrain = WorldMapService.chooseTerrain;
   t.after(() => {
     WorldMapService.chooseTerrain = originalChooseTerrain;
@@ -108,7 +108,7 @@ test('spawn allocator selects a valid uncrowded candidate with tutorial target',
   assert.equal(result.selected.q, 18);
   assert.equal(result.selected.r, 0);
   assert.equal(result.selected.valid, true);
-  assert.ok(result.selected.tutorialTarget);
+  assert.ok(result.selected.starterTarget);
 });
 
 test('spawn allocator reports failure when every candidate is invalid', (t) => {

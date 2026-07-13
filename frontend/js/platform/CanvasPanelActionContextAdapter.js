@@ -93,13 +93,8 @@
         const game = this.getGameHost();
         return host?.runtime || game?.runtime || host?.scheduler || game?.scheduler || global;
       },
-      getTutorialController() {
-        const game = this.getGameHost();
-        return game?.tutorialController || host?.tutorialController || null;
-      },
       renderAction(action = {}) {
         if (typeof host?.renderCanvasAction === 'function') return host.renderCanvasAction(action);
-        if (typeof host?.renderGuideFrame === 'function') return host.renderGuideFrame();
         if (typeof host?.renderActive === 'function') return host.renderActive();
         if (typeof host?.render === 'function') return host.render();
         const game = this.getGameHost();
@@ -116,7 +111,6 @@
         const game = this.getGameHost();
         const translator = host?.t || game?.t || global.t || null;
         if (typeof translator === 'function') return translator.call(host?.t ? host : game || global, key, params);
-        if (key === 'guide.completeCurrentStep') return 'Complete the current guide step first';
         return String(key || '');
       },
       log(errorOrMessage) {

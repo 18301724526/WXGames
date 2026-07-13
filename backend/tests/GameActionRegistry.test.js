@@ -7,8 +7,8 @@ function createRegistryWithCalls() {
   const calls = [];
   const registry = createGameActionRegistry({
     BuildBuildingAction: {
-      execute(action, gameState, tutorial, target) {
-        calls.push({ type: 'building', action, gameState, tutorial, target });
+      execute(action, gameState, target) {
+        calls.push({ type: 'building', action, gameState, target });
         return { success: true, action, target };
       },
     },
@@ -37,13 +37,10 @@ function createRegistryWithCalls() {
 test('dispatches build actions through the building action handler', () => {
   const { calls, registry } = createRegistryWithCalls();
   const gameState = { id: 'state' };
-  const tutorial = { step: 'build' };
-
   const result = registry.execute({
     action: 'build',
     body: { action: 'build', target: 'farm' },
     gameState,
-    tutorial,
   });
 
   assert.deepEqual(result, { success: true, action: 'build', target: 'farm' });
@@ -52,7 +49,6 @@ test('dispatches build actions through the building action handler', () => {
     type: 'building',
     action: 'build',
     gameState,
-    tutorial,
     target: 'farm',
   });
 });
@@ -64,7 +60,6 @@ test('dispatches research actions with techId fallback order', () => {
   const result = registry.execute({
     body: { action: 'research', target: 'fire-making' },
     gameState,
-    tutorial: {},
   });
 
   assert.deepEqual(result, { success: true, techId: 'fire-making' });
@@ -84,7 +79,6 @@ test('dispatches setArmyFormation actions without losing slot and member ids', (
       soldierAssignments: { 'person-a': 300, 'person-b': 200 },
     },
     gameState,
-    tutorial: {},
   });
 
   assert.equal(result.success, true);
@@ -100,38 +94,11 @@ test('dispatches setArmyFormation actions without losing slot and member ids', (
   });
 });
 
-test('dispatches tutorialAdvance through the tutorial client-step gate', () => {
-  const { registry } = createRegistryWithCalls();
-  const result = registry.execute({
-    action: 'tutorialAdvance',
-    body: { step: 5 },
-    gameState: {},
-    tutorial: { completed: false, currentStep: 4, phaseCompleted: { newbie: false, era2: false } },
-  });
-
-  assert.equal(result.success, true);
-  // Persisted step is the insertion-proof NAME (legacy numeric payloads map onto it).
-  assert.equal(result.tutorial.currentStep, 'civilizationTabOpened');
-});
-
-test('blocks tutorialAdvance for business-only tutorial steps', () => {
-  const { registry } = createRegistryWithCalls();
-  const result = registry.execute({
-    action: 'tutorialAdvance',
-    body: { step: 7 },
-    gameState: {},
-    tutorial: { completed: false, currentStep: 5, phaseCompleted: { newbie: false, era2: false } },
-  });
-
-  assert.equal(result.success, false);
-  assert.equal(result.error, 'TUTORIAL_STEP_LOCKED');
-});
-
 test('retired world explorer report actions are not registered', () => {
   const { calls, registry } = createRegistryWithCalls();
 
-  const start = registry.execute({ action: 'startExplore', body: { action: 'startExplore' }, gameState: {}, tutorial: {} });
-  const claim = registry.execute({ action: 'claimExplore', body: { action: 'claimExplore' }, gameState: {}, tutorial: {} });
+  const start = registry.execute({ action: 'startExplore', body: { action: 'startExplore' }, gameState: {} });
+  const claim = registry.execute({ action: 'claimExplore', body: { action: 'claimExplore' }, gameState: {} });
 
   assert.equal(start.success, false);
   assert.equal(start.error, 'UNKNOWN_ACTION');
@@ -147,7 +114,6 @@ test('dispatches world march actions through the territory action handler', () =
     action: 'startWorldMarch',
     body: { mode: 'manual', targetQ: 2, targetR: -1, formationSlot: 1, cityId: 'capital' },
     gameState: {},
-    tutorial: {},
   });
 
   assert.equal(started.success, true);
@@ -163,7 +129,6 @@ test('dispatches world march actions through the territory action handler', () =
     action: 'stopWorldMarch',
     body: { missionId: 'explore-1', targetQ: 1, targetR: 0 },
     gameState: {},
-    tutorial: {},
   });
 
   assert.equal(result.success, true);
@@ -196,7 +161,6 @@ test('dispatches compact client input evidence with world march payloads', () =>
       clientInputIntent,
     },
     gameState: {},
-    tutorial: {},
   });
 
   assert.equal(calls[0].payload.clientInputIntent, clientInputIntent);
@@ -217,7 +181,6 @@ test('dispatches combat encounter identity with world march payloads', () => {
       encounterId: 'hostile_force_capital_ridge',
     },
     gameState: {},
-    tutorial: {},
   });
 
   assert.equal(calls[0].payload.combatEncounterId, 'hostile_force_capital_ridge');

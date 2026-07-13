@@ -1,9 +1,9 @@
 const WorldMapService = require('../WorldMapService');
 const {
   DEFAULT_MIN_CAPITAL_DISTANCE,
-  DEFAULT_TUTORIAL_RADIUS,
-  DEFAULT_TUTORIAL_TARGET_MAX_DISTANCE,
-  DEFAULT_TUTORIAL_TARGET_MIN_DISTANCE,
+  DEFAULT_STARTER_TARGET_RADIUS,
+  DEFAULT_STARTER_TARGET_MAX_DISTANCE,
+  DEFAULT_STARTER_TARGET_MIN_DISTANCE,
 } = require('./SpawnConstants');
 const { toInteger } = require('../../../shared/numberUtils');
 
@@ -37,7 +37,7 @@ function getDistance(a = {}, b = {}) {
 }
 
 function isBlockedTerrain(terrain) {
-  // 'shore' is marchable, but spawn points and tutorial targets conservatively
+  // 'shore' is marchable, but spawn points and starter targets conservatively
   // stay off the coastline (same footprint as before the shore terrain existed).
   return terrain === 'ocean' || terrain === 'river' || terrain === 'shore';
 }
@@ -60,17 +60,17 @@ function countCrowdedCoordinates(candidate = {}, occupiedCoordinates = [], radiu
     .filter((occupied) => getDistance(candidate, occupied) < radius).length;
 }
 
-function hasTutorialTarget(candidate = {}, options = {}) {
-  return Boolean(findTutorialTarget(candidate, options));
+function hasStarterTarget(candidate = {}, options = {}) {
+  return Boolean(findStarterTarget(candidate, options));
 }
 
-function findTutorialTarget(candidate = {}, options = {}) {
+function findStarterTarget(candidate = {}, options = {}) {
   const seed = options.seed || WorldMapService.DEFAULT_WORLD_SEED;
   const occupied = new Set(normalizeOccupiedCoordinates(options.occupiedCoordinates)
     .filter((coord) => coord.blocksTile !== false)
     .map((coord) => getCoordinateKey(coord.q, coord.r)));
-  const minDistance = Math.max(1, toInteger(options.tutorialTargetMinDistance, DEFAULT_TUTORIAL_TARGET_MIN_DISTANCE));
-  const maxDistance = Math.max(minDistance, toInteger(options.tutorialTargetMaxDistance, DEFAULT_TUTORIAL_TARGET_MAX_DISTANCE));
+  const minDistance = Math.max(1, toInteger(options.starterTargetMinDistance, DEFAULT_STARTER_TARGET_MIN_DISTANCE));
+  const maxDistance = Math.max(minDistance, toInteger(options.starterTargetMaxDistance, DEFAULT_STARTER_TARGET_MAX_DISTANCE));
   const origin = normalizeCoord(candidate);
   const candidates = [];
 
@@ -105,33 +105,33 @@ function scoreSpawnCandidate(candidate = {}, options = {}) {
   const coord = normalizeCoord(candidate);
   const occupiedCoordinates = normalizeOccupiedCoordinates(options.occupiedCoordinates);
   const minCapitalDistance = Math.max(1, toInteger(options.minCapitalDistance, DEFAULT_MIN_CAPITAL_DISTANCE));
-  const tutorialRadius = Math.max(1, toInteger(options.tutorialRadius, DEFAULT_TUTORIAL_RADIUS));
+  const starterTargetRadius = Math.max(1, toInteger(options.starterTargetRadius, DEFAULT_STARTER_TARGET_RADIUS));
   const terrain = chooseTerrain(seed, coord.q, coord.r);
   const nearestCapitalDistance = getNearestDistance(coord, occupiedCoordinates);
   const crowding = countCrowdedCoordinates(coord, occupiedCoordinates, minCapitalDistance);
   const occupiedTiles = new Set(occupiedCoordinates
     .filter((occupied) => occupied.blocksTile !== false)
     .map((occupied) => getCoordinateKey(occupied.q, occupied.r)));
-  const tutorialTarget = findTutorialTarget(coord, {
+  const starterTarget = findStarterTarget(coord, {
     ...options,
     occupiedCoordinates,
-    tutorialTargetMaxDistance: tutorialRadius,
+    starterTargetMaxDistance: starterTargetRadius,
   });
   const reasons = [];
 
   if (isBlockedTerrain(terrain)) reasons.push('BLOCKED_TERRAIN');
   if (occupiedTiles.has(getCoordinateKey(coord.q, coord.r))) reasons.push('OCCUPIED_TILE');
   if (nearestCapitalDistance < minCapitalDistance) reasons.push('TOO_CLOSE_TO_CAPITAL');
-  if (!tutorialTarget) reasons.push('NO_TUTORIAL_TARGET');
+  if (!starterTarget) reasons.push('NO_STARTER_TARGET');
 
   const valid = reasons.length === 0;
   const distanceScore = nearestCapitalDistance === Infinity
     ? minCapitalDistance * 20
     : Math.min(nearestCapitalDistance, minCapitalDistance * 3) * 20;
-  const tutorialScore = tutorialTarget ? 80 - tutorialTarget.distance * 4 : -120;
+  const starterScore = starterTarget ? 80 - starterTarget.distance * 4 : -120;
   const crowdingPenalty = crowding * 100;
   const terrainPenalty = isBlockedTerrain(terrain) ? 1000 : 0;
-  const score = distanceScore + tutorialScore - crowdingPenalty - terrainPenalty;
+  const score = distanceScore + starterScore - crowdingPenalty - terrainPenalty;
 
   return {
     ...coord,
@@ -141,17 +141,17 @@ function scoreSpawnCandidate(candidate = {}, options = {}) {
     reasons,
     nearestCapitalDistance,
     crowding,
-    tutorialTarget,
+    starterTarget,
   };
 }
 
 module.exports = {
   countCrowdedCoordinates,
-  findTutorialTarget,
+  findStarterTarget,
   getCoordinateKey,
   getDistance,
   getNearestDistance,
-  hasTutorialTarget,
+  hasStarterTarget,
   isBlockedTerrain,
   normalizeOccupiedCoordinate,
   normalizeCoord,

@@ -214,16 +214,16 @@ node scripts/validate-config-pipeline.js --baseline docs/config_registry_snapsho
 node scripts/validate-config-pipeline.js --write-baseline docs/config_registry_snapshot_2026-06-11.json
 ```
 
-默认校验会列出 game/era/tutorial/battle/tech/building/task-definitions registry 的 version、schema、entry count、content hash 和 source；架构门禁会用 baseline diff 拦截未按建议升级版本的配置内容变化。
+默认校验会列出 game/era/battle/tech/building/task-definitions registry 的 version、schema、entry count、content hash 和 source；架构门禁会用 baseline diff 拦截未按建议升级版本的配置内容变化。
 
 配置发布当前是审计、指针、漂移观测、启动门禁、只读 runtime bundle loader 和显式 gameplay runtime facade 边界，不会热加载 gameplay 运行时配置。`/api/health` 会输出 compact `configRuntime` 摘要并包含 gate policy、loader readiness 与 gameplay config runtime 状态。默认运行态文件：
 
 - 生产：`/opt/wxgame-workspace/.wxgame/config-release/configReleases.json` 和 `/opt/wxgame-workspace/.wxgame/config-release/configActiveRelease.json`。该目录在 deploy state 下，运行时备份会一起带走 release history 和 active pointer。
 - 本地/测试：`data/config-release/configReleases.json` 和 `data/config-release/configActiveRelease.json`。
 
-启动门禁默认策略：`NODE_ENV=production` 时要求 active release 与当前 registry 匹配；开发/测试默认只告警。首次引导或诊断可显式设置 `CONFIG_RELEASE_GATE=warn`，禁用可用 `CONFIG_RELEASE_GATE=off`，正式生产应保持 `required`。
+启动门禁默认策略：`NODE_ENV=production` 时要求 active release 与当前 registry 匹配；开发/测试默认只告警。首次启用或诊断可显式设置 `CONFIG_RELEASE_GATE=warn`，禁用可用 `CONFIG_RELEASE_GATE=off`，正式生产应保持 `required`。
 
-`ConfigRuntimeLoader` 只在 active release 与当前 registry 匹配后构建只读配置 bundle，并校验 payload hash；`GameplayConfigRuntime` 是玩法侧读取入口，当前覆盖 game/building/era/tutorial/tech-tree 配置，生产 required 模式必须读取匹配的 active bundle，开发/测试 warn/off 模式可回退到模块配置用于本地引导和诊断。
+`ConfigRuntimeLoader` 只在 active release 与当前 registry 匹配后构建只读配置 bundle，并校验 payload hash；`GameplayConfigRuntime` 是玩法侧读取入口，当前覆盖 game/building/era/tech-tree 配置，生产 required 模式必须读取匹配的 active bundle，开发/测试 warn/off 模式可回退到模块配置用于本地诊断。
 
 2026-06-11 线上演练已确认：管理员 API publish/rollback 后，生产 `CONFIG_RELEASE_GATE=required` 重启健康，`/api/health.configRuntime` 为 `matched`，loader ready，gameplay source 为 `active-release-bundle`；post-required-gate 备份包包含 `deploy-state/config-release/configReleases.json` 和 `deploy-state/config-release/configActiveRelease.json`。
 

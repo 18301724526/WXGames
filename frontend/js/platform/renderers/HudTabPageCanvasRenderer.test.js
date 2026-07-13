@@ -65,13 +65,13 @@ test('HudTabPageCanvasRenderer preserves resource and content tab layouts', () =
   const host = createHost({ height: 844, bottomSafeArea: 12 });
   const renderer = new HudTabPageCanvasRenderer({ host });
 
-  renderer.renderHudTabPage({ tutorial: { step: 1 } }, 'resources', 96, {});
-  renderer.renderHudTabPage({ tutorial: { step: 2 } }, 'buildings', 96, { tutorial: { step: 3 }, buildingOffset: 8 });
-  renderer.renderHudTabPage({}, 'civilization', 96, { tutorial: { step: 4 } });
+  renderer.renderHudTabPage({ view: 'resources' }, 'resources', 96, {});
+  renderer.renderHudTabPage({ view: 'buildings' }, 'buildings', 96, { buildingOffset: 8 });
+  renderer.renderHudTabPage({ view: 'civilization' }, 'civilization', 96, {});
   renderer.renderHudTabPage({}, 'military', 96, {});
 
   assert.deepEqual(callNames(host), ['renderBuildings', 'renderCivilization', 'renderMilitary']);
-  assert.equal(host.calls[0][1][0].tutorial.step, 3);
+  assert.equal(host.calls[0][1][0].view, 'buildings');
   assert.equal(host.calls[0][1][2], 664);
   assert.equal(host.calls[1][1][2], 664);
   assert.equal(host.calls[2][1][2], 664);

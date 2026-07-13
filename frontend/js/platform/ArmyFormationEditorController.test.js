@@ -176,7 +176,7 @@ test('autoReplenish distributes the pool across members up to the per-member cap
   assert.deepEqual(controller.editor.soldierAssignments, { a: 30, b: 20 });
 });
 
-test('save posts the normalized draft, closes, and lets the tutorial own the transition', async () => {
+test('save posts the normalized draft, closes, and publishes the completion event', async () => {
   const apiCalls = [];
   const host = makeAppLikeHost(FIXTURE_STATE, {
     getGameApi() {
@@ -188,10 +188,10 @@ test('save posts the normalized draft, closes, and lets the tutorial own the tra
       };
     },
     applyApiState() {},
-    emitTutorialEvent(eventName, payload) {
+    emitGameEvent(eventName, payload) {
       assert.equal(eventName, 'armyFormationSaved');
       assert.equal(payload.result.message, 'saved');
-      return Promise.resolve(true);
+      return true;
     },
   });
   const controller = new ArmyFormationEditorController({ host });
@@ -201,9 +201,7 @@ test('save posts the normalized draft, closes, and lets the tutorial own the tra
   assert.equal(await controller.save(), true);
   assert.deepEqual(apiCalls, [['capital', 1, ['a', 'b'], { a: 130, b: 20 }]]);
   assert.equal(controller.editor.open, false);
-  // tutorialHandled === true suppresses the post-save render; the only renders are
-  // the ones from open() and the saving:true flip.
-  assert.equal(host.calls.filter(([kind]) => kind === 'render').length, 2);
+  assert.equal(host.calls.filter(([kind]) => kind === 'render').length, 3);
 });
 
 test('save failure resets saving, surfaces the message, and re-renders', async () => {

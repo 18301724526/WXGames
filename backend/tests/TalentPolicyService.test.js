@@ -18,7 +18,6 @@ test('TalentPolicyService saves custom policies with generated ids and keeps exp
     currentEra: 2,
     population: { farmers: 2, scholars: 1, craftsmen: 1, unassigned: 0 },
     talentPolicies: TalentPolicyService.createInitialTalentPolicyState(),
-    tutorial: {},
   };
 
   const generated = TalentPolicyService.saveCustomPolicy(gameState, {

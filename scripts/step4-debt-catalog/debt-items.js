@@ -44,7 +44,7 @@ const DEBT_ITEMS = Object.freeze([
       sourceRef('backend/routes/playerRoutes.js', 61, 85, 'login route owns withPlayerStateLock + authService.loginPlayer callbacks + repository.save', 'server:player-login'),
       sourceRef('backend/routes/playerRoutes.js', 108, 148, 'POST /api/player/login projection response assembly', 'server:player-login'),
       sourceRef('scripts/command-owner-step1/inventories.js', 171, 189, 'SERVER_WRITE_ENTRIES server:player-login', 'server:player-login'),
-      sourceRef('scripts/command-owner-step1/inventories.js', 802, 808, 'ROUTE_ORCHESTRATION_DEBT server:player-login', 'server:player-login'),
+      sourceRef('scripts/command-owner-step1/inventories.js', 798, 804, 'ROUTE_ORCHESTRATION_DEBT server:player-login', 'server:player-login'),
       sourceRef('docs/architecture/step3-phase2-7-verification-2026-07-10.md', 793, 795, 'Final Self-Audit remaining non-blocking debt server:player-login', 'server:player-login'),
     ],
   },
@@ -62,7 +62,7 @@ const DEBT_ITEMS = Object.freeze([
     sourceRefs: [
       sourceRef('backend/routes/adminRoutes.js', 83, 91, 'POST /api/admin/config-releases/publish delegates to ConfigReleaseService.publishRelease', 'admin:config-release-publish'),
       sourceRef('scripts/command-owner-step1/inventories.js', 299, 314, 'SERVER_WRITE_ENTRIES admin:config-release-publish', 'admin:config-release-publish'),
-      sourceRef('scripts/command-owner-step1/inventories.js', 803, 808, 'ROUTE_ORCHESTRATION_DEBT admin:config-release-publish', 'admin:config-release-publish'),
+      sourceRef('scripts/command-owner-step1/inventories.js', 798, 804, 'ROUTE_ORCHESTRATION_DEBT admin:config-release-publish', 'admin:config-release-publish'),
       sourceRef('docs/architecture/step3-phase2-7-verification-2026-07-10.md', 799, 801, 'Final Self-Audit remaining non-blocking debt admin config release', 'admin:config-release-publish'),
     ],
   },
@@ -80,7 +80,7 @@ const DEBT_ITEMS = Object.freeze([
     sourceRefs: [
       sourceRef('backend/routes/adminRoutes.js', 94, 102, 'POST /api/admin/config-releases/rollback delegates to ConfigReleaseService.rollbackRelease', 'admin:config-release-rollback'),
       sourceRef('scripts/command-owner-step1/inventories.js', 315, 330, 'SERVER_WRITE_ENTRIES admin:config-release-rollback', 'admin:config-release-rollback'),
-      sourceRef('scripts/command-owner-step1/inventories.js', 804, 808, 'ROUTE_ORCHESTRATION_DEBT admin:config-release-rollback', 'admin:config-release-rollback'),
+      sourceRef('scripts/command-owner-step1/inventories.js', 798, 804, 'ROUTE_ORCHESTRATION_DEBT admin:config-release-rollback', 'admin:config-release-rollback'),
       sourceRef('docs/architecture/step3-phase2-7-verification-2026-07-10.md', 799, 801, 'Final Self-Audit remaining non-blocking debt admin config release', 'admin:config-release-rollback'),
     ],
   },
@@ -178,8 +178,8 @@ const DEBT_ITEMS = Object.freeze([
     contracts: ['COP-CLIENT-001', 'COP-CLIENT-002', 'COP-ALLOWLIST-001'],
     sourceRefs: [
       sourceRef('frontend/js/platform/CanvasActionDispatcher.js', 105, 129, 'CanvasActionDispatcher.handle calls ClientCommandSemantics.normalizeAction before disabled check and dispatch', 'frontend:canvas-action-dispatcher-disabled-drop'),
-      sourceRef('scripts/command-owner-step1/inventories.js', 571, 588, 'FRONTEND_COMMAND_PATHS retired-step4 entry', 'frontend:canvas-action-dispatcher-disabled-drop'),
-      sourceRef('scripts/command-owner-step1/inventories.js', 642, 657, 'CLIENT_LOCAL_BLOCKS retired-step4 entry', 'frontend:canvas-action-dispatcher-disabled-drop'),
+      sourceRef('scripts/command-owner-step1/inventories.js', 550, 620, 'FRONTEND_COMMAND_PATHS retired-step4 entry', 'frontend:canvas-action-dispatcher-disabled-drop'),
+      sourceRef('scripts/command-owner-step1/inventories.js', 630, 655, 'CLIENT_LOCAL_BLOCKS retired-step4 entry', 'frontend:canvas-action-dispatcher-disabled-drop'),
     ],
     inventoryDrift: {
       status: 'resolved-step4',
@@ -202,10 +202,10 @@ const DEBT_ITEMS = Object.freeze([
     targetPhase: 4,
     contracts: ['COP-CLIENT-001', 'COP-CLIENT-002', 'COP-ALLOWLIST-001'],
     sourceRefs: [
-      sourceRef('frontend/js/platform/CanvasPanelActionRunner.js', 160, 178, 'CanvasPanelActionRunner.run UI-local disabled guard before panel descriptor execution', 'frontend:canvas-panel-action-runner-disabled-drop'),
+      sourceRef('frontend/js/platform/CanvasPanelActionRunner.js', 80, 100, 'CanvasPanelActionRunner.run UI-local disabled guard before panel descriptor execution', 'frontend:canvas-panel-action-runner-disabled-drop'),
       sourceRef('frontend/js/platform/CanvasPanelActionRegistry.js', 8, 70, 'CanvasPanelActionRegistry built-in descriptors are panel open/close/action UI operations only', 'frontend:canvas-panel-action-runner-disabled-drop'),
-      sourceRef('scripts/command-owner-step1/inventories.js', 589, 606, 'FRONTEND_COMMAND_PATHS classified-ui-local panel entry', 'frontend:canvas-panel-action-runner-disabled-drop'),
-      sourceRef('scripts/command-owner-step1/inventories.js', 659, 675, 'CLIENT_LOCAL_BLOCKS classified-ui-local panel entry', 'frontend:canvas-panel-action-runner-disabled-drop'),
+      sourceRef('scripts/command-owner-step1/inventories.js', 550, 620, 'FRONTEND_COMMAND_PATHS classified-ui-local panel entry', 'frontend:canvas-panel-action-runner-disabled-drop'),
+      sourceRef('scripts/command-owner-step1/inventories.js', 650, 675, 'CLIENT_LOCAL_BLOCKS classified-ui-local panel entry', 'frontend:canvas-panel-action-runner-disabled-drop'),
     ],
     inventoryDrift: {
       status: 'resolved-step4',
@@ -216,7 +216,7 @@ const DEBT_ITEMS = Object.freeze([
       'openFamousPersons|closeFamousPersons|changeFamousPersonsPage|openFamousPersonDetail|closeFamousPersonDetail|showFamousSkillTooltip|clearFamousSkillTooltip|panelOutsideClick',
       'Panel actions only open/close/run UI panel surface descriptors and do not submit commands.',
       [
-        sourceRef('frontend/js/platform/CanvasPanelActionRunner.js', 135, 156, 'executeDescriptor calls panel surface manager only', 'frontend:canvas-panel-action-runner-disabled-drop'),
+        sourceRef('frontend/js/platform/CanvasPanelActionRunner.js', 55, 100, 'executeDescriptor calls panel surface manager only', 'frontend:canvas-panel-action-runner-disabled-drop'),
         sourceRef('frontend/js/platform/CanvasPanelActionRegistry.js', 8, 70, 'built-in panel descriptors', 'frontend:canvas-panel-action-runner-disabled-drop'),
       ],
       'CanvasPanelActionRegistry production descriptors resolve to panel surface operations; rg found no production CanvasPanelActionRegistry.register call.',
@@ -231,10 +231,10 @@ const DEBT_ITEMS = Object.freeze([
     targetPhase: 4,
     contracts: ['COP-CLIENT-001', 'COP-AUTHORITY-001', 'COP-TIME-001'],
     sourceRefs: [
-      sourceRef('frontend/js/platform/CanvasGameApp.js', 1247, 1255, 'canAdvanceEraNow builds visual civilization view state only', 'frontend:canvas-game-app-advance-era-local-block'),
-      sourceRef('frontend/js/platform/CanvasGameApp.js', 2835, 2849, 'advanceEra directly calls GameAPI.advanceEra without canAdvanceEraNow guard', 'frontend:canvas-game-app-advance-era-local-block'),
-      sourceRef('scripts/command-owner-step1/inventories.js', 608, 625, 'FRONTEND_COMMAND_PATHS retired-step4 advanceEra entry', 'frontend:canvas-game-app-advance-era-local-block'),
-      sourceRef('scripts/command-owner-step1/inventories.js', 677, 692, 'CLIENT_LOCAL_BLOCKS retired-step4 advanceEra entry', 'frontend:canvas-game-app-advance-era-local-block'),
+      sourceRef('frontend/js/platform/CanvasGameApp.js', 1165, 1195, 'canAdvanceEraNow builds visual civilization view state only', 'frontend:canvas-game-app-advance-era-local-block'),
+      sourceRef('frontend/js/platform/CanvasGameApp.js', 2675, 2700, 'advanceEra directly calls GameAPI.advanceEra without canAdvanceEraNow guard', 'frontend:canvas-game-app-advance-era-local-block'),
+      sourceRef('scripts/command-owner-step1/inventories.js', 590, 625, 'FRONTEND_COMMAND_PATHS retired-step4 advanceEra entry', 'frontend:canvas-game-app-advance-era-local-block'),
+      sourceRef('scripts/command-owner-step1/inventories.js', 665, 690, 'CLIENT_LOCAL_BLOCKS retired-step4 advanceEra entry', 'frontend:canvas-game-app-advance-era-local-block'),
     ],
     inventoryDrift: {
       status: 'resolved-step4',
@@ -245,7 +245,7 @@ const DEBT_ITEMS = Object.freeze([
       'STEP4-T13',
       'scripts/check-frontend-command-semantics.js',
       'Reintroduce if (!this.canAdvanceEraNow()) return false before GameAPI.advanceEra -> exit 1',
-      [sourceRef('frontend/js/platform/CanvasGameApp.js', 2835, 2849, 'advanceEra direct GameAPI call', 'frontend:canvas-game-app-advance-era-local-block')],
+      [sourceRef('frontend/js/platform/CanvasGameApp.js', 2675, 2700, 'advanceEra direct GameAPI call', 'frontend:canvas-game-app-advance-era-local-block')],
       ['COP-CLIENT-001', 'COP-AUTHORITY-001', 'COP-TIME-001'],
     ),
   },
@@ -257,15 +257,15 @@ const DEBT_ITEMS = Object.freeze([
     targetPhase: 4,
     contracts: ['COP-CLIENT-001'],
     sourceRefs: [
-      sourceRef('frontend/js/platform/GameCommandService.js', 1, 80, 'GameCommandService research command path delegates to GameAPI through ClientCommandSender-backed helper', 'frontend:tech-research-local-canresearch'),
-      sourceRef('frontend/js/platform/CanvasActionController.js', 417, 560, 'CanvasActionController action routing does not treat canResearch as a command-submit early return', 'frontend:tech-research-local-canresearch'),
-      sourceRef('scripts/command-owner-step1/inventories.js', 694, 709, 'CLIENT_LOCAL_BLOCKS tech-research-local-canresearch', 'frontend:tech-research-local-canresearch'),
+      sourceRef('frontend/js/platform/GameCommandService.js', 135, 165, 'GameCommandService research command path delegates to GameAPI through ClientCommandSender-backed helper', 'frontend:tech-research-local-canresearch'),
+      sourceRef('frontend/js/platform/CanvasActionController.js', 475, 490, "case 'research' routes to handle_research without canResearch", 'frontend:tech-research-local-canresearch'),
+      sourceRef('scripts/command-owner-step1/inventories.js', 685, 706, 'CLIENT_LOCAL_BLOCKS tech-research-local-canresearch', 'frontend:tech-research-local-canresearch'),
     ],
     retiredStep4: retired(
       'STEP4-T14',
       'scripts/check-frontend-command-semantics.js',
       'Add canResearch/disabled domain early return on command-submit path -> exit 1',
-      [sourceRef('frontend/js/platform/GameCommandService.js', 1, 80, 'research submit path', 'frontend:tech-research-local-canresearch')],
+      [sourceRef('frontend/js/platform/GameCommandService.js', 135, 165, 'research submit path', 'frontend:tech-research-local-canresearch')],
       ['COP-CLIENT-001'],
     ),
   },
@@ -278,14 +278,14 @@ const DEBT_ITEMS = Object.freeze([
     contracts: ['COP-CLIENT-001'],
     sourceRefs: [
       sourceRef('frontend/js/platform/CanvasActionDescriptorRegistry.js', 12, 32, 'building build/upgrade descriptors declare command-submit payload and trace fields', 'frontend:building-local-cost-disabled'),
-      sourceRef('frontend/js/platform/GameCommandService.js', 97, 128, 'GameCommandService build/upgrade command path delegates to GameAPI through ClientCommandSender-backed helper', 'frontend:building-local-cost-disabled'),
-      sourceRef('scripts/command-owner-step1/inventories.js', 711, 726, 'CLIENT_LOCAL_BLOCKS building-local-cost-disabled', 'frontend:building-local-cost-disabled'),
+      sourceRef('frontend/js/platform/GameCommandService.js', 95, 136, 'GameCommandService build/upgrade command path delegates to GameAPI through ClientCommandSender-backed helper', 'frontend:building-local-cost-disabled'),
+      sourceRef('scripts/command-owner-step1/inventories.js', 705, 723, 'CLIENT_LOCAL_BLOCKS building-local-cost-disabled', 'frontend:building-local-cost-disabled'),
     ],
     retiredStep4: retired(
       'STEP4-T14',
       'scripts/check-frontend-command-semantics.js',
       'Add cost/unlocked/maxLevel disabled early return on command-submit path -> exit 1',
-      [sourceRef('frontend/js/platform/GameCommandService.js', 97, 128, 'building submit path', 'frontend:building-local-cost-disabled')],
+      [sourceRef('frontend/js/platform/GameCommandService.js', 95, 136, 'building submit path', 'frontend:building-local-cost-disabled')],
       ['COP-CLIENT-001'],
     ),
   },
@@ -297,9 +297,9 @@ const DEBT_ITEMS = Object.freeze([
     targetPhase: 4,
     contracts: ['COP-CLIENT-001'],
     sourceRefs: [
-      sourceRef('frontend/js/platform/CanvasActionController.js', 417, 560, 'CanvasActionController routes famous command actions without candidate availability early return in dispatcher path', 'frontend:famous-candidate-availability'),
+      sourceRef('frontend/js/platform/CanvasActionController.js', 1450, 1480, 'accept/dismiss famous command handlers dispatch without local availability gate', 'frontend:famous-candidate-availability'),
       sourceRef('frontend/js/api/GameAPI.js', 746, 760, 'GameAPI accept/dismiss famous candidate command helpers submit commands', 'frontend:famous-candidate-availability'),
-      sourceRef('scripts/command-owner-step1/inventories.js', 728, 743, 'CLIENT_LOCAL_BLOCKS famous-candidate-availability', 'frontend:famous-candidate-availability'),
+      sourceRef('scripts/command-owner-step1/inventories.js', 720, 740, 'CLIENT_LOCAL_BLOCKS famous-candidate-availability', 'frontend:famous-candidate-availability'),
     ],
     retiredStep4: retired(
       'STEP4-T14',
@@ -317,9 +317,9 @@ const DEBT_ITEMS = Object.freeze([
     targetPhase: 4,
     contracts: ['COP-OWNER-002'],
     sourceRefs: [
-      sourceRef('frontend/js/platform/CanvasActionController.js', 948, 954, 'territoryAction/claimConquest routing is action dispatch only', 'frontend:territory-mission-ready'),
+      sourceRef('frontend/js/platform/CanvasActionController.js', 510, 525, 'territoryAction/claimConquest routing is action dispatch only', 'frontend:territory-mission-ready'),
       sourceRef('frontend/js/api/GameAPI.js', 880, 886, 'GameAPI claimConquest submits command', 'frontend:territory-mission-ready'),
-      sourceRef('scripts/command-owner-step1/inventories.js', 745, 760, 'CLIENT_LOCAL_BLOCKS territory-mission-ready', 'frontend:territory-mission-ready'),
+      sourceRef('scripts/command-owner-step1/inventories.js', 738, 757, 'CLIENT_LOCAL_BLOCKS territory-mission-ready', 'frontend:territory-mission-ready'),
     ],
     retiredStep4: retired(
       'STEP4-T14',
@@ -337,9 +337,9 @@ const DEBT_ITEMS = Object.freeze([
     targetPhase: 4,
     contracts: ['COP-TIME-001'],
     sourceRefs: [
-      sourceRef('frontend/js/platform/CanvasActionController.js', 1043, 1045, 'confirmWorldMarchDeployment routes after warning confirmation', 'frontend:world-march-passability'),
+      sourceRef('frontend/js/platform/CanvasActionController.js', 1028, 1045, 'confirmWorldMarchDeployment routes after warning confirmation', 'frontend:world-march-passability'),
       sourceRef('frontend/js/api/GameAPI.js', 821, 829, 'GameAPI startWorldMarch submits command', 'frontend:world-march-passability'),
-      sourceRef('scripts/command-owner-step1/inventories.js', 762, 777, 'CLIENT_LOCAL_BLOCKS world-march-passability', 'frontend:world-march-passability'),
+      sourceRef('scripts/command-owner-step1/inventories.js', 755, 775, 'CLIENT_LOCAL_BLOCKS world-march-passability', 'frontend:world-march-passability'),
     ],
     retiredStep4: retired(
       'STEP4-T14',

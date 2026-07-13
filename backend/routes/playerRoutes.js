@@ -142,7 +142,6 @@ function registerPlayerRoutes(app, deps) {
       username: result.username,
       token: result.token,
       gameState,
-      tutorial: normalized.tutorial,
       eraProgress,
       offlineIncome: result.offlineIncome,
     });

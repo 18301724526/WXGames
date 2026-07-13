@@ -15,7 +15,6 @@ function makeNormalizedState() {
   const raw = {
     playerId: 'ssot-test',
     resources: { food: 77, wood: 33, knowledge: 5, stone: 0, iron: 0, metal: 0 },
-    tutorial: { completed: true },
   };
   return gameStateService.normalizeState(raw);
 }

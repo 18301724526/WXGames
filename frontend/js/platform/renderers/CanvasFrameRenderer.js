@@ -4,7 +4,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('../../ecs/foundation/WorldTime');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -16,7 +16,7 @@
     if (typeof module !== 'undefined' && module.exports) {
       try {
         return require('../../ecs/system/WorldMarchSystem');
-      } catch (error) {
+      } catch (_error) {
         return null;
       }
     }
@@ -124,9 +124,6 @@
     renderCaptureModal(...args) { return this.host?.renderCaptureModal?.(...args); }
     renderTechDetailModal(...args) { return this.host?.renderTechDetailModal?.(...args); }
     renderNamingModal(...args) { return this.host?.renderNamingModal?.(...args); }
-    renderTutorialIntro(...args) { return this.host?.renderTutorialIntro?.(...args); }
-    renderTutorialAdvisorDialogue(...args) { return this.host?.renderTutorialAdvisorDialogue?.(...args); }
-    renderTutorialHighlight(...args) { return this.host?.renderTutorialHighlight?.(...args); }
     renderFloatingTexts(...args) { return this.host?.renderFloatingTexts?.(...args); }
     renderRewardReveal(...args) { return this.host?.renderRewardReveal?.(...args); }
     renderNetworkOverlay(...args) { return this.host?.renderNetworkOverlay?.(...args); }
@@ -151,25 +148,21 @@
       this.setHitTargets([]);
       this.clear();
       if (options.auth?.view?.loginPanelVisible) {
-        this.renderTutorialHighlight(null);
         this.renderLoginPanel(options.auth);
         this.endFrame(options);
         return undefined;
       }
       if (options.loading?.visible) {
-        this.renderTutorialHighlight(null);
         this.renderLoadingScreen(options.loading);
         this.endFrame(options);
         return undefined;
       }
       if (options.entityBattle?.visible) {
-        this.renderTutorialHighlight(null);
         this.renderEntityBattleOverlay(state, options);
         this.endFrame(options);
         return undefined;
       }
       if (options.battleScene?.visible) {
-        this.renderTutorialHighlight(null);
         this.renderBattleSceneOverlay(state, options);
         this.endFrame(options);
         return undefined;
@@ -196,10 +189,7 @@
       this.renderMapHomeExplorerHud(state, topBarBottom, options);
       this.renderTabs(activeTab, state, options);
       this.renderMapHomeOverlays(state, options);
-      this.renderFrameFeedback(state, options, {
-        includeTutorialIntro: true,
-        skipTutorialAdvisorDialogue: true,
-      });
+      this.renderFrameFeedback(state, options);
       this.endFrame(options);
     }
 
@@ -256,7 +246,7 @@
       const advisorOffset = this.getAdvisorFrameOffset(state);
       const availableHeight = Math.max(120, tabsTop - panelTop - 12 - advisorOffset);
       this.renderFrameMainPanel(state, activeTab, panelTop, availableHeight, tabsTop, options);
-      if (!options.tutorialAdvisorDialogue) this.renderAdvisor(state);
+      this.renderAdvisor(state);
       this.renderTabs(activeTab, state, options);
       this.renderStandardOverlays(state, activeTab, options);
       this.renderFrameFeedback(state, options);
@@ -317,17 +307,7 @@
       this.renderTechDetailModal(view?.detail);
     }
 
-    renderFrameFeedback(state = {}, options = {}, flags = {}) {
-      this.withHitTargetPool('guide', () => {
-        this.clearHitTargetPool('guide');
-        if (flags.includeTutorialIntro) this.renderTutorialIntro(state, options);
-        if (options.tutorialAdvisorDialogue && !flags.skipTutorialAdvisorDialogue) this.renderTutorialAdvisorDialogue(
-          options.tutorialAdvisorDialogue.message,
-          options.tutorialAdvisorDialogue.advisorName || this.t('tutorial.advisorName'),
-          { action: { type: 'closeAdvisor', source: options.tutorialAdvisorDialogue.source || 'tutorialAdvisorDialogue' } },
-        );
-        this.renderTutorialHighlight(options.tutorialHighlight || null);
-      });
+    renderFrameFeedback(_state = {}, options = {}) {
       this.renderFloatingTexts(options.floatingTexts || []);
       this.renderRewardReveal(options.rewardReveal || null);
       this.renderNetworkOverlay(options.network || null);
@@ -345,12 +325,7 @@
       if (options.showResourceDetails) this.renderResourceDetailsPanel(state);
       if (options.showSettings) this.renderSettingsPanel();
       if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
-      if (options.tutorialAdvisorDialogue) this.renderTutorialAdvisorDialogue(
-        options.tutorialAdvisorDialogue.message,
-        options.tutorialAdvisorDialogue.advisorName || this.t('tutorial.advisorName'),
-        { action: { type: 'closeAdvisor', source: options.tutorialAdvisorDialogue.source || 'tutorialAdvisorDialogue' } },
-      );
-      else if (options.showAdvisor) this.renderAdvisorPanel(state);
+      if (options.showAdvisor) this.renderAdvisorPanel(state);
       if (options.showTaskCenter) this.renderTaskCenterPanel(state, options);
       if (options.showGuidebook) this.renderGuidebookPanel(state, options);
       if (options.armyFormationEditor?.open) this.renderArmyFormationEditor(state, options);
@@ -551,17 +526,8 @@
       return SharedWorldTime?.getRemainingSeconds?.(mission, nowMs) ?? Math.max(0, Math.ceil(Number(mission.remainingSeconds) || 0));
     }
 
-    isCanvasDebugResetBlocked(options = {}) {
-      return Boolean(
-        options.tutorialAdvisorDialogue
-        || options.tutorialIntro?.active
-        || options.tutorialHighlight,
-      );
-    }
-
     renderCanvasDebugResetButton(options = {}) {
       if (options.debugResetAccount === false) return false;
-      if (this.isCanvasDebugResetBlocked(options)) return false;
       // Map home already exposes the same requestResetGame action through the
       // right-edge account float button -- drawing this chip there too stacked
       // two reset controls on top of each other (device report, knife 3).

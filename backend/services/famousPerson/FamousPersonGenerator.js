@@ -152,10 +152,9 @@ function createFamousPersonCandidate(gameState, payload = {}, now = new Date(), 
   };
 }
 
-// --- Tutorial starter general: one cohesive home ---------------------------------------------
-// The concept "the general the tutorial gifts you" owns its OWN rules here, so future changes to
-// WHAT it is (which archetypes, which quality) live in this one place and never leak into how it
-// is found, granted, or used.
+// --- Starter reward general: one cohesive home -----------------------------------------------
+// The starter reward owns its rules here so changes to archetype or quality do not leak into
+// lookup, grant, or use sites.
 
 // Quality of the gift (purple / 英杰). Single source.
 const STARTER_QUALITY = 'great';
@@ -168,19 +167,19 @@ function getStarterArchetypePool() {
   return ARCHETYPES.filter((archetype) => Array.isArray(archetype.roles) && archetype.roles.includes('military'));
 }
 
-// Stable identity of the tutorial starter general — by grant SOURCE, never by its (now randomized)
+// Stable identity of the starter reward general — by grant SOURCE, never by its randomized
 // archetype/quality. This is the SINGLE place identity is defined; find/idempotency callers use it
 // so changing what the starter is never touches how it is recognized.
-function isTutorialStarterFamousPerson(person) {
-  return person?.source?.type === 'tutorial';
+function isStarterRewardFamousPerson(person) {
+  return person?.source?.type === 'starter-reward';
 }
 
-function createTutorialScoutFamousPerson(gameState = {}, now = new Date()) {
+function createStarterScoutFamousPerson(gameState = {}, now = new Date()) {
   const pool = getStarterArchetypePool();
   // Grant-time entropy: a new game (new grant time) rolls a different starter; within a game the
   // grant is idempotent (created once, then stored) so it stays fixed. playerId keeps it unique
   // per account, so it is never "the same for everyone".
-  const seed = `${gameState.playerId || 'player'}:tutorial-starter:${now.getTime()}`;
+  const seed = `${gameState.playerId || 'player'}:starter-reward:${now.getTime()}`;
   const randomSource = createSeedRandom(seed);
   const archetype = pick(pool, randomSource) || pool[0] || ARCHETYPES[0];
   const quality = STARTER_QUALITY;
@@ -190,18 +189,18 @@ function createTutorialScoutFamousPerson(gameState = {}, now = new Date()) {
     archetype: archetype.id,
     abilityArchetype,
     quality,
-    source: 'tutorial',
+    source: 'starter-reward',
     seed,
   }, randomSource);
   const activeSkill = SkillGeneratorService.getActiveBattleSkill(abilityKit);
   return {
-    id: `fp_tutorial_scout_${hashText(seed).toString(36)}`,
+    id: `fp_starter_scout_${hashText(seed).toString(36)}`,
     name: `${pick(SURNAMES, randomSource) || SURNAMES[0]}${pick(archetype.namePool, randomSource) || archetype.namePool[0]}`,
     title: pick(archetype.titlePool, randomSource) || archetype.titlePool[0],
     eraBorn: Math.max(0, toInteger(gameState.currentEra, 0)),
     source: {
-      type: 'tutorial',
-      label: '新手引导',
+      type: 'starter-reward',
+      label: '开局奖励',
       cityId: activeCityId,
       seed,
     },
@@ -212,7 +211,7 @@ function createTutorialScoutFamousPerson(gameState = {}, now = new Date()) {
     qualityLabel: SkillGeneratorService.getQualityLabel(quality),
     roles: [...archetype.roles],
     attributes: createAttributes(archetype, randomSource),
-    traits: [archetype.label, '新手赠礼'],
+    traits: [archetype.label, '初始赠礼'],
     abilityKit,
     skills: activeSkill ? [activeSkill] : [],
     appearance: createAppearance(archetype, seed, randomSource),
@@ -229,10 +228,10 @@ module.exports = {
   createAttributes,
   createFamousPersonCandidate,
   createSkill,
-  createTutorialScoutFamousPerson,
+  createStarterScoutFamousPerson,
   getArchetypePool,
   getStarterArchetypePool,
-  isTutorialStarterFamousPerson,
+  isStarterRewardFamousPerson,
   makeSkillName,
   normalizeAppearance,
 };

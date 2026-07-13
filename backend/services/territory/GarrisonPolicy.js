@@ -1,8 +1,8 @@
 // GarrisonPolicy — the single source for "is this neutral city defended, and by how much".
 //
 // An EMPTY (neutral) city is defended based on its distance band from the capital (config table
-// `garrison`): the `safe` spawn band is undefended (frictionless settlement, protects the tutorial
-// and home region), farther bands spawn a garrison you must beat before occupying. Both the
+// `garrison`): the `safe` spawn band is undefended (frictionless settlement near the home region),
+// farther bands spawn a garrison you must beat before occupying. Both the
 // occupation-mode decision (settlement vs conquest) and the defender-garrison generation consult
 // THIS module with the same (territory, distance) inputs, so they can never disagree.
 //

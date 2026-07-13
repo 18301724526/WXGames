@@ -7,7 +7,10 @@ const TaskRewardGrantLedger = require('../services/taskCenter/TaskRewardGrantLed
 function firstArmyGrantLedger(soldiers = 1000) {
   return {
     soldiers: {
-      firstArmy: { soldiers, grantedAt: '2026-07-03T00:00:00.000Z' },
+      [TaskRewardGrantLedger.FIRST_ARMY_GRANT_KEY]: {
+        soldiers,
+        grantedAt: '2026-07-03T00:00:00.000Z',
+      },
     },
   };
 }
@@ -46,7 +49,6 @@ function createState(overrides = {}) {
       },
     },
     exploreMissions: [],
-    tutorial: { completed: true, disabled: true },
     ...overrides,
   };
   return state;
@@ -308,17 +310,8 @@ test('advanceTraining consumes recruitment resources and writes back to the acti
   assert.equal(state.cities.capital.resources.food, 5);
 });
 
-test('normalizeMilitaryState clamps soldiers purely to the barracks cap with no tutorial floor', () => {
-  const TutorialService = require('../services/TutorialService');
-  const state = createState({
-    tutorial: {
-      completed: false,
-      disabled: false,
-      currentStep: TutorialService.TUTORIAL_STEPS.firstCityDiscovered,
-      grants: { firstExploreEmptyCity: { siteId: 'site_9_9' } },
-    },
-    territories: [{ id: 'site_9_9', owner: 'neutral', status: 'discovered' }],
-  });
+test('normalizeMilitaryState clamps soldiers purely to the barracks cap without a grant floor', () => {
+  const state = createState();
   const cap = Math.max(0, Math.floor(MilitaryService.getTrainingStats(state.buildings).soldierCap || 0));
 
   const normalized = MilitaryService.normalizeMilitaryState({ soldiers: 500 }, state);
@@ -330,77 +323,32 @@ test('normalizeMilitaryState clamps soldiers purely to the barracks cap with no 
   assert.equal(zero.soldierCap, cap);
 });
 
-test('normalizeMilitaryState floors reserve and cap at the first-army grant during the formation guide', () => {
-  const TutorialService = require('../services/TutorialService');
-  const inWindowSteps = [
-    TutorialService.TUTORIAL_STEPS.firstArmyClaimed,
-    TutorialService.TUTORIAL_STEPS.scoutFamousGranted,
-    TutorialService.TUTORIAL_STEPS.formationPanelOpened,
-  ];
-  for (const step of inWindowSteps) {
-    const state = createState({
-      tutorial: {
-        completed: false,
-        disabled: false,
-        currentStep: step,
-        grants: {},
-      },
-      taskRewardGrants: firstArmyGrantLedger(),
-    });
-    const normalized = MilitaryService.normalizeMilitaryState({ soldiers: 1000 }, state);
-    assert.equal(normalized.soldiers, 1000, `soldiers must survive at ${step}`);
-    assert.equal(normalized.soldierCap, 1000, `cap must be floored at ${step}`);
-  }
+test('normalizeMilitaryState floors reserve and cap at the first-army task reward', () => {
+  const state = createState({ taskRewardGrants: firstArmyGrantLedger() });
+  const normalized = MilitaryService.normalizeMilitaryState({ soldiers: 1000 }, state);
+
+  assert.equal(normalized.soldiers, 1000);
+  assert.equal(normalized.soldierCap, 1000);
 });
 
-test('normalizeMilitaryState re-clamps the residual reserve after scoutFormationSaved', () => {
-  const TutorialService = require('../services/TutorialService');
-  const state = createState({
-    tutorial: {
-      completed: false,
-      disabled: false,
-      currentStep: TutorialService.TUTORIAL_STEPS.scoutFormationSaved,
-      grants: {},
-    },
-    taskRewardGrants: firstArmyGrantLedger(),
-  });
+test('normalizeMilitaryState subtracts assigned formation troops from the first-army reserve floor', () => {
+  const state = createState({ taskRewardGrants: firstArmyGrantLedger() });
   const cap = Math.max(0, Math.floor(MilitaryService.getTrainingStats(state.buildings).soldierCap || 0));
+  const normalized = MilitaryService.normalizeMilitaryState({
+    soldiers: 1000,
+    formations: [{
+      slot: 1,
+      memberIds: ['hero-1'],
+      soldierAssignments: { 'hero-1': 700 },
+    }],
+  }, state);
 
-  const normalized = MilitaryService.normalizeMilitaryState({ soldiers: 1000 }, state);
   assert.equal(normalized.soldierCap, cap);
   assert.equal(normalized.soldiers, cap);
 });
 
-test('normalizeMilitaryState reads legacy first-army tutorial grants into the task reward ledger', () => {
-  const TutorialService = require('../services/TutorialService');
-  const state = createState({
-    tutorial: {
-      completed: false,
-      disabled: false,
-      currentStep: TutorialService.TUTORIAL_STEPS.firstArmyClaimed,
-      grants: { firstArmy: { soldiers: 1000, grantedAt: '2026-07-03T00:00:00.000Z' } },
-    },
-  });
-
-  const normalized = MilitaryService.normalizeMilitaryState({ soldiers: 1000 }, state);
-  assert.equal(normalized.soldiers, 1000);
-  assert.equal(normalized.soldierCap, 1000);
-  assert.equal(
-    TaskRewardGrantLedger.getSoldierGrant(state, TaskRewardGrantLedger.FIRST_ARMY_GRANT_KEY).soldiers,
-    1000,
-  );
-});
-
 test('normalizeMilitaryState ignores the first-army floor without a grant record', () => {
-  const TutorialService = require('../services/TutorialService');
-  const state = createState({
-    tutorial: {
-      completed: false,
-      disabled: false,
-      currentStep: TutorialService.TUTORIAL_STEPS.firstArmyClaimed,
-      grants: {},
-    },
-  });
+  const state = createState();
   const cap = Math.max(0, Math.floor(MilitaryService.getTrainingStats(state.buildings).soldierCap || 0));
 
   const normalized = MilitaryService.normalizeMilitaryState({ soldiers: 1000 }, state);

@@ -1,4 +1,3 @@
-const TutorialService = require('../services/TutorialService');
 const EventService = require('../services/EventService');
 const { EraConfig } = require('../services/config/GameplayConfigRuntime');
 const BuildingState = require('../modules/BuildingState');
@@ -53,18 +52,18 @@ function welcomeSettlementResident(gameState, nextEra) {
   capital.population = population;
 }
 
-function execute(gameState, tutorial) {
+function execute(gameState) {
   CityService.normalizeCities(gameState);
   if ((gameState.activeCityId || CityService.CAPITAL_CITY_ID) !== CityService.CAPITAL_CITY_ID) {
-    return { success: false, error: 'CITY_CANNOT_ADVANCE', message: '只有主城可以推动文明进阶', tutorial };
+    return { success: false, error: 'CITY_CANNOT_ADVANCE', message: '只有主城可以推动文明进阶' };
   }
   const capital = CityService.getCapitalCity(gameState);
   const config = EraConfig.getAdvanceConfig(gameState.currentEra);
   if (!config) {
-    return { success: false, error: 'ERA_MAX_REACHED', message: '已达到最高时代', tutorial };
+    return { success: false, error: 'ERA_MAX_REACHED', message: '已达到最高时代' };
   }
   if (!hasEnoughResources(capital.resources, config.cost) || !meetsConditions(gameState, config.conditions)) {
-    return { success: false, error: 'INSUFFICIENT_RESOURCES', message: '资源不足，无法进入下一时代', tutorial };
+    return { success: false, error: 'INSUFFICIENT_RESOURCES', message: '资源不足，无法进入下一时代' };
   }
 
   capital.resources = deductResources(capital.resources, config.cost);
@@ -74,16 +73,8 @@ function execute(gameState, tutorial) {
   welcomeSettlementResident(gameState, config.nextEra);
   gameState.eraHistory.push({ era: config.nextEra, advancedAt: new Date().toISOString() });
 
-  let nextTutorial = tutorial;
   if (config.nextEra === 2) {
     EventService.generateSpecialEvent(gameState, config.nextEra);
-    nextTutorial = TutorialService.advanceTutorial(tutorial, 'eraAdvancedTo2');
-  } else if (config.nextEra === 3) {
-    // The scout famous person is no longer auto-granted here: it is a claimable
-    // task reward (main_scout_officer) later in the barracks segment.
-    nextTutorial = TutorialService.advanceTutorial(tutorial, 'era3Advanced');
-  } else {
-    nextTutorial = TutorialService.advanceTutorial(tutorial, 'eraAdvanced');
   }
 
   return {
@@ -91,7 +82,6 @@ function execute(gameState, tutorial) {
     message: `已进入${EraConfig.getEraName(config.nextEra)}${techGrant.granted ? `，科技点 +${techGrant.granted}` : ''}`,
     currentEra: config.nextEra,
     techGrant,
-    tutorial: nextTutorial,
   };
 }
 

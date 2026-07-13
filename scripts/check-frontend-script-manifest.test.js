@@ -8,6 +8,7 @@ const {
   isIifeWrapped,
   collectTopLevelBindings,
   checkGlobalBindingCollisions,
+  findForbiddenScripts,
 } = require('./check-frontend-script-manifest');
 
 // Classic <script> files share one global scope: a top-level const declared in two
@@ -66,6 +67,24 @@ test('checkGlobalBindingCollisions catches the shipped tutorialFlowConfig-style 
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('findForbiddenScripts rejects retired tutorial scripts in index.html', () => {
+  assert.deepEqual(
+    findForbiddenScripts([
+      'js/config/GameConfig.js',
+      'shared/tutorialFlowConfig.js',
+      'js/platform/TutorialActionMatches.js',
+      'js/platform/renderers/TutorialHighlightLayer.js',
+      'app.js',
+    ]),
+    [
+      'shared/tutorialFlowConfig.js',
+      'js/platform/TutorialActionMatches.js',
+      'js/platform/renderers/TutorialHighlightLayer.js',
+    ],
+  );
+  assert.deepEqual(findForbiddenScripts(['js/config/GameConfig.js', 'app.js']), []);
 });
 
 test('the real index.html manifest has zero top-level binding collisions', () => {

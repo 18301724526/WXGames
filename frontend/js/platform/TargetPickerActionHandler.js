@@ -34,8 +34,7 @@
   const t = WorldMarchActionHandlerBase.t;
   const clonePlain = WorldMarchActionHandlerBase.clonePlain;
   const openTargetPickerSnapshot = WorldMarchActionHandlerBase.openTargetPickerSnapshot;
-  const refreshTutorialHighlightAfterAction =
-    WorldMarchActionHandlerBase.refreshTutorialHighlightAfterAction;
+  const publishWorldMarchUiChanged = WorldMarchActionHandlerBase.publishWorldMarchUiChanged;
 
   function getTargetPickerSnapshot(host) {
     if (typeof host?.getTargetPickerSnapshot === 'function') return host.getTargetPickerSnapshot();
@@ -120,10 +119,8 @@
       uiState.selectedSiteId = '';
       uiState.expeditionConfigSiteId = '';
       const handled = this.core.refreshWorldMarchLayer(action);
-      // The tutorial guide must follow into the now-open picker (highlight the
-      // guided candidate and allow chooseWorldTarget through the input shield);
-      // its registry only re-runs on this notification.
-      refreshTutorialHighlightAfterAction?.(this.core);
+      this.core.emitGameEvent?.('worldTargetPickerOpened', { picker });
+      publishWorldMarchUiChanged?.(this.core, 'openWorldTargetPicker');
       return handled;
     }
 
@@ -145,7 +142,8 @@
     closeWorldTargetPicker(action) {
       this.helpers.closeTargetPickerSnapshot(this.core.host);
       const handled = this.core.refreshWorldMarchLayer(action);
-      refreshTutorialHighlightAfterAction?.(this.core);
+      this.core.emitGameEvent?.('worldTargetPickerClosed', {});
+      publishWorldMarchUiChanged?.(this.core, 'closeWorldTargetPicker');
       return handled;
     }
   }

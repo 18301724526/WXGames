@@ -1,9 +1,8 @@
-const { BuildingConfig, TutorialFlowConfig } = require('./config/GameplayConfigRuntime');
+const { BuildingConfig } = require('./config/GameplayConfigRuntime');
 const BuildingState = require('../modules/BuildingState');
 const TerritoryService = require('./TerritoryService');
-const { manualAdvance } = require('./tutorial/TutorialProgression');
-const { getTutorialScoutPersonId, getFirstArmyReserveFloor } = require('./tutorial/TutorialSelectors');
 const FormationStrengthService = require('./military/FormationStrengthService');
+const TaskRewardGrantLedger = require('./taskCenter/TaskRewardGrantLedger');
 const veteranCampCore = require('../../shared/veteranCampCore');
 const ConfigTables = require('../config/ConfigTables');
 
@@ -147,8 +146,7 @@ function normalizeFormationSlot(slot) {
 // lives in TWO places: the persisted single-source `famousPersons.people` and the
 // legacy flat `famousPeople` (kept populated only while an ensure-grant ran on
 // every load). Reading only the flat field silently drops every formation member
-// once the flat copy is gone (e.g. after the tutorial scout grant became a
-// one-shot task reward), which then trips the world-march tutorial gate. Union
+// once the flat copy is gone (for example after a one-shot task reward). Union
 // both so validation matches the persisted truth regardless of collection.
 function collectValidPersonIds(gameState = {}) {
   const ids = new Set();
@@ -238,13 +236,27 @@ function pickCityFormationsSource(rawFormations, cityId = 'capital') {
   return [];
 }
 
+function getFirstArmyReserveFloor(gameState = {}, rawMilitary = null) {
+  const grant = TaskRewardGrantLedger.getSoldierGrant(
+    gameState,
+    TaskRewardGrantLedger.FIRST_ARMY_GRANT_KEY,
+  );
+  const grantedSoldiers = Math.max(0, Math.floor(Number(grant?.soldiers) || 0));
+  if (!grantedSoldiers) return 0;
+  const cityId = String(gameState.activeCityId || 'capital');
+  const military = rawMilitary || gameState.cities?.[cityId]?.military || gameState.military || {};
+  const assignedSoldiers = pickCityFormationsSource(military.formations, cityId)
+    .reduce((total, formation) => (
+      total + FormationStrengthService.sumAssignments(formation?.soldierAssignments || {})
+    ), 0);
+  return Math.max(0, grantedSoldiers - assignedSoldiers);
+}
+
 function normalizeMilitaryState(rawMilitary, gameState) {
   const stats = getTrainingStats(gameState?.buildings || {});
-  // First-army task reward floor: while the formation guide runs, the granted
-  // reserve must survive the barracks cap clamp (cap AND soldiers are floored
-  // at the granted amount; after scoutFormationSaved the floor is 0 and the
-  // residual reserve re-clamps to the barracks cap).
-  const reserveFloor = getFirstArmyReserveFloor(gameState || {});
+  // Keep the claimed first-army reward available across cap normalization. Soldiers
+  // already assigned to formations reduce the reserve floor, so this never duplicates them.
+  const reserveFloor = getFirstArmyReserveFloor(gameState || {}, rawMilitary);
   const cap = Math.max(0, Math.floor(stats.soldierCap || 0), reserveFloor);
   const interval = Math.max(0, Number(stats.trainingIntervalSeconds || 0));
   const batchSize = Math.max(0, Math.floor(Number(stats.trainingBatchSize || 0)));
@@ -435,18 +447,12 @@ function setArmyFormation(gameState, payload = {}) {
   }, createMilitaryContext(gameState, cityId, normalizedMilitary));
   setCityMilitary(gameState, cityId, nextMilitary);
   if (Object.keys(refund).length) setCityResources(gameState, cityId, applyResourceDelta(cityResources, refund));
-  const scoutPersonId = getTutorialScoutPersonId(gameState);
-  const tutorial = scoutPersonId && memberIds.includes(String(scoutPersonId))
-    ? manualAdvance(gameState.tutorial, TutorialFlowConfig.TUTORIAL_STEPS.scoutFormationSaved)
-    : gameState.tutorial;
-  gameState.tutorial = tutorial;
   return {
     success: true,
     message: `${getFormationDisplayName(formations[slot - 1], slot)}已保存`,
     formation: (getCityMilitary(gameState, cityId).formations || [])[slot - 1] || null,
     reserveDelta,
     refund,
-    tutorial,
   };
 }
 

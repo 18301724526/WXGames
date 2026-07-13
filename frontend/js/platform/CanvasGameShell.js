@@ -10,11 +10,6 @@
     }
     return null;
   })();
-  const TutorialActionMatches = (() => {
-    if (global.TutorialActionMatches) return global.TutorialActionMatches;
-    if (typeof module !== 'undefined' && module.exports) return require('./TutorialActionMatches');
-    return null;
-  })();
   var CanvasGameAppBase = global.CanvasGameApp;
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppBase) {
     CanvasGameAppBase = require('./CanvasGameApp');
@@ -54,10 +49,6 @@
   var CanvasModeOwnershipRuntime = global.CanvasModeOwnershipRuntime;
   if (typeof module !== 'undefined' && module.exports && !CanvasModeOwnershipRuntime) {
     CanvasModeOwnershipRuntime = require('./CanvasModeOwnershipRuntime');
-  }
-  var TutorialGuideUiControllerBase = global.TutorialGuideUiController;
-  if (typeof module !== 'undefined' && module.exports && !TutorialGuideUiControllerBase) {
-    TutorialGuideUiControllerBase = require('./TutorialGuideUiController');
   }
   var CanvasModalSnapshotAdapter = global.CanvasModalSnapshotAdapter;
   if (typeof module !== 'undefined' && module.exports && !CanvasModalSnapshotAdapter) {
@@ -159,44 +150,6 @@
 
   function getUiStateOwner(shell) {
     return getMountedGame(shell) || shell;
-  }
-
-  const TutorialRenderPhaseGuard = (() => {
-    if (global.TutorialRenderPhaseGuard) return global.TutorialRenderPhaseGuard;
-    const transactions = new WeakMap();
-    const getOwner = (shell) => getMountedGame(shell) || shell;
-    const api = Object.freeze({
-      enter(shell, phase) {
-        const owner = getOwner(shell);
-        if (!owner || (typeof owner !== 'object' && typeof owner !== 'function')) return null;
-        const transaction = transactions.get(owner) || { phases: [] };
-        transaction.phases.push(String(phase || 'render'));
-        transactions.set(owner, transaction);
-        return owner;
-      },
-      exit(owner) {
-        const transaction = owner && transactions.get(owner);
-        if (!transaction) return false;
-        transaction.phases.pop();
-        if (transaction.phases.length === 0) transactions.delete(owner);
-        return true;
-      },
-      getActivePhase(owner) {
-        const transaction = owner && transactions.get(owner);
-        return transaction?.phases?.at(-1) || '';
-      },
-    });
-    global.TutorialRenderPhaseGuard = api;
-    return api;
-  })();
-
-  function runInTutorialRenderPhase(shell, phase, render) {
-    const owner = TutorialRenderPhaseGuard.enter(shell, phase);
-    try {
-      return render();
-    } finally {
-      TutorialRenderPhaseGuard.exit(owner);
-    }
   }
 
   function getWorldActorOverlayAssemblyReason(assembly, context = {}) {
@@ -436,7 +389,6 @@ constructor(options = {}) {
         runtimeRequired: false,
         apiRequired: false,
         rendererRequired: false,
-        tutorialControllerEnabled: false,
       });
       this.runtime = options.runtime || null;
       this.worldClock = options.worldClock || this.runtime?.worldClock || SharedWorldClock?.getShared?.({ runtime: this.runtime }) || null;
@@ -518,12 +470,10 @@ constructor(options = {}) {
         status: 'online',
         failureCount: 0,
       };
-      this.tutorialIntro = null;
       this.floatingTexts = [];
       this.floatDurationMs = options.floatDurationMs || 1200;
       this.mapHomeActive = false;
       this.useWorldMapRuntime = options.useWorldMapRuntime !== false;
-      this.guideController = options.guideController || null;
     }
 
 getCanvasLayerRegistry() {
@@ -942,11 +892,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
 
     hasBlockingOverlayOpen() {
           if (typeof this.isModeBlockingOverlayOpen === 'function') {
-            return Boolean(
-              this.isModeBlockingOverlayOpen()
-              || this.tutorialAdvisorDialogue
-              || this.lastGame?.tutorialAdvisorDialogue,
-            );
+            return Boolean(this.isModeBlockingOverlayOpen());
           }
           const battleScene = typeof this.getRendererSnapshot === 'function'
             ? this.getRendererSnapshot()?.battle?.battleScene
@@ -967,8 +913,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             || this.isBlockingPanelSnapshotOpen('showSubcityList')
             || this.isBlockingPanelSnapshotOpen('showCityManagement')
             || this.isBlockingPanelSnapshotOpen('showAdvisor')
-            || this.tutorialAdvisorDialogue
-            || this.lastGame?.tutorialAdvisorDialogue
             || this.isBlockingPanelSnapshotOpen('showTaskCenter')
             || this.isBlockingPanelSnapshotOpen('showGuidebook')
             || this.armyFormationEditor?.open
@@ -1048,8 +992,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             || this.isBlockingPanelSnapshotOpen('showSubcityList')
             || this.isBlockingPanelSnapshotOpen('showCityManagement')
             || this.isBlockingPanelSnapshotOpen('showAdvisor')
-            || this.tutorialAdvisorDialogue
-            || this.lastGame?.tutorialAdvisorDialogue
             || this.isBlockingPanelSnapshotOpen('showTaskCenter')
             || this.isBlockingPanelSnapshotOpen('showGuidebook')
             || this.armyFormationEditor?.open
@@ -1092,116 +1034,11 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           return this.actionController?.handle?.(action, meta) || false;
         }
 
-    getTutorialControlAction(point = {}) {
-          if (!this.renderer || typeof this.renderer.getHitTarget !== 'function') return null;
-          const action = this.renderer.getHitTarget(point);
-          if (!action) return null;
-          return action.type === 'blockCanvasModal' ? { ...action, tutorialBlocked: true } : action;
-        }
-
-    isTutorialEnabled() {
-          const parser = FeatureFlagsBase?.parseFlagValue || global.FeatureFlagCore?.parseFeatureFlagValue;
-          const value = this.lastGame?.state?.tutorialEnabled
-            ?? this.lastGame?.tutorialEnabled
-            ?? this.state?.tutorialEnabled
-            ?? this.tutorialEnabled;
-          if (typeof parser !== 'function') return value !== false;
-          return parser(value, true);
-        }
-
-    isTutorialInputActive() {
-          if (!this.isTutorialEnabled()) return false;
-          const intro = this.lastGame?.tutorialIntro || this.tutorialIntro || null;
-          const highlight = this.tutorialHighlight || null;
-          return Boolean(intro?.active || highlight);
-        }
-
-    getActiveTutorialIntro() {
-          if (!this.isTutorialEnabled()) return null;
-          const intro = this.lastGame?.tutorialIntro || this.tutorialIntro || null;
-          return intro?.active ? intro : null;
-        }
-
-    isTutorialIntroActionAllowed(action = {}, intro = this.getActiveTutorialIntro()) {
-          if (!intro?.active || !action?.type) return false;
-          const targetAction = action.allowedAction || action;
-          const capitalCityId = intro.capitalCityId || this.lastGame?.state?.cityState?.capitalCityId || 'capital';
-          const actionId = targetAction.cityId || targetAction.territoryId || targetAction.siteId || '';
-          if (intro.step === 'city') {
-            return targetAction.type === 'openWorldSite' && (!actionId || actionId === capitalCityId);
-          }
-          if (intro.step === 'enter') {
-            return targetAction.type === 'enterCity' && (!actionId || actionId === capitalCityId);
-          }
-          return false;
-        }
-
-    matchesTutorialAllowedAction(action = {}, allowedAction = null) {
-          return TutorialActionMatches?.actionMatches?.(action, allowedAction) === true;
-        }
-
-    isTutorialHighlightActionAllowed(action = {}, highlight = this.tutorialHighlight) {
-          if (!highlight || !action?.type) return false;
-          const targetAction = action.allowedAction || action;
-          if (highlight.allowedAction) {
-            return this.matchesTutorialAllowedAction(targetAction, highlight.allowedAction);
-          }
-          const type = targetAction?.type || '';
-          return Boolean(type
-            && type !== 'worldMapDrag'
-            && type !== 'techTreeDrag');
-        }
-
-    isTutorialAdvisorCloseActionAllowed(action = {}) {
-          const dialogue = this.tutorialAdvisorDialogue || this.lastGame?.tutorialAdvisorDialogue || null;
-          return TutorialActionMatches?.isAdvisorCloseAllowed?.(action, dialogue) === true;
-        }
-
-    isTutorialActionAllowed(action = {}) {
-          if (!action?.type || action.type === 'blockCanvasModal') return false;
-          if (TutorialActionMatches?.isRewardRevealCloseAllowed?.(
-            action,
-            this.isRewardRevealSnapshotOpen?.() === true,
-          )) return true;
-          if (this.isTutorialAdvisorCloseActionAllowed(action)) return true;
-          const targetAction = action.allowedAction || action;
-          if (this.tutorialHighlight?.allowedAction
-            && this.isTutorialHighlightActionAllowed(targetAction, this.tutorialHighlight)) {
-            return true;
-          }
-          const intro = this.getActiveTutorialIntro();
-          if (intro) return this.isTutorialIntroActionAllowed(targetAction, intro);
-          return this.isTutorialHighlightActionAllowed(targetAction);
-        }
-
-    shouldBlockTutorialInput(point = {}) {
-          if (!this.isTutorialInputActive()) return false;
-          return !this.isTutorialActionAllowed(this.getTutorialControlAction(point));
-        }
-
-    blockTutorialCanvasInput(event) {
-          global.ClientOperationLog?.record?.('input:tutorialBlocked', {
-            dragAction: global.ClientOperationLog?.summarizeAction?.(this.dragAction),
-          }, { flush: true });
-          this.dragAction = null;
-          this.worldMapPinchDragging = false;
-          if (this.isWorldMapDragging()) this.finishWorldMapSnapshotDrag();
-          this.stopCanvasEvent(event);
-          return true;
-        }
-
     handleDrag(phase, point, event) {
           if (!this.inputEnabled || !this.renderer) return false;
           const routedInput = typeof this.resolveInputIntent === 'function' ? this.resolveInputIntent({ kind: 'drag', phase, pointer: point }) : null;
           if (routedInput ? routedInput.route === 'entity-battle' : this.isEntityBattleActive()) {
             return this.actionController?.handle?.({ type: 'entityBattleDrag', phase, pointer: point }, { event }) || false;
-          }
-          if (this.isTutorialInputActive()) {
-            if (phase === 'start') {
-              if (this.shouldBlockTutorialInput(point)) return this.blockTutorialCanvasInput(event);
-              return this.blockTutorialCanvasInput(event);
-            }
-            if (!this.dragAction) return this.blockTutorialCanvasInput(event);
           }
           if (phase === 'start' && typeof this.renderer.getHitTarget === 'function') {
             const action = this.getTechTreeHitAction(point) || this.renderer.getHitTarget(point);
@@ -1274,7 +1111,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
 
     handleGesture(gesture, event) {
           if (!this.inputEnabled || !this.renderer) return false;
-          if (this.isTutorialInputActive()) return this.blockTutorialCanvasInput(event);
           const routedInput = typeof this.resolveInputIntent === 'function' ? this.resolveInputIntent({ kind: 'gesture', gesture }) : null;
           if (routedInput ? routedInput.route === 'entity-battle' : this.isEntityBattleActive()) {
             const handled = this.actionController?.handle?.({ type: 'entityBattleZoom', gesture }, { event }) || false;
@@ -1301,7 +1137,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
 
     handleWorldMapGesture(gesture = {}, event) {
           if (gesture?.type !== 'pinchZoom') return false;
-          if (this.isTutorialInputActive()) return false;
           if (typeof this.canRouteModeWorldMap === 'function' && !this.canRouteModeWorldMap()) return false;
           const coordinator = this.ensureWorldMapRuntimeCoordinator();
           const runtime = coordinator?.getMapRuntime?.();
@@ -1354,7 +1189,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             point: global.ClientOperationLog?.summarizePoint?.(point) || point,
             rendererAction: summarizeActorPickingAction(normalizedAction),
             routeThroughRuntime,
-            tutorialActive: this.isTutorialInputActive(),
             blockingOverlay: Boolean(this.hasBlockingOverlayOpen?.()),
             mapHomeActive: Boolean(this.lastGame?.mapHomeActive),
             currentTab: this.lastGame?.state?.currentTab || this.lastGame?.activeTab || '',
@@ -1363,19 +1197,11 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           global.ClientOperationLog?.record?.('input:tapHit', {
             point: global.ClientOperationLog?.summarizePoint?.(point),
             action: global.ClientOperationLog?.summarizeAction?.(normalizedAction),
-            tutorialActive: this.isTutorialInputActive(),
             blockingOverlay: this.hasBlockingOverlayOpen?.(),
             mapHomeActive: Boolean(this.lastGame?.mapHomeActive),
             currentTab: this.lastGame?.state?.currentTab || this.lastGame?.activeTab || '',
             militaryView: this.lastGame?.state?.militaryView || this.lastGame?.militaryView || '',
           });
-          if (
-            this.isTutorialInputActive()
-            && !this.isTutorialActionAllowed(normalizedAction)
-            && !ClientCommandSemantics?.isCommandAction?.(normalizedAction)
-          ) {
-            return this.blockTutorialCanvasInput(event);
-          }
           if (normalizedAction?.type === 'blockCanvasModal') {
             const handled = this.handleAction(normalizedAction, event);
             if (handled) this.stopCanvasEvent(event);
@@ -1454,7 +1280,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             action: global.ClientOperationLog?.summarizeAction?.(normalizedAction),
             handled: handled && typeof handled.then === 'function' ? 'promise' : Boolean(handled),
           }, { flush: true });
-          this.advanceTutorialIntroAfterHandled(handled, action);
           if (handled && event?.preventDefault) event.preventDefault();
           if (handled && event?.stopPropagation) event.stopPropagation();
           return handled;
@@ -1474,23 +1299,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           return handled;
         }
 
-    advanceTutorialIntro(action = {}) {
-          const controller = this.lastGame?.tutorialIntroOverlay || this.tutorialIntroOverlay || null;
-          if (!controller || typeof controller.advanceFromAction !== 'function') return false;
-          return controller.advanceFromAction(action);
-        }
-
-    advanceTutorialIntroAfterHandled(handled, action = {}) {
-          if (handled && typeof handled.then === 'function') {
-            handled.then((value) => {
-              if (value !== false) this.advanceTutorialIntro(action);
-            }).catch((error) => this.actionController?.log?.(error));
-            return true;
-          }
-          return handled ? this.advanceTutorialIntro(action) : false;
-        }
-
-    isPointBlockedByTutorialShield(point = {}) {
+    isPointBlockedByCanvasModal(point = {}) {
           if (!this.renderer || typeof this.renderer.getHitTarget !== 'function') return false;
           return this.renderer.getHitTarget(point)?.type === 'blockCanvasModal';
         }
@@ -1518,10 +1327,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
 
     getCanvasGameHost() {
           return this.lastGame || null;
-        }
-
-    getTutorialController() {
-          return this.getCanvasGameHost()?.tutorialController || null;
         }
 
     getCanvasActionState() {
@@ -1825,151 +1630,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             }),
             scrollIntoView() {},
           };
-        }
-
-    getGuideState() {
-          return this.lastGame?.state || {};
-        }
-
-    getGuideActiveTab() {
-          return this.getActiveTab();
-        }
-
-    getGuideCanvasTarget(type, predicate = null) {
-          return this.getCanvasTarget(type, predicate);
-        }
-
-    renderGuideFrame() {
-          return this.renderActive();
-        }
-
-    // The highlight blob + show/hide/target-refresh lifecycle are single-owned by
-    // TutorialGuideUiController on the state host (re-decomposition slice 10); the
-    // methods below stay as thin delegators. renderGuideHighlightFrame keeps its
-    // body here because it re-points tab/military view state (mode-owned territory).
-    refreshTutorialHighlightTarget(highlight = this.tutorialHighlight) {
-          return this.getTutorialGuideUiController().refreshTarget(this, highlight);
-        }
-
-    renderGuideHighlightFrame(highlight = this.tutorialHighlight) {
-          return runInTutorialRenderPhase(this, 'renderGuideHighlightFrame', () => (
-            this.renderGuideHighlightFrameProjection(highlight)
-          ));
-        }
-
-    renderGuideHighlightFrameProjection(highlight = this.tutorialHighlight) {
-          if (highlight?.locator) {
-            const refreshed = this.refreshTutorialHighlightTarget(highlight);
-            if (!refreshed) {
-              this.tutorialHighlight = null;
-              return this.renderReadOnly
-                ? this.renderReadOnly(this.lastGame?.state, this.getActiveTab())
-                : this.renderActive();
-            }
-            this.tutorialHighlight = refreshed;
-            highlight = refreshed;
-          }
-          const activeTab = highlight?.renderActiveTab || this.getActiveTab();
-          const renderOptions = highlight?.renderOptions || null;
-          if (highlight?.renderActiveTab) {
-            const renderView = this.resolveMapHomeViewState?.(this.lastGame?.state || {}, {
-              requestedTab: activeTab,
-              militaryView: this.lastGame?.state?.militaryView || this.lastGame?.militaryView,
-              ...(renderOptions || {}),
-            }) || { activeTab, militaryView: this.lastGame?.state?.militaryView || this.lastGame?.militaryView, isMapHome: false };
-            const nextActiveTab = renderView.activeTab || activeTab;
-            const nextMilitaryView = nextActiveTab === 'military' ? renderView.militaryView : 'army';
-            this.mapHomeActive = Boolean(renderView.isMapHome);
-            if (this.lastGame && typeof this.lastGame === 'object') {
-              if ('activeTab' in this.lastGame) this.lastGame.activeTab = nextActiveTab;
-              if ('militaryView' in this.lastGame && nextMilitaryView) this.lastGame.militaryView = nextMilitaryView;
-              if ('mapHomeActive' in this.lastGame) this.lastGame.mapHomeActive = Boolean(renderView.isMapHome);
-              if (this.lastGame.state && typeof this.lastGame.state === 'object') {
-                StateWriter.commit(this, (prev) => ({
-                  ...prev,
-                  currentTab: nextActiveTab,
-                  ...(nextMilitaryView ? { militaryView: nextMilitaryView } : {}),
-                }), { source: 'shellGuideUi:refreshHighlight' });
-              }
-            }
-          }
-          if (renderOptions && typeof this.renderReadOnly === 'function') {
-            return this.renderReadOnly(this.lastGame?.state, activeTab, renderOptions);
-          }
-          return this.renderActive();
-        }
-
-    switchGuideTab(tabId) {
-          if (!tabId) return false;
-          if (this.lastGame?.handleCanvasTabSelection) {
-            const result = this.lastGame.handleCanvasTabSelection(tabId);
-            if (result !== false && this.lastGame?.state && typeof this.lastGame.state === 'object') {
-              StateWriter.commit(this, (prev) => ({ ...prev, currentTab: tabId }), { source: 'shellGuideUi:switchGuideTab' });
-            }
-            return result;
-          }
-          if (this.onAction) return this.onAction({ type: 'switchTab', tab: tabId, source: 'guideTask' });
-          return this.lastGame?.switchTab?.(tabId);
-        }
-
-    setGuideMilitaryView(view) {
-          if (this.onAction) return this.onAction({ type: 'switchMilitaryView', view: view || 'army' });
-          if (this.lastGame?.switchMilitaryView) return this.lastGame.switchMilitaryView(view || 'army');
-          if (this.lastGame?.state) StateWriter.commit(this, (prev) => ({ ...prev, militaryView: view || 'army' }), { source: 'shellGuideUi:setGuideMilitaryView' });
-          return true;
-        }
-
-    showGuideControllerHighlight(target, message) {
-          return this.showTutorialHighlight(target, message);
-        }
-
-    hideGuideControllerHighlight() {
-          return this.hideTutorialHighlight();
-        }
-
-    getTutorialTarget() {
-          return null;
-        }
-
-    getTutorialTargetWithoutScroll() {
-          return null;
-        }
-
-    refreshTaskCenterGuideHighlight() {
-          return false;
-        }
-
-    hasClaimableMainTask() {
-          return false;
-        }
-
-    refreshCurrentGuideHighlight() {
-          return false;
-        }
-
-    getTargetTab() {
-          return null;
-        }
-
-    ensureTutorialTargetVisible() {
-          return false;
-        }
-
-    goToGuideTaskTarget() {
-          return false;
-        }
-
-    resolveTutorialRect(target) {
-          return TutorialGuideUiControllerBase.resolveTutorialRect(target);
-        }
-
-    showTutorialHighlight(target, message, options = {}) {
-          if (!this.isTutorialEnabled()) return false;
-          return this.getTutorialGuideUiController().show(this, target, message, options);
-        }
-
-    hideTutorialHighlight() {
-          return this.getTutorialGuideUiController().hide(this);
         }
 
     syncWorldMapRendererLayerMetrics() {
@@ -2557,12 +2217,8 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
                 || 'resources',
               getMilitaryView: (state = this.lastGame?.state || {}) => state.militaryView || this.lastGame?.militaryView,
               getForceMapHome: () => Boolean(this.lastGame?.mapHomeActive),
-              canRouteTap: (point) => !this.isPointBlockedByTutorialShield(point),
-              onAction: (action, event, meta) => {
-                const handled = this.handleAction(action, event, meta);
-                this.advanceTutorialIntroAfterHandled(handled, action);
-                return handled;
-              },
+              canRouteTap: (point) => !this.isPointBlockedByCanvasModal(point),
+              onAction: (action, event, meta) => this.handleAction(action, event, meta),
               onBeforeRender: () => this.syncWorldMapRendererLayerMetrics(),
               onBeforeDrag: ({ phase, runtime }) => {
                 if (phase === 'start') {
@@ -2942,7 +2598,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             activeDockItemIds: panel.activeDockItemIds,
             showTopBarDebugStats: panel.showTopBarDebugStats === true,
             logs: this.lastGame?.requestLogs || [],
-            tutorial: this.getTutorialController()?.state || this.lastGame?.tutorial || {},
             buildingOffset: uiOwner.buildingOffset,
             techTreePanX: uiOwner.techTreePanX,
             techTreePanY: uiOwner.techTreePanY,
@@ -2967,18 +2622,11 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             network: this.networkState,
             confirmDialog: snapshotConfirmDialog,
             floatingTexts: this.getFloatingTextView(),
-            tutorialIntro: this.isTutorialEnabled() ? (this.lastGame?.tutorialIntro || this.tutorialIntro || null) : null,
-            tutorialAdvisorDialogue: this.isTutorialEnabled() ? (this.lastGame?.tutorialAdvisorDialogue || this.tutorialAdvisorDialogue || null) : null,
-            tutorialHighlight: this.isTutorialEnabled() ? this.tutorialHighlight : null,
             rewardReveal: snapshotRewardReveal,
           };
         }
 
     renderActive(options = {}) {
-          return runInTutorialRenderPhase(this, 'renderActive', () => this.renderActiveProjection(options));
-        }
-
-    renderActiveProjection(options = {}) {
           if (this.isWorldMapDragging()) {
             this.deferRenderUntilWorldMapDragEnd = true;
             return true;
@@ -2990,14 +2638,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           if (options.invalidateWorldTileView) {
             this.renderer?.invalidateWorldTileViewCache?.();
             this.worldMapRenderer?.invalidateWorldTileViewCache?.();
-          }
-          const guideActiveTab = this.tutorialHighlight?.renderActiveTab;
-          if (guideActiveTab) {
-            return this.renderReadOnly(
-              this.lastGame?.state,
-              guideActiveTab,
-              this.tutorialHighlight?.renderOptions || {},
-            );
           }
           return this.renderReadOnly(this.lastGame?.state, this.getActiveTab());
         }
@@ -3015,12 +2655,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
         }
 
     renderReadOnly(state, activeTab = 'resources', options = {}) {
-          return runInTutorialRenderPhase(this, 'renderReadOnly', () => (
-            this.renderReadOnlyProjection(state, activeTab, options)
-          ));
-        }
-
-    renderReadOnlyProjection(state, activeTab = 'resources', options = {}) {
           if (!this.previewEnabled || !this.renderer || !state) return false;
           this.syncWorldMapRendererLayerMetrics();
           const inputSummary = global.CodexWorldMapDiag?.summarizeState?.(state) || null;
@@ -3034,7 +2668,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             mapVersion: inputSummary?.worldMap?.version || 0,
             currentTab: inputSummary?.currentTab || '',
             militaryView: inputSummary?.militaryView || '',
-            tutorialStep: inputSummary?.tutorial?.currentStep ?? null,
           }, {
             activeTab,
             options: {
@@ -3154,23 +2787,17 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
              });
           }
           this.setWorldMapLayerVisible(worldMapLayerVisible);
-          const refreshedTutorialHighlight = typeof this.refreshTutorialHighlightTarget === 'function'
-            ? this.refreshTutorialHighlightTarget(this.tutorialHighlight)
-            : this.tutorialHighlight;
-          this.tutorialHighlight = refreshedTutorialHighlight || null;
           const liveWorldMapRuntimeContext = this.getCanonicalWorldTileMapContext();
           const liveWorldMapAnchorSource = this.worldMapRenderer || null;
           const runtimeCompositionOptions = WorldMapRuntimeRenderPolicy?.createWorldMapCompositionOptions
             ? WorldMapRuntimeRenderPolicy.createWorldMapCompositionOptions({
               ...renderOptions,
-              tutorialHighlight: this.tutorialHighlight,
               worldMapRenderer: liveWorldMapAnchorSource,
               worldMapAnchorSource: liveWorldMapAnchorSource,
               worldMapRuntimeContext: liveWorldMapRuntimeContext,
             }, worldMapFrameState || {})
             : {
               ...renderOptions,
-              tutorialHighlight: this.tutorialHighlight,
               worldMapRenderer: liveWorldMapAnchorSource,
               worldMapAnchorSource: liveWorldMapAnchorSource,
               skipWorldMapLayer: true,
@@ -3207,7 +2834,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             ? runtimeCompositionOptions
             : {
               ...renderOptions,
-              tutorialHighlight: this.tutorialHighlight,
               worldMapRenderer: liveWorldMapAnchorSource,
               worldMapAnchorSource: liveWorldMapAnchorSource,
               worldMapRuntimeContext: liveWorldMapRuntimeContext,
@@ -3247,19 +2873,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
 
     getTabLocks() {
           const tabIds = ['resources', 'buildings', 'tech', 'events', 'civilization', 'military'];
-          const tutorialController = this.getTutorialController();
-          const canOpenTab = tutorialController?.canOpenTab;
-          if (typeof canOpenTab !== 'function') {
-            return tabIds.map((id) => ({ id, disabled: false, isLocked: false }));
-          }
-          return tabIds.map((id) => {
-            const allowed = Boolean(canOpenTab.call(tutorialController, id));
-            return {
-              id,
-              disabled: !allowed,
-              isLocked: !allowed,
-            };
-          });
+          return tabIds.map((id) => ({ id, disabled: false, isLocked: false }));
         }
 
     getTechTreePan() {
@@ -3381,7 +2995,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
     showRewardReveal(reveal) {
           if (!reveal) return false;
           this.openRewardRevealSnapshot?.({ ...reveal, createdAt: this.now() });
-          this.tutorialHighlight = null;
           this.startFloatTimer();
           this.renderActive();
           return true;
@@ -3471,12 +3084,11 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           if (this.effectTimer || !this.runtime?.setInterval) return;
           this.effectTimer = this.runtime.setInterval(() => {
             const changed = this.pruneFloatingTexts();
-            const hasHighlight = Boolean(this.tutorialHighlight);
             const hasReveal = this.isRewardRevealSnapshotOpen?.() === true;
-            if (!this.floatingTexts.length && !hasHighlight && !hasReveal) {
+            if (!this.floatingTexts.length && !hasReveal) {
               this.stopFloatTimer();
             }
-            if (changed || this.floatingTexts.length || hasHighlight || hasReveal) {
+            if (changed || this.floatingTexts.length || hasReveal) {
               this.renderAnimationFrame();
             }
           }, this.getAnimationFrameMs());

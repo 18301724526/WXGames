@@ -1,9 +1,9 @@
 const BuildingActionService = require('../services/BuildingActionService');
 
-function execute(action, gameState, tutorial, target) {
+function execute(action, gameState, target) {
   return action === 'upgrade'
-    ? BuildingActionService.upgrade(gameState, tutorial, target)
-    : BuildingActionService.build(gameState, tutorial, target);
+    ? BuildingActionService.upgrade(gameState, target)
+    : BuildingActionService.build(gameState, target);
 }
 
 module.exports = {

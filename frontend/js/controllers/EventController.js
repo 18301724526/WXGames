@@ -4,7 +4,6 @@
       this.api = options.api;
       this.getState = options.getState;
       this.onStateApplied = options.onStateApplied;
-      this.onTutorialUpdated = options.onTutorialUpdated;
       this.onFloatingText = options.onFloatingText;
       this.onLog = options.onLog;
       this.formatReward = options.formatReward
@@ -43,7 +42,6 @@
       try {
         const result = await this.api.claimEvent(this.activeEventId, option.id);
         this.onStateApplied(result);
-        this.onTutorialUpdated(result.tutorial);
         this.close();
         this.onFloatingText(this.formatReward(result.reward));
         this.onLog(`🎁 ${result.message}`);

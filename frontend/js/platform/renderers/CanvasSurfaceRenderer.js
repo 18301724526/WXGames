@@ -142,8 +142,8 @@
     getHitTarget(point = {}) {
       const pools = SurfaceState.ensureHitTargetPools(this.surfaceState);
       return typeof HitTargets.resolveHitTargetPools === 'function'
-        ? HitTargets.resolveHitTargetPools(pools, point, this.lastRenderOptions?.tutorialIntro || null)
-        : HitTargets.resolveHitTarget(this.hitTargets, point, this.lastRenderOptions?.tutorialIntro || null);
+        ? HitTargets.resolveHitTargetPools(pools, point)
+        : HitTargets.resolveHitTarget(this.hitTargets, point);
     }
 
     clearHitTargetPool(pool = 'base') { return SurfaceState.clearHitTargetPool(this.surfaceState, pool); }
@@ -167,18 +167,6 @@
       }
       SurfaceState.setHoverPoint(this.surfaceState, { x: Number(point.x), y: Number(point.y) });
       return true;
-    }
-
-    isAllowedUnderTutorialShield(action = {}) {
-      return HitTargets.isAllowedUnderTutorialShield(action);
-    }
-
-    matchesTutorialShieldAllowedAction(action = {}, allowed = null) {
-      return HitTargets.matchesTutorialShieldAllowedAction(action, allowed);
-    }
-
-    matchesCurrentTutorialIntroAction(action = {}) {
-      return HitTargets.matchesCurrentTutorialIntroAction(action, this.lastRenderOptions?.tutorialIntro || null);
     }
 
     withSuppressedHitTargets(callback) {

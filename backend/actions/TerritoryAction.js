@@ -1,21 +1,15 @@
 const TerritoryService = require('../services/TerritoryService');
-const WorldExplorerService = require('../services/WorldExplorerService');
 const CityService = require('../services/CityService');
-const TutorialService = require('../services/TutorialService');
+const WorldExplorerService = require('../services/WorldExplorerService');
 const { CommandAuthorityContract } = require('../services/realtime');
 
-function isTutorialFirstCity(gameState = {}, territoryId = '') {
-  const siteId = gameState.tutorial?.grants?.[WorldExplorerService.TUTORIAL_FIRST_SITE_GRANT_KEY]?.siteId;
-  return Boolean(siteId && String(siteId) === String(territoryId || ''));
-}
-
-function advanceTutorialAfterTerritoryAction(gameState = {}, result = {}, nextStep = 0) {
-  if (!result?.success || !nextStep) return result;
-  gameState.tutorial = TutorialService.manualAdvance(gameState.tutorial, nextStep);
-  return {
-    ...result,
-    tutorial: gameState.tutorial,
-  };
+function getOccupiedCityCount(gameState = {}) {
+  return (Array.isArray(gameState.territories) ? gameState.territories : [])
+    .filter((territory) => (
+      territory?.status === 'occupied'
+      && territory.type !== 'capital'
+      && (territory.owner === 'player' || territory.ownerPlayerId === gameState.playerId)
+    )).length;
 }
 
 function attachTerritoryAuthority(result = {}, gameState = {}, action = '', payload = {}) {
@@ -28,8 +22,8 @@ function attachTerritoryAuthority(result = {}, gameState = {}, action = '', payl
   });
 }
 
-function markTutorialSettlementMissionReady(gameState = {}, territoryId = '') {
-  if (!isTutorialFirstCity(gameState, territoryId)) return;
+function markFirstSettlementMissionReady(gameState = {}, territoryId = '') {
+  if (getOccupiedCityCount(gameState) !== 0) return;
   const mission = (gameState.warMissions || []).find((item) => (
     item?.kind === 'conquest'
     && item.territoryId === territoryId
@@ -68,9 +62,9 @@ function execute(action, gameState, payload = {}, context = {}) {
   }
   if (action === 'startConquest') {
     const result = TerritoryService.startConquest(gameState, payload.territoryId, payload.expedition || payload.soldiers);
-    if (result.success) markTutorialSettlementMissionReady(gameState, payload.territoryId);
+    if (result.success) markFirstSettlementMissionReady(gameState, payload.territoryId);
     return attachTerritoryAuthority(
-      advanceTutorialAfterTerritoryAction(gameState, result, TutorialService.TUTORIAL_STEPS.firstCityConquestStarted),
+      result,
       gameState,
       action,
       payload,
@@ -80,7 +74,7 @@ function execute(action, gameState, payload = {}, context = {}) {
     const result = TerritoryService.claimConquest(gameState, payload.territoryId);
     if (result.success && result.outcome === 'success') CityService.normalizeCities(gameState);
     return attachTerritoryAuthority(
-      advanceTutorialAfterTerritoryAction(gameState, result, TutorialService.TUTORIAL_STEPS.firstCityOccupied),
+      result,
       gameState,
       action,
       payload,
@@ -92,11 +86,10 @@ function execute(action, gameState, payload = {}, context = {}) {
   if (action === 'renameCity') {
     const result = TerritoryService.renameCity(gameState, payload.territoryId, payload.name);
     if (result.success) CityService.updateCityName(gameState, payload.territoryId, result.territory.cityName);
-    return advanceTutorialAfterTerritoryAction(gameState, result, TutorialService.TUTORIAL_STEPS.firstCityNamed);
+    return result;
   }
   if (action === 'renamePolity') {
-    const result = TerritoryService.renamePolity(gameState, payload.name);
-    return advanceTutorialAfterTerritoryAction(gameState, result, TutorialService.TUTORIAL_STEPS.polityNamed);
+    return TerritoryService.renamePolity(gameState, payload.name);
   }
   if (action === 'switchCity') {
     return CityService.setActiveCity(gameState, payload.territoryId || payload.cityId || CityService.CAPITAL_CITY_ID);

@@ -1,5 +1,4 @@
 const { BuildingConfig } = require('../services/config/GameplayConfigRuntime');
-const { TUTORIAL_STEPS, stepBefore } = require('../../shared/tutorialFlowConfig');
 const BuildingState = require('../modules/BuildingState');
 const BuildingUnlockService = require('../services/BuildingUnlockService');
 const BuildingCostCalculator = require('../calculators/BuildingCostCalculator');
@@ -17,18 +16,11 @@ function getActiveCityResources(gameState) {
   return CityService.getActiveCity(gameState)?.resources || gameState.resources;
 }
 
-function isTutorialHouseBuild(tutorialState, buildingId) {
-  return buildingId === 'house'
-    && !tutorialState?.completed
-    && !tutorialState?.disabled
-    && stepBefore(tutorialState?.currentStep, TUTORIAL_STEPS.houseBuilt);
-}
-
-function validateBuild(gameState, tutorialState, buildingId) {
+function validateBuild(gameState, buildingId) {
   if (!BuildingConfig.hasBuilding(buildingId)) {
     return { allowed: false, code: 'BUILDING_NOT_FOUND', message: '建筑不存在' };
   }
-  if (!isTutorialHouseBuild(tutorialState, buildingId) && !BuildingUnlockService.isUnlocked(buildingId, gameState.currentEra, gameState)) {
+  if (!BuildingUnlockService.isUnlocked(buildingId, gameState.currentEra, gameState)) {
     return { allowed: false, code: 'ERA_NOT_UNLOCKED', message: '时代尚未解锁' };
   }
   if (BuildingState.isBuilt(getActiveCityBuildings(gameState), buildingId)) {
@@ -41,7 +33,7 @@ function validateBuild(gameState, tutorialState, buildingId) {
   return { allowed: true, cost };
 }
 
-function validateUpgrade(gameState, tutorialState, buildingId) {
+function validateUpgrade(gameState, buildingId) {
   if (!BuildingConfig.hasBuilding(buildingId)) {
     return { allowed: false, code: 'BUILDING_NOT_FOUND', message: '建筑不存在' };
   }

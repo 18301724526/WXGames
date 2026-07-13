@@ -146,19 +146,11 @@ test('WorldMapSiteOverlayRenderer prefers explicit viewport source over host hos
   assert.deepEqual(offset, { x: 111, y: 111 });
 });
 
-test('WorldMapSiteOverlayRenderer passes tutorial context into world site presenter state', () => {
+test('WorldMapSiteOverlayRenderer passes territory context into world site presenter state', () => {
   const host = createHost({
-    state: {
-      tutorial: {
-        currentStep: 25,
-        grants: { firstExploreEmptyCity: { siteId: 'site-1' } },
-      },
-    },
     presenter: {
       buildWorldSiteDialogViewState(territories, territoryState, uiState) {
         assert.equal(territoryState.availableSoldiers, 0);
-        assert.equal(territoryState.tutorial.currentStep, 25);
-        assert.equal(territoryState.tutorial.grants.firstExploreEmptyCity.siteId, 'site-1');
         assert.equal(uiState.selectedSiteId, 'site-1');
         return {
           selectedSiteId: 'site-1',
@@ -202,15 +194,11 @@ test('WorldMapSiteOverlayRenderer passes tutorial context into world site presen
   assert.equal(host.hitTargets.some((target) => target.action.type === 'conquer' && !target.action.disabled), true);
 });
 
-test('WorldMapSiteOverlayRenderer falls back to shared presenter for guided first city actions', () => {
+test('WorldMapSiteOverlayRenderer falls back to shared presenter for empty settlement actions', () => {
   const host = createHost();
   const renderer = new WorldMapSiteOverlayRenderer({ host });
 
   renderer.renderWorldSiteModal({
-    tutorial: {
-      currentStep: 25,
-      grants: { firstExploreEmptyCity: { siteId: 'site-1' } },
-    },
     territoryState: {
       availableSoldiers: 0,
       territories: [{

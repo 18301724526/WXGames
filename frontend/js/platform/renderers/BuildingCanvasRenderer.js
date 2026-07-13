@@ -73,10 +73,10 @@
         || null;
     }
 
-    buildBuildingViewState(state = {}, tutorial = {}, buildingConfig = {}, options = {}) {
+    buildBuildingViewState(state = {}, buildingConfig = {}, options = {}) {
       const presenter = this.getBuildingPresenter();
       if (presenter) {
-        return presenter.buildBuildingViewState(state, tutorial, buildingConfig, options);
+        return presenter.buildBuildingViewState(state, buildingConfig, options);
       }
       return {
         ids: [],
@@ -91,7 +91,7 @@
     }
 
     renderBuildings(state = {}, startY = 210, panelHeight = 310, options = {}) {
-      const view = this.buildBuildingViewState(state, state.tutorial || {}, state.buildingDefinitions || {}, {
+      const view = this.buildBuildingViewState(state, state.buildingDefinitions || {}, {
         activeCategory: options.activeBuildingCategory || 'all',
       });
       const layout = this.getLayout();

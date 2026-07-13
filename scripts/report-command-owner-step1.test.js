@@ -23,11 +23,13 @@ test('command owner Step1 report runs and emits all 12 checks', () => {
   assert.deepEqual(report.checks.map((check) => check.id), STEP1_CHECKS.map((check) => check.id));
   assert.equal(report.summary.totalChecks, 12);
   assert.equal(report.summary.inventoryDriftFindings, 0);
-  const scannedDirectSubmitKeys = new Set(
-    report.scanResults.frontendDirectSubmits.map((item) => item.callSiteKey),
-  );
-  assert.ok(scannedDirectSubmitKeys.has('frontend/js/platform/GameCommandService.js:141:research'));
-  assert.ok(scannedDirectSubmitKeys.has('frontend/js/platform/GameCommandService.js:171:switchCity'));
+  const scannedDirectSubmits = report.scanResults.frontendDirectSubmits;
+  assert.ok(scannedDirectSubmits.some((item) => (
+    item.file === 'frontend/js/platform/GameCommandService.js' && item.helper === 'research'
+  )));
+  assert.ok(scannedDirectSubmits.some((item) => (
+    item.file === 'frontend/js/platform/GameCommandService.js' && item.helper === 'switchCity'
+  )));
   assert.match(renderSummary(report), /checks defined: 12/);
 });
 

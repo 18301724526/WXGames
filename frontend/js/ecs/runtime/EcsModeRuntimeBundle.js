@@ -55,7 +55,7 @@ var EcsModeRuntime = (() => {
         'modal:commandPanel',
         'modal:techDetail',
       ]);
-      var OVERLAY_MODE_KEYS = Object.freeze(['tutorial', 'debug']);
+      var OVERLAY_MODE_KEYS = Object.freeze(['debug']);
       var MODE_KEYS = Object.freeze([...BASE_MODE_KEYS, ...MODAL_MODE_KEYS, ...OVERLAY_MODE_KEYS]);
       var MODE_ID_BY_KEY = Object.freeze(
         MODE_KEYS.reduce((record, key, index) => {
@@ -1763,7 +1763,6 @@ var EcsModeRuntime = (() => {
       var ModeState = defineComponent({
         baseModeId: Types.ui8,
         modalMask: Types.ui32,
-        tutorialActive: Types.ui8,
         debugActive: Types.ui8,
         blockingOverlayActive: Types.ui8,
         techTreeBlockingOverlayActive: Types.ui8,
@@ -1812,7 +1811,6 @@ var EcsModeRuntime = (() => {
       }
       function deriveTopCaptureModeKey(facts = {}) {
         const modalMask = Number(facts.modalMask) || 0;
-        if (readBool(facts.tutorialActive)) return 'tutorial';
         return (
           CAPTURE_PRIORITY.find((key) => {
             if (key.startsWith('modal:')) return (modalMask & (MODAL_BIT_BY_KEY[key] || 0)) !== 0;
@@ -1841,7 +1839,6 @@ var EcsModeRuntime = (() => {
           baseModeKey,
           modalMask,
           modalKeys: Object.freeze(modalKeys),
-          tutorialActive: readBool(facts.tutorialActive),
           debugActive: readBool(facts.debugActive),
           blockingOverlayActive,
           techTreeBlockingOverlayActive,
@@ -1864,7 +1861,6 @@ var EcsModeRuntime = (() => {
         return createModeSnapshot({
           baseModeKey,
           modalMask,
-          tutorialActive: ModeState.tutorialActive[entity] === 1,
           debugActive: ModeState.debugActive[entity] === 1,
           blockingOverlayActive: ModeState.blockingOverlayActive[entity] === 1,
           techTreeBlockingOverlayActive: ModeState.techTreeBlockingOverlayActive[entity] === 1,
@@ -1953,7 +1949,6 @@ var EcsModeRuntime = (() => {
         const entity = modeOwner.entity;
         ModeState.baseModeId[entity] = snapshot.baseModeId;
         ModeState.modalMask[entity] = snapshot.modalMask;
-        ModeState.tutorialActive[entity] = snapshot.tutorialActive ? 1 : 0;
         ModeState.debugActive[entity] = snapshot.debugActive ? 1 : 0;
         ModeState.blockingOverlayActive[entity] = snapshot.blockingOverlayActive ? 1 : 0;
         ModeState.techTreeBlockingOverlayActive[entity] = snapshot.techTreeBlockingOverlayActive
@@ -2148,7 +2143,6 @@ var EcsModeRuntime = (() => {
         baseModeKey: 'city',
         modalMask: 0,
         modalKeys: Object.freeze([]),
-        tutorialActive: false,
         debugActive: false,
         blockingOverlayActive: false,
         techTreeBlockingOverlayActive: false,

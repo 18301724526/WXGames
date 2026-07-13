@@ -41,7 +41,6 @@ function createContext(calls = [], overrides = {}) {
     getPanelSurfaceManager: () => manager,
     getScheduler: () => scheduler,
     getRuntimeScheduler: () => runtime,
-    getTutorialController: () => overrides.tutorial || null,
     getUiStateOwner: () => ({}),
     t: (key) => key,
     showFloatingText: (message) => calls.push(['showFloatingText', message]),
@@ -49,128 +48,26 @@ function createContext(calls = [], overrides = {}) {
   };
 }
 
-test('CanvasPanelActionRunner executes famous open hooks and modal flush', () => {
+test('CanvasPanelActionRunner opens famous panel and flushes modal', () => {
   const calls = [];
-  const tutorial = {
-    canOpenTab(panelKey) {
-      calls.push(['canOpenTab', panelKey]);
-      return true;
-    },
-    onFamousPersonsOpened() {
-      calls.push(['opened']);
-    },
-    refreshCurrentHighlight() {
-      calls.push(['refresh']);
-    },
-  };
   const runner = new CanvasPanelActionRunner();
 
-  assert.equal(runner.run({ type: 'openFamousPersons' }, createContext(calls, { tutorial })), true);
+  assert.equal(runner.run({ type: 'openFamousPersons' }, createContext(calls)), true);
   assert.deepEqual(calls, [
-    ['canOpenTab', 'famousPersons'],
     ['openPanel', 'famousPersons'],
     ['markDirty', 'modal', 'openFamousPersons'],
     ['flush', 'modal'],
-    ['opened'],
-    ['refresh'],
-    ['setTimeout', 0],
-    ['refresh'],
   ]);
 });
 
-test('CanvasPanelActionRunner executes famous close hooks without duplicate sync refresh', () => {
+test('CanvasPanelActionRunner closes famous panel and flushes modal', () => {
   const calls = [];
-  const tutorial = {
-    onFamousPersonsClosed() {
-      calls.push(['closed']);
-    },
-    refreshCurrentHighlight() {
-      calls.push(['refresh']);
-    },
-  };
   const runner = new CanvasPanelActionRunner();
 
-  assert.equal(runner.run({ type: 'closeFamousPersons' }, createContext(calls, { tutorial })), true);
+  assert.equal(runner.run({ type: 'closeFamousPersons' }, createContext(calls)), true);
   assert.deepEqual(calls, [
     ['closePanel', 'famousPersons'],
     ['markDirty', 'modal', 'closeFamousPersons'],
-    ['flush', 'modal'],
-    ['closed'],
-    ['setTimeout', 0],
-    ['refresh'],
-  ]);
-});
-
-test('CanvasPanelActionRunner vetoes before mutation and feedbacks', () => {
-  const calls = [];
-  const tutorial = {
-    canOpenTab() {
-      calls.push(['canOpenTab']);
-      return false;
-    },
-  };
-  const runner = new CanvasPanelActionRunner();
-
-  assert.equal(runner.run({ type: 'openFamousPersons' }, createContext(calls, { tutorial })), false);
-  assert.deepEqual(calls, [
-    ['canOpenTab'],
-    ['showFloatingText', 'guide.completeCurrentStep'],
-  ]);
-});
-
-test('CanvasPanelActionRunner ignores action-carried bypass flags', () => {
-  const calls = [];
-  const tutorial = {
-    canOpenTab() {
-      calls.push(['canOpenTab']);
-      return false;
-    },
-    onFamousPersonsOpened() {
-      calls.push(['opened']);
-    },
-  };
-  const runner = new CanvasPanelActionRunner();
-
-  assert.equal(
-    runner.run(
-      { type: 'openFamousPersons', bypassPanelOpenVeto: true, suppressAfterHooks: true },
-      createContext(calls, { tutorial }),
-    ),
-    false,
-  );
-  assert.deepEqual(calls, [
-    ['canOpenTab'],
-    ['showFloatingText', 'guide.completeCurrentStep'],
-  ]);
-});
-
-test('CanvasPanelActionRunner accepts trusted bypass and hook suppression options', () => {
-  const calls = [];
-  const tutorial = {
-    canOpenTab() {
-      calls.push(['canOpenTab']);
-      return false;
-    },
-    onFamousPersonsOpened() {
-      calls.push(['opened']);
-    },
-    refreshCurrentHighlight() {
-      calls.push(['refresh']);
-    },
-  };
-  const runner = new CanvasPanelActionRunner();
-
-  assert.equal(
-    runner.run(
-      { type: 'openFamousPersons' },
-      createContext(calls, { tutorial }),
-      { bypassOpenVeto: true, suppressAfterHooks: true },
-    ),
-    true,
-  );
-  assert.deepEqual(calls, [
-    ['openPanel', 'famousPersons'],
-    ['markDirty', 'modal', 'openFamousPersons'],
     ['flush', 'modal'],
   ]);
 });

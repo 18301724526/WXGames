@@ -100,9 +100,8 @@
 
     // UI-REDO dock item set (layout-reference-v2): two round edge badges
     // (capital / tasks) + four square center buttons. The former 'more'
-    // (openGuidebook) dock item was removed with the redesign -- no tutorial
-    // rule or highlight ever targeted it (TutorialGuideFlowRegistry has zero
-    // guidebook references); the openGuidebook action handler stays intact.
+    // (openGuidebook) dock item was removed with the redesign; the
+    // openGuidebook action handler stays intact.
     getDockCommandItems(state = {}) {
       return {
         capital: {

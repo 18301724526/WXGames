@@ -4,7 +4,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const CanvasActionController = require('./CanvasActionController');
-const ChangeEventBus = require('../state/ChangeEventBus');
 const { makeModalOwnerHost } = require('../../test-support/CanvasOwnerTestHarness');
 
 const makeModalHost = makeModalOwnerHost;
@@ -52,41 +51,6 @@ test('switch tab preserves page transition contract after delegated tab selectio
     ['select', 'tech'],
     ['resolve', 'resources', 'tech'],
   ]);
-});
-
-test('advisor close clears dialogue across shell and game then resumes tutorial', async () => {
-  const calls = [];
-  const changeEventBus = ChangeEventBus.createEventBus();
-  changeEventBus.subscribe('advisorClosed', async () => {
-    calls.push(['closed']);
-    return true;
-  });
-  const game = makeModalHost({
-    tutorialAdvisorDialogue: { source: 'houseBuilt' },
-    canvasShell: null,
-  });
-  const host = makeModalHost({
-    tutorialAdvisorDialogue: { source: 'houseBuilt' },
-    lastGame: game,
-    renderer: {
-      clearTutorialAdvisorDialogue() {
-        calls.push(['clear']);
-      },
-    },
-    renderCanvasAction(action) {
-      calls.push(['render', action.type]);
-    },
-  });
-  game.canvasShell = host;
-  host.openBlockingPanelSnapshot('showAdvisor', true);
-  const controller = new HostController({ host: host, awaitAsync: true, changeEventBus });
-
-  assert.equal(await controller.handle_closeAdvisor({ type: 'closeAdvisor' }), true);
-  assert.equal(host.isBlockingPanelSnapshotOpen('showAdvisor'), false);
-  assert.equal(host.isModalOpen('modal:advisor'), false);
-  assert.equal(host.tutorialAdvisorDialogue, null);
-  assert.equal(game.tutorialAdvisorDialogue, null);
-  assert.deepEqual(calls, [['clear'], ['closed'], ['render', 'closeAdvisor']]);
 });
 
 test('submit naming closes shell and game naming after successful submit', async () => {

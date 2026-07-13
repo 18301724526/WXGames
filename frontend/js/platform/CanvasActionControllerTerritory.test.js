@@ -62,21 +62,6 @@ test('CanvasActionController keeps world march HUD state and refresh contract', 
       calls.push(['stopWorldMarch', missionId]);
       return Promise.resolve(true);
     },
-    emitTutorialEvent(eventName) {
-      calls.push(['tutorialEvent', eventName]);
-      return true;
-    },
-    changeEventBus: {
-      emit(eventName) {
-        calls.push([eventName]);
-      },
-    },
-    runtime: {
-      setTimeout(callback) {
-        calls.push(['setTimeout']);
-        callback?.();
-      },
-    },
   });
   const host = makeModalHost({
     territoryUiState: game.territoryUiState,
@@ -148,17 +133,10 @@ test('CanvasActionController keeps world march HUD state and refresh contract', 
   );
 
   assert.deepEqual(calls, [
-    ['tutorialEvent', 'worldMarchTargetSelected'],
     ['render', 'selectWorldMarchTarget'],
     ['refreshWorldMap', { force: true, invalidateWorldTileView: false }],
-    ['state.changed'],
-    ['setTimeout'],
-    ['state.changed'],
     ['render', 'openWorldMarchFormationPicker'],
     ['refreshWorldMap', { force: true, invalidateWorldTileView: false }],
-    ['state.changed'],
-    ['setTimeout'],
-    ['state.changed'],
     [
       'startWorldMarch',
       {
@@ -171,15 +149,9 @@ test('CanvasActionController keeps world march HUD state and refresh contract', 
     ],
     ['render', 'startWorldMarch'],
     ['refreshWorldMap', { force: true, invalidateWorldTileView: false }],
-    ['state.changed'],
-    ['setTimeout'],
-    ['state.changed'],
     ['stopWorldMarch', 'march-1'],
     ['render', 'stopWorldMarch'],
     ['refreshWorldMap', { force: true, invalidateWorldTileView: false }],
-    ['state.changed'],
-    ['setTimeout'],
-    ['state.changed'],
   ]);
 });
 
@@ -233,9 +205,6 @@ test('CanvasActionController refreshes world march UI before start command resol
     ['startWorldMarch', 4, -2],
     ['render', 'startWorldMarch'],
     ['refreshWorldMap', true],
-    ['state.changed'],
-    ['setTimeout'],
-    ['state.changed'],
   ]);
 
   resolveStart(true);

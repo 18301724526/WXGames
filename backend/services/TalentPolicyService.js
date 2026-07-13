@@ -1,8 +1,6 @@
 const crypto = require('node:crypto');
 
-const TutorialService = require('./TutorialService');
 const CityService = require('./CityService');
-const SharedTutorialFlowConfig = require('../../shared/tutorialFlowConfig');
 
 const DEFAULT_TIERS = Object.freeze({
   agriculture: 2,
@@ -342,18 +340,17 @@ function applyPopulationAllocation(city, allocation = {}) {
   return nextPopulation;
 }
 
-function applyPolicy(gameState, tutorial, payload = {}) {
+function applyPolicy(gameState, payload = {}) {
   const policy = resolvePolicy(gameState, payload);
   if (!policy) {
-    return { success: false, error: 'TALENT_POLICY_NOT_FOUND', message: '方针不存在', tutorial };
+    return { success: false, error: 'TALENT_POLICY_NOT_FOUND', message: '方针不存在' };
   }
   if ((Number(gameState.currentEra) || 0) < (policy.minEra || 0)) {
-    return { success: false, error: 'TALENT_POLICY_LOCKED', message: '当前时代尚未解锁该方针', tutorial };
+    return { success: false, error: 'TALENT_POLICY_LOCKED', message: '当前时代尚未解锁该方针' };
   }
   CityService.normalizeCities(gameState);
   const preview = buildAllocationPreview(gameState, policy);
   const city = CityService.getActiveCity(gameState);
-  const beforeCraftsmen = Number(city.population?.craftsmen) || 0;
   applyPopulationAllocation(city, preview.allocation);
   CityService.applyDerivedStatsToCity(city, gameState);
 
@@ -373,13 +370,6 @@ function applyPolicy(gameState, tutorial, payload = {}) {
     state.activeDraft = null;
   }
   state.lastAppliedAt = new Date().toISOString();
-  const normalizedTutorial = TutorialService.normalizeTutorialState(tutorial);
-  const nextTutorial = SharedTutorialFlowConfig.stepEquals(normalizedTutorial.currentStep, TutorialService.TUTORIAL_STEPS.talentPolicyOpened)
-    ? TutorialService.advanceTutorial(normalizedTutorial, 'talentPolicyApplied')
-    : (preview.allocation.craftsman || 0) > beforeCraftsmen
-      ? TutorialService.advanceTutorial(normalizedTutorial, 'craftsmanAssigned')
-      : normalizedTutorial;
-
   return {
     success: true,
     message: `已应用${preview.policyLabel}`,
@@ -388,7 +378,6 @@ function applyPolicy(gameState, tutorial, payload = {}) {
       label: preview.policyLabel,
       allocation: preview.allocation,
     },
-    tutorial: nextTutorial,
   };
 }
 

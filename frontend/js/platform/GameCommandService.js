@@ -105,15 +105,15 @@
     async handleBuildingAction(buildingId, action) {
       const host = this.host || {};
       if (!buildingId) return false;
-      if (host.emitTutorialEvent?.('buildingAction', { buildingId, action }) === false) {
-        host.showFloatingText?.(t('guide.buildFirstHouseFirst'));
-      }
       if (host.pendingBuildingAction?.buildingId) return false;
       const normalizedAction = action === 'upgrade' ? 'upgrade' : 'build';
       host.setPendingBuildingAction?.({ buildingId, action: normalizedAction });
       if (host.buildingController?.handleAction) {
         try {
           const result = await host.buildingController.handleAction({ buildingId, action: normalizedAction });
+          if (result !== false) {
+            host.emitGameEvent?.('buildingActionCompleted', { buildingId, action: normalizedAction });
+          }
           return result !== false;
         } finally {
           host.setPendingBuildingAction?.(null);
@@ -125,6 +125,7 @@
           ? await api.upgrade(buildingId)
           : await api.build(buildingId);
         await this.handleBuildingSuccess(result, normalizedAction, buildingId);
+        host.emitGameEvent?.('buildingActionCompleted', { buildingId, action: normalizedAction, result });
         return true;
       } catch (error) {
         host.log?.(t('command.building.failed', { message: this.getErrorMessage(error) }));

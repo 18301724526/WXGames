@@ -1,5 +1,3 @@
-const { TASK_CLAIM_STEPS, isValidStep, stepAtLeast } = require('../../shared/tutorialFlowConfig');
-const { manualAdvance } = require('./tutorial/TutorialProgression');
 const TaskDefinitionService = require('./TaskDefinitionService');
 const TaskCenterAssembler = require('./taskCenter/TaskCenterAssembler');
 const ProgressEvaluator = require('./taskCenter/TaskProgressEvaluator');
@@ -12,15 +10,6 @@ function getTaskCenter(gameState, options = {}) {
 
 function buildCategories(gameState, definitions = TaskDefinitionService.loadDefinitions()) {
   return TaskCenterAssembler.buildCategories(gameState, definitions);
-}
-
-function maybeAdvanceTutorialAfterClaim(gameState, taskId) {
-  const tutorial = gameState.tutorial || {};
-  if (tutorial.completed || tutorial.disabled) return tutorial;
-  const nextStep = TASK_CLAIM_STEPS[taskId];
-  if (!isValidStep(nextStep) || stepAtLeast(tutorial.currentStep, nextStep)) return tutorial;
-  gameState.tutorial = manualAdvance(gameState.tutorial, nextStep);
-  return gameState.tutorial;
 }
 
 function findTaskView(taskCenter, taskId, category) {
@@ -61,8 +50,6 @@ function claimTask(gameState, taskId, category = 'main') {
     category: task.category,
     reward: { resources: reward.resources },
   };
-  const nextTutorial = maybeAdvanceTutorialAfterClaim(gameState, task.id);
-
   return {
     success: true,
     message: '任务奖励已领取',
@@ -72,7 +59,6 @@ function claimTask(gameState, taskId, category = 'main') {
     rewardText: task.rewardText,
     rewardReveal: RewardClaimer.buildRewardReveal(task, reward.resources),
     claimedAt,
-    tutorial: nextTutorial,
   };
 }
 

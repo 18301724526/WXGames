@@ -29,7 +29,6 @@ const DEFAULT_STATE = {
   softGuide: null,
   guideTasks: { visible: false, tasks: [] },
   taskCenter: null,
-  tutorialEnabled: true,
 };
 
 class H5GameHost extends CanvasGameAppBase {
@@ -46,8 +45,6 @@ class H5GameHost extends CanvasGameAppBase {
     this.runtimeConstructors = null;
     this.token = null;
     this.playerId = null;
-    this.tutorial = { completed: false, currentStep: 0, phaseCompleted: { newbie: false, era2: false } };
-    this.tutorialIntroOverlay = null;
   }
 
   init() {
@@ -103,7 +100,6 @@ class H5GameHost extends CanvasGameAppBase {
       api: this.gameAPI,
       getState: () => this.state,
       onStateApplied: (result) => this.applyApiState(result),
-      onTutorialUpdated: () => {},
       onFloatingText: (message) => this.showFloatingText(message),
       onLog: (message) => this.log(message),
       formatReward: (reward) => this.presenter.formatEventReward(reward),
@@ -135,17 +131,6 @@ class H5GameHost extends CanvasGameAppBase {
       onBattleSceneRequested: (report) => this.startBattleScene(report),
     });
     window.TerritoryUiStateStore?.ensure?.(this);
-    if (this.isTutorialEnabled() && !this.tutorialController && window.TutorialGuideController) {
-      this.tutorialController = new window.TutorialGuideController({
-        game: this,
-        api: this.gameAPI,
-      });
-    }
-    if (this.tutorialController) {
-      this.tutorialController.game = this;
-      this.tutorialController.api = this.gameAPI;
-      this.tutorialController.sync(this.tutorial);
-    }
 
     this.gameModules?.mount?.(this);
     this.syncService.onHeartbeat = (data) => this.applyHeartbeat(data);
@@ -174,44 +159,6 @@ class H5GameHost extends CanvasGameAppBase {
     if (!this.token || this.hasServerState) this.render();
   }
 
-  isTutorialEnabled() {
-    const parser = window.FeatureFlags?.parseFlagValue || window.FeatureFlagCore?.parseFeatureFlagValue;
-    if (typeof parser !== 'function') return this.state?.tutorialEnabled !== false;
-    return parser(this.state?.tutorialEnabled, true);
-  }
-
-  ensureTutorialIntroOverlay() {
-    if (!this.isTutorialEnabled()) return null;
-    if (this.tutorialIntroOverlay) return this.tutorialIntroOverlay;
-    if (!window.TutorialIntroOverlay) return null;
-    this.tutorialIntroOverlay = new window.TutorialIntroOverlay({
-      runtime: window,
-      storage: window.localStorage || null,
-      resolveContext: () => this.tutorialController,
-    });
-    return this.tutorialIntroOverlay;
-  }
-
-  maybeStartTutorialIntro() {
-    if (!this.isTutorialEnabled()) return false;
-    return this.ensureTutorialIntroOverlay()?.start(this.state) || false;
-  }
-
-  applyApiState(data = {}, options = {}) {
-    super.applyApiState(data, options);
-    if (!this.isTutorialEnabled()) return false;
-    this.tutorialController?.sync?.(this.tutorial);
-    this.maybeStartTutorialIntro();
-    return true;
-  }
-
-  applyState(payload = {}, options = {}) {
-    super.applyState(payload, options);
-    if (!this.isTutorialEnabled()) return false;
-    this.tutorialController?.sync?.(this.tutorial);
-    this.maybeStartTutorialIntro();
-    return true;
-  }
 }
 
 function consumeCodexIabAuthFromUrl(runtime = null) {

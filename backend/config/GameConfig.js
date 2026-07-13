@@ -1,7 +1,7 @@
 const ConfigRegistryContract = require('../services/config/ConfigRegistryContract');
 const { clone } = require('../../shared/objectUtils');
 
-const CONFIG_VERSION = '1.1.0';
+const CONFIG_VERSION = '1.2.0';
 const CONFIG_SCHEMA_VERSION = 1;
 const sourcePath = __filename;
 
@@ -25,9 +25,7 @@ const population = {
   eraCaps: [3, 6, 9, 12, 16, 20],
 };
 
-const features = {
-  tutorialEnabled: 1,
-};
+const features = {};
 
 function raw() {
   return clone({ resources, population, features });

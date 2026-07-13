@@ -1,6 +1,5 @@
 const BuildingState = require('../modules/BuildingState');
 const BuildingActionValidator = require('../validators/BuildingActionValidator');
-const TutorialService = require('./TutorialService');
 const CityService = require('./CityService');
 
 function deductResources(resources, cost) {
@@ -17,9 +16,9 @@ function applyDerivedStats(gameState) {
   return CityService.applyDerivedStatsToCity(city, gameState);
 }
 
-function build(gameState, tutorialState, buildingId) {
+function build(gameState, buildingId) {
   CityService.normalizeCities(gameState);
-  const validation = BuildingActionValidator.validateBuild(gameState, tutorialState, buildingId);
+  const validation = BuildingActionValidator.validateBuild(gameState, buildingId);
   if (!validation.allowed) return { success: false, error: validation.code, message: validation.message };
   const now = new Date().toISOString();
   const city = CityService.getActiveCity(gameState);
@@ -27,30 +26,19 @@ function build(gameState, tutorialState, buildingId) {
   city.buildings = BuildingState.build(city.buildings, buildingId, now);
   CityService.applyDerivedStatsToCity(city, gameState);
   const effects = applyDerivedStats(gameState);
-  const tutorialEvent = buildingId === 'farm'
-    ? 'farmBuilt'
-    : buildingId === 'lumbermill'
-      ? 'lumbermillBuilt'
-      : buildingId === 'house'
-        ? 'houseBuilt'
-        : buildingId === 'barracks'
-          ? 'barracksBuilt'
-          : null;
-  const nextTutorial = TutorialService.advanceTutorial(tutorialState, tutorialEvent);
   return {
     success: true,
     message: `建造了${buildingId}`,
     buildingId,
     level: 1,
     cost: validation.cost,
-    tutorial: nextTutorial,
     effects,
   };
 }
 
-function upgrade(gameState, tutorialState, buildingId) {
+function upgrade(gameState, buildingId) {
   CityService.normalizeCities(gameState);
-  const validation = BuildingActionValidator.validateUpgrade(gameState, tutorialState, buildingId);
+  const validation = BuildingActionValidator.validateUpgrade(gameState, buildingId);
   if (!validation.allowed) return { success: false, error: validation.code, message: validation.message };
   const now = new Date().toISOString();
   const city = CityService.getActiveCity(gameState);
@@ -65,7 +53,6 @@ function upgrade(gameState, tutorialState, buildingId) {
     oldLevel: validation.currentLevel,
     newLevel: validation.currentLevel + 1,
     cost: validation.cost,
-    tutorial: tutorialState,
     effects,
   };
 }

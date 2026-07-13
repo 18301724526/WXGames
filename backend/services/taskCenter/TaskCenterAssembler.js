@@ -24,10 +24,8 @@ function buildTaskView(gameState, task) {
   };
 }
 
-// Claimable tasks must surface at the top of the panel: the tutorial highlights
-// claim buttons by canvas hit target, and a claimable row pushed below the fold
-// is unreachable for the guide (and easy to miss for players). Completed rows
-// sink to the bottom; within a status band the definition order (sortOrder) holds.
+// Claimable tasks surface at the top so actionable rows never fall below the fold.
+// Completed rows sink to the bottom; within a status band definition order holds.
 const STATUS_RANK = { claimable: 0, active: 1, completed: 2 };
 
 function buildCategories(gameState, definitions = {}) {

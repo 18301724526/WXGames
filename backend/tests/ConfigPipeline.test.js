@@ -12,9 +12,15 @@ test('ConfigPipeline builds a current snapshot for registered config families', 
 
   assert.equal(snapshot.schema, ConfigPipeline.SNAPSHOT_SCHEMA);
   assert.equal(snapshot.validation.success, true);
-  assert.equal(snapshot.registryCount >= 7, true);
-  assert.equal(ids.includes('building-config'), true);
-  assert.equal(ids.includes('task-definitions'), true);
+  assert.deepEqual(ids, [
+    'battle-config',
+    'building-config',
+    'era-config',
+    'game-config',
+    'task-definitions',
+    'tech-tree-config',
+  ]);
+  assert.equal(snapshot.registryCount, ids.length);
   snapshot.registries.forEach((registry) => {
     assert.match(registry.contentHash, /^[a-f0-9]{12}$/);
     assert.equal(Number.isInteger(registry.schemaVersion), true);
@@ -83,6 +89,52 @@ test('ConfigPipeline accepts unchanged snapshots and writes baseline files', () 
   assert.deepEqual(loaded.registries[0].entryIds, ['a']);
   assert.equal(comparison.success, true);
   assert.deepEqual(comparison.changedRegistries, []);
+});
+
+test('ConfigPipeline permits only registry retirements declared with a reason', () => {
+  const retained = {
+    id: 'unit-config',
+    schema: 'unit-config-registry',
+    schemaVersion: 1,
+    version: '1.0.0',
+    contentHash: 'aaaaaaaaaaaa',
+    entryCount: 1,
+    entryIds: ['a'],
+  };
+  const removed = {
+    id: 'legacy-config',
+    schema: 'legacy-config-registry',
+    schemaVersion: 1,
+    version: '1.0.0',
+    contentHash: 'bbbbbbbbbbbb',
+    entryCount: 1,
+    entryIds: ['legacy'],
+  };
+  const baseline = { schema: ConfigPipeline.SNAPSHOT_SCHEMA, registries: [retained, removed] };
+  const current = {
+    schema: ConfigPipeline.SNAPSHOT_SCHEMA,
+    validation: { success: true, errors: [], warnings: [] },
+    registries: [retained],
+  };
+
+  const blocked = ConfigPipeline.compareSnapshots(baseline, current);
+  assert.equal(blocked.success, false);
+  assert.deepEqual(blocked.retiredRegistries, []);
+
+  const declared = ConfigPipeline.compareSnapshots(baseline, current, {
+    declaredRegistryRetirements: [{ id: 'legacy-config', reason: 'legacy feature removed' }],
+  });
+  assert.equal(declared.success, true);
+  assert.deepEqual(declared.retiredRegistries, [{
+    id: 'legacy-config',
+    reason: 'legacy feature removed',
+  }]);
+  assert.equal(declared.warnings[0], 'legacy-config: registry retired (legacy feature removed)');
+
+  const missingReason = ConfigPipeline.compareSnapshots(baseline, current, {
+    declaredRegistryRetirements: [{ id: 'legacy-config' }],
+  });
+  assert.equal(missingReason.success, false);
 });
 
 test('ConfigPipeline reports loader failures as validation errors', () => {

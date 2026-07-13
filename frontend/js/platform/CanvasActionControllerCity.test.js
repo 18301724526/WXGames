@@ -6,6 +6,7 @@ const path = require('node:path');
 const CanvasActionController = require('./CanvasActionController');
 const CanvasActionDescriptorRegistry = require('./CanvasActionDescriptorRegistry');
 const CanvasActionDispatcher = require('./CanvasActionDispatcher');
+const ChangeEventBus = require('../state/ChangeEventBus');
 const { makeModalOwnerHost } = require('../../test-support/CanvasOwnerTestHarness');
 
 const makeModalHost = makeModalOwnerHost;
@@ -118,7 +119,7 @@ test('building descriptor keeps visualDisabled as trace metadata and still submi
   assert.deepEqual(logs, []);
 });
 
-test('event claim closes event state, syncs tutorial, and exposes reward reveal fallback', async () => {
+test('event claim closes event state, publishes completion, and exposes reward reveal fallback', async () => {
   const calls = [];
   const game = {
     __eventSnapshot: { eventId: 'event-1', visible: true },
@@ -129,14 +130,6 @@ test('event claim closes event state, syncs tutorial, and exposes reward reveal 
       return Boolean(this.__eventSnapshot);
     },
     canvasShell: null,
-    tutorialController: {
-      sync(tutorial) {
-        calls.push(['sync', tutorial.currentStep]);
-      },
-      refreshCurrentHighlight() {
-        calls.push(['refresh']);
-      },
-    },
   };
   const host = {
     __eventSnapshot: { eventId: 'event-1', visible: true },
@@ -159,7 +152,6 @@ test('event claim closes event state, syncs tutorial, and exposes reward reveal 
       async claimActive(optionId) {
         calls.push(['claimActive', optionId]);
         return {
-          tutorial: { currentStep: 14 },
           rewardReveal: { title: 'Wood', items: [{ id: 'wood', amount: 5 }] },
         };
       },
@@ -172,12 +164,13 @@ test('event claim closes event state, syncs tutorial, and exposes reward reveal 
     getRewardRevealSnapshot() {
       return this.__rewardRevealSnapshot;
     },
-    hideGuideHighlight() {
-      calls.push(['hideGuideHighlight']);
-    },
   };
   game.canvasShell = host;
-  const controller = new HostController({ host: host, awaitAsync: true });
+  const changeEventBus = ChangeEventBus.createEventBus();
+  changeEventBus.subscribe('eventClaimed', (payload) => {
+    calls.push(['eventClaimed', payload.eventId, payload.optionId]);
+  });
+  const controller = new HostController({ host: host, awaitAsync: true, changeEventBus });
 
   assert.equal(
     await controller.handle_claimEvent({
@@ -198,9 +191,8 @@ test('event claim closes event state, syncs tutorial, and exposes reward reveal 
     ['close'],
     ['open', 'event-1'],
     ['claimActive', 'collect'],
-    ['sync', 14],
     ['close'],
-    ['hideGuideHighlight'],
+    ['eventClaimed', 'event-1', 'collect'],
   ]);
 });
 

@@ -5,8 +5,8 @@
 // ADDITIVE / non-invasive: capture is a SIDE-TRACK. The existing occupy path is untouched — the city still
 // occupies and clears its defenderLeader exactly as before; we only read the defender before it's cleared
 // and, on a successful capture roll, push a pending decision onto gameState.captureDecisions. If the
-// garrison band has captureChance 0 (safe band / undefended) nothing happens, so old saves + the tutorial
-// occupy flow behave identically.
+// garrison band has captureChance 0 (safe band / undefended) nothing happens, so old saves and the
+// settlement flow behave identically.
 //
 // Determinism: the capture roll AND the later recruit roll come from ONE seeded RNG (mission+territory+now),
 // so the outcome is fixed at victory time (no reload-to-reroll) and the same whether resolved online or by

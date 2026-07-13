@@ -36,7 +36,6 @@ const COMPONENT_FAMILIES = freezeList([
   'Network',
   'Transition',
   'Formation',
-  'TutorialFocus',
   'CommandIntent',
   'Animation',
   'Snapshot',
@@ -53,7 +52,6 @@ const SNAPSHOT_KEYS = freezeList([
   'FormationSnapshot',
   'BattleSnapshot',
   'FogSnapshot',
-  'TutorialSnapshot',
   'DebugSnapshot',
   'RendererSnapshot',
 ]);

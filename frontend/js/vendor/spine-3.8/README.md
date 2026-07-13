@@ -18,12 +18,5 @@ frontend/js/vendor/spine-3.8/spine-ts/
 Do not ship the full `spine-ts/` source/examples folder unless a future build
 step explicitly needs it.
 
-Tutorial advisor asset location:
-
-```text
-frontend/assets/art/spine/tutorial/advisor/tutorial_advisor.json
-frontend/assets/art/spine/tutorial/advisor/tutorial_advisor.atlas
-frontend/assets/art/spine/tutorial/advisor/tutorial_advisor.png
-```
 
 Use local project paths only. Do not load this runtime from CDN URLs.

@@ -48,7 +48,6 @@ test('EcsBoundaryManifest includes required component families and modes', () =>
     'modal:event',
     'modal:rewardReveal',
     'modal:confirmDialog',
-    'tutorial',
   ].forEach((mode) => {
     assert.equal(EcsBoundaryManifest.modeKeys.includes(mode), true);
   });
@@ -63,7 +62,6 @@ test('EcsBoundaryManifest locks snapshot keys and retires bridge owner policy', 
     'FormationSnapshot',
     'BattleSnapshot',
     'FogSnapshot',
-    'TutorialSnapshot',
     'DebugSnapshot',
     'RendererSnapshot',
   ]);

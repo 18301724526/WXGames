@@ -8,7 +8,7 @@ test('InputIntent exposes frozen covered-mode route vocabulary', () => {
   assert.deepEqual(InputIntent.KIND_VALUES, ['drag', 'gesture', 'tap']);
   assert.equal(Object.isFrozen(InputIntent.INPUT_ROUTES), true);
   assert.equal(InputIntent.isCoveredRoute('tech-tree'), true);
-  assert.equal(InputIntent.isCoveredRoute('tutorial'), false);
+  assert.equal(InputIntent.isCoveredRoute('unknown'), false);
 });
 
 test('createPhysicalIntent returns a frozen, normalized, serializable shape', () => {

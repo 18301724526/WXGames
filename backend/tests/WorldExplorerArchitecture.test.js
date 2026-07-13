@@ -10,11 +10,10 @@ const WorldCitySpawner = require('../services/worldCombat/WorldCitySpawner');
 const RoutePlanner = require('../services/worldExplorer/WorldExplorerRoutePlanner');
 const MissionNormalizer = require('../services/worldExplorer/WorldExplorerMissionNormalizer');
 const Progression = require('../services/worldExplorer/WorldExplorerProgression');
+const Shared = require('../services/worldExplorer/WorldExplorerShared');
 const ClientState = require('../services/worldExplorer/WorldExplorerClientState');
-  const Shared = require('../services/worldExplorer/WorldExplorerShared');
 const Actions = require('../services/worldExplorer/WorldExplorerActions');
 const Realtime = require('../services/realtime');
-const TutorialFlowShared = require('../../shared/tutorialFlowConfig');
 
 const serviceRoot = path.join(__dirname, '..', 'services');
 const explorerRoot = path.join(serviceRoot, 'worldExplorer');
@@ -39,7 +38,6 @@ test('WorldExplorerService stays a facade over focused explorer modules', () => 
     'WorldExplorerRoutePlanner.js',
     'WorldExplorerShared.js',
     'WorldExplorerTrace.js',
-    'WorldExplorerTutorial.js',
     'WorldExplorerVision.js',
     'WorldMarchVerification.js',
   ]);
@@ -68,7 +66,6 @@ test('world explorer modules preserve the public exploration contract', () => {
     worldMap: { seed: 'architecture-seed', tiles: [] },
     territories: [],
     exploreMissions: [mission],
-    tutorial: { completed: true },
   };
 
   assert.equal(manual.success, true);
@@ -130,62 +127,12 @@ test('WorldExplorerMissionNormalizer derives revealed route identity from coordi
   assert.equal(JSON.stringify(mission).includes('legacy-route'), false);
 });
 
-test('tutorial empty-city guarantee follows shared tutorial step-name ordering', () => {
-  const { TUTORIAL_STEPS } = TutorialFlowShared;
-  const base = { tutorial: { completed: false, disabled: false, grants: {} } };
-
-  assert.equal(
-    RoutePlanner.shouldGuaranteeTutorialEmptyCity({
-      tutorial: { ...base.tutorial, currentStep: TUTORIAL_STEPS.formationPanelOpened },
-    }),
-    false,
-  );
-  assert.equal(
-    RoutePlanner.shouldGuaranteeTutorialEmptyCity({
-      tutorial: { ...base.tutorial, currentStep: TUTORIAL_STEPS.scoutFormationSaved },
-    }),
-    true,
-  );
-  assert.equal(
-    RoutePlanner.shouldGuaranteeTutorialEmptyCity({
-      tutorial: { ...base.tutorial, currentStep: TUTORIAL_STEPS.scoutWorldPanelOpened },
-    }),
-    true,
-  );
-  assert.equal(
-    RoutePlanner.shouldGuaranteeTutorialEmptyCity({
-      tutorial: { ...base.tutorial, currentStep: TUTORIAL_STEPS.firstCityDiscovered },
-    }),
-    false,
-  );
-  assert.equal(
-    RoutePlanner.shouldGuaranteeTutorialEmptyCity({
-      tutorial: { ...base.tutorial, currentStep: undefined },
-    }),
-    false,
-  );
-  assert.equal(
-    RoutePlanner.shouldGuaranteeTutorialEmptyCity({
-      tutorial: {
-        ...base.tutorial,
-        currentStep: TUTORIAL_STEPS.scoutFormationSaved,
-        grants: { [Shared.TUTORIAL_FIRST_SITE_GRANT_KEY]: true },
-      },
-    }),
-    false,
-  );
-});
-
-// The plannedSites materialization path is deleted. World cities are authored once, then projected or
-// materialized through the shared discovery helper without route-local invented sites.
-
 test('WorldExplorerService facade exposes only the actor march API', () => {
   const expectedApi = [
     'EXPLORE_REVEAL_RADIUS',
     'EXPLORE_STEP_DURATION_MS',
     'MAX_ACTIVE_EXPLORE_MISSIONS',
     'MAX_MANUAL_ROUTE_LENGTH',
-    'TUTORIAL_FIRST_SITE_GRANT_KEY',
     'advanceExploreMissions',
     'buildManualRoute',
     'getClientState',
@@ -267,8 +214,8 @@ test('world explorer generation context hashes nearby state instead of the full 
 });
 
 test('companion city planner authors a neutral city from the spawn allocation target', () => {
-  const planned = WorldCitySpawner.planCompanionCity('tutorial-explorer-seed', {
-    allocation: { tutorialTarget: { q: 1, r: 0, terrain: 'plains' } },
+  const planned = WorldCitySpawner.planCompanionCity('world-explorer-seed', {
+    allocation: { starterTarget: { q: 1, r: 0, terrain: 'plains' } },
   });
 
   assert.equal(planned.id, 'site_1_0');
@@ -289,7 +236,7 @@ test('companion city planner skips march-blocked target tiles', (t) => {
   WorldMapService.chooseTerrain = (_seed, q, r) => (q === 1 && r === 0 ? 'ocean' : 'plains');
 
   const planned = WorldCitySpawner.planCompanionCity('any-seed', {
-    allocation: { tutorialTarget: { q: 1, r: 0 } },
+    allocation: { starterTarget: { q: 1, r: 0 } },
   });
 
   assert.equal(planned, null);
@@ -326,7 +273,7 @@ test('world explorer progression reveals a step through the world-map batch API'
       generationContext: coord.overrides?.generationContext,
     }));
   };
-  const gameState = { territories: [], tutorial: { completed: true } };
+  const gameState = { territories: [] };
   const mission = {
     id: 'batch-step',
     plannedTiles: [{
@@ -405,7 +352,7 @@ test('world explorer progression merges vision-discovered city tiles into the re
   };
   WorldMapService.recordVisionSource = () => {};
 
-  const gameState = { territories: [], worldMap: { tiles: [] }, tutorial: { completed: true } };
+  const gameState = { territories: [], worldMap: { tiles: [] } };
   const mission = { id: 'merge-discovered-step', plannedTiles: [], plannedSites: [] };
 
   const revealed = Progression.revealStep(gameState, mission, { q: 2, r: -1 }, new Date('2026-06-06T00:00:00.000Z'), {
@@ -437,7 +384,6 @@ test('world explorer progression stores revealed mission ids from coordinates', 
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = {
     territories: [],
-    tutorial: { completed: true },
     exploreMissions: [{
       id: 'coordinate-revealed-ids',
       mode: 'manual',

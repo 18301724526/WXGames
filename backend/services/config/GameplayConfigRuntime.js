@@ -4,9 +4,7 @@ const ConfigRuntimeLoader = require('./ConfigRuntimeLoader');
 const FallbackGameConfig = require('../../config/GameConfig');
 const FallbackBuildingConfig = require('../../config/BuildingConfig');
 const FallbackEraConfig = require('../../config/EraConfig');
-const FallbackTutorialFlowConfig = require('../../config/TutorialFlowConfig');
 const FallbackTechTreeConfig = require('../../config/TechTreeConfig');
-const SharedTutorialFlowConfig = require('../../../shared/tutorialFlowConfig');
 const { clone } = require('../../../shared/objectUtils');
 
 const GAMEPLAY_CONFIG_RUNTIME_SCHEMA = 'gameplay-config-runtime-v1';
@@ -183,11 +181,6 @@ function getEraPayload() {
   return getRuntimePayload('era-config') || FallbackEraConfig.raw();
 }
 
-function getTutorialPayload() {
-  ensureInitialized();
-  return getRuntimePayload('tutorial-flow-config') || FallbackTutorialFlowConfig.raw();
-}
-
 function getTechPayload() {
   ensureInitialized();
   return getRuntimePayload('tech-tree-config') || FallbackTechTreeConfig.raw();
@@ -352,29 +345,6 @@ const EraConfig = {
   },
 };
 
-const TutorialFlowConfig = {
-  get TUTORIAL_STEPS() {
-    return getTutorialPayload().steps || {};
-  },
-  get TUTORIAL_EVENT_STEPS() {
-    return getTutorialPayload().eventSteps || {};
-  },
-  get PASS_THROUGH_ACTIONS() {
-    return getTutorialPayload().passThroughActions || [];
-  },
-  get CLIENT_TUTORIAL_STEP_GATES() {
-    return getTutorialPayload().clientStepGates || {};
-  },
-  createPhaseCompleted(currentStep) {
-    const steps = this.TUTORIAL_STEPS;
-    return {
-      newbie: SharedTutorialFlowConfig.stepAtLeast(currentStep, steps.eraAdvancedTo1),
-      era2: SharedTutorialFlowConfig.stepAtLeast(currentStep, steps.lumbermillBuilt),
-      scoutFormation: SharedTutorialFlowConfig.stepAtLeast(currentStep, steps.scoutFormationSaved),
-    };
-  },
-};
-
 const TechTreeConfig = {
   get TECH_POINT_GRANTS() {
     return getTechPayload().techPointGrants || {};
@@ -410,7 +380,6 @@ module.exports = {
   GameConfig,
   BuildingConfig,
   EraConfig,
-  TutorialFlowConfig,
   TechTreeConfig,
   configureRuntimeConfig,
   getTaskDefinitionsPayload,

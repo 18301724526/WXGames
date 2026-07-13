@@ -423,14 +423,22 @@ test('territory conquest missions module owns settlement and battle resolution c
 
   assert.equal(Conquest.getOccupationMode({ owner: 'neutral' }), 'settlement');
   assert.equal(Conquest.getOccupationMode({ owner: 'tribe' }), 'conquest');
-  // 占城守军: post-tutorial, a neutral city in the safe spawn band (capitalDistance<=3) still
-  // settles directly, but a farther defended band must be taken by battle. During the tutorial
-  // every neutral city settles (frictionless first city) regardless of distance. capitalDistance
-  // is the 距首城 ring distance stamped on the territory by TerritoryStateNormalizer.
-  const tutorialDone = { tutorial: { completed: true } };
-  assert.equal(Conquest.getOccupationMode({ owner: 'neutral', capitalDistance: 2 }, tutorialDone), 'settlement');
-  assert.equal(Conquest.getOccupationMode({ owner: 'neutral', capitalDistance: 6 }, tutorialDone), 'conquest');
-  assert.equal(Conquest.getOccupationMode({ owner: 'neutral', capitalDistance: 6 }, { tutorial: {} }), 'settlement');
+  // The capital is not an expansion city. The first neutral expansion settles without combat,
+  // while later cities follow their distance-band garrison policy.
+  const capitalOnly = {
+    playerId: 'territory-player',
+    territories: [{ id: 'capital', type: 'capital', owner: 'player', status: 'occupied' }],
+  };
+  const firstExpansionOccupied = {
+    ...capitalOnly,
+    territories: [
+      ...capitalOnly.territories,
+      { id: 'site-first', type: 'city', owner: 'player', status: 'occupied' },
+    ],
+  };
+  assert.equal(Conquest.getOccupationMode({ owner: 'neutral', capitalDistance: 6 }, capitalOnly), 'settlement');
+  assert.equal(Conquest.getOccupationMode({ owner: 'neutral', capitalDistance: 2 }, firstExpansionOccupied), 'settlement');
+  assert.equal(Conquest.getOccupationMode({ owner: 'neutral', capitalDistance: 6 }, firstExpansionOccupied), 'conquest');
   // Combat expeditions keep the requested amount (floor of 1); settlement needs no soldiers.
   assert.equal(Conquest.normalizeExpeditionConfig({ soldiers: 20 }, { owner: 'tribe', defense: 250 }).soldiers, 20);
   assert.equal(Conquest.normalizeExpeditionConfig({}, { owner: 'tribe', defense: 250 }).soldiers, 250);

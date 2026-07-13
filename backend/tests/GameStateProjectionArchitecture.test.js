@@ -98,7 +98,6 @@ function invokeRoute(route, req, res = createResponse()) {
 function createNormalizedRouteState(playerId = 'projection-route-test') {
   return {
     playerId,
-    tutorial: { completed: true, currentStep: 99 },
     currentEra: 0,
     activeCityId: 'capital',
     resources: { food: 100, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },

@@ -8,13 +8,6 @@
     phase2: 'civilizationFirePhase2',
   };
 
-  const TUTORIAL_KEYS = [
-    'tutorialAutoStarted',
-    'tutorialStep',
-    'tutorialCompleted',
-    'tutorialIntroAdvisorSeen.v2',
-  ];
-
   class H5AuthStorageAdapter {
     constructor(storage = null) {
       this.storage = storage || null;
@@ -81,14 +74,9 @@
       this.remove(KEYS.rememberPassword);
     }
 
-    clearTutorialStorage() {
-      TUTORIAL_KEYS.forEach((key) => this.remove(key));
-    }
-
     clearSession() {
       this.clearToken();
       this.remove(KEYS.phase2);
-      this.clearTutorialStorage();
     }
   }
 

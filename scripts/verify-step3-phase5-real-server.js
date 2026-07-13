@@ -10,7 +10,6 @@ const { createRequire } = require('node:module');
 const GameAPI = require('../frontend/js/api/GameAPI');
 const H5GameApiTransportAdapter = require('../frontend/js/ui/H5GameApiTransportAdapter');
 const GameStateRepository = require('../backend/repositories/GameStateRepository');
-const TutorialService = require('../backend/services/TutorialService');
 const { openDatabase } = require('../backend/services/DatabaseRuntime');
 const { createRecordingFetch } = require('./verify-step3-phase2-real-server');
 const {
@@ -66,10 +65,6 @@ function sleep(ms) {
 function prepareBuildState(repository, playerId) {
   const state = repository.findByPlayerId(playerId);
   if (!state) throw new Error(`missing seeded player state: ${playerId}`);
-  state.tutorial = TutorialService.manualAdvance(
-    TutorialService.createInitialTutorialState(),
-    TutorialService.TUTORIAL_STEPS.cityEntered,
-  );
   const saved = repository.save(state);
   return summarizeState(saved);
 }

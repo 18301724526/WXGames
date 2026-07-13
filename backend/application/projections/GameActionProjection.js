@@ -1,6 +1,6 @@
 const TaskCenterService = require('../../services/TaskCenterService');
 
-function buildGameActionView(gameState, tutorial, gameStateService, projection = {}) {
+function buildGameActionView(gameState, gameStateService, projection = {}) {
   const clientState = gameStateService.getClientGameStateFromNormalized
     ? gameStateService.getClientGameStateFromNormalized(gameState, projection)
     : gameStateService.getClientGameState(gameState, projection);
@@ -10,9 +10,6 @@ function buildGameActionView(gameState, tutorial, gameStateService, projection =
   const taskCenter = TaskCenterService.getTaskCenter(gameState);
   return {
     gameState: clientState,
-    tutorial,
-    softGuide: null,
-    guideTasks: { visible: false, tasks: [] },
     taskCenter,
     eraProgress,
   };

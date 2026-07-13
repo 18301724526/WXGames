@@ -90,9 +90,6 @@ function createHost(overrides = {}) {
     renderTaskCenterPanel(...args) { calls.push(['renderTaskCenterPanel', args]); },
     renderTechDetailModal(...args) { calls.push(['renderTechDetailModal', args]); },
     renderTopBar(...args) { calls.push(['renderTopBar', args]); return 96; },
-    renderTutorialAdvisorDialogue(...args) { calls.push(['renderTutorialAdvisorDialogue', args]); },
-    renderTutorialHighlight(...args) { calls.push(['renderTutorialHighlight', args]); },
-    renderTutorialIntro(...args) { calls.push(['renderTutorialIntro', args]); },
     renderWorldMarchHud(...args) { calls.push(['renderWorldMarchHud', args]); },
     renderWorldSiteModal(...args) { calls.push(['renderWorldSiteModal', args]); },
     setHitTargets(targets) { calls.push(['setHitTargets', targets]); },
@@ -146,7 +143,7 @@ test('CanvasFrameRenderer delegates hud mode to hud overlay without clearing nor
     renderCall: 'renderBattleSceneOverlay',
   },
 ].forEach((scenario) => {
-  test(`CanvasFrameRenderer clears tutorial highlight before the ${scenario.name} early return`, () => {
+  test(`CanvasFrameRenderer preserves the ${scenario.name} early return`, () => {
     const host = createHost();
 
     new CanvasFrameRenderer({ host }).render({}, scenario.options);
@@ -155,14 +152,9 @@ test('CanvasFrameRenderer delegates hud mode to hud overlay without clearing nor
       'beginFrame',
       'setHitTargets',
       'clear',
-      'renderTutorialHighlight',
       scenario.renderCall,
       'endFrame',
     ]);
-    assert.deepEqual(
-      host.calls.find((call) => call[0] === 'renderTutorialHighlight')?.[1],
-      [null],
-    );
   });
 });
 
@@ -207,7 +199,6 @@ test('CanvasFrameRenderer preserves map-home military frame overlay sequence', (
   assert.equal(names.includes('renderSettingsPanel'), true);
   assert.equal(names.includes('renderFloatingAccountButton'), true);
   assert.equal(names.includes('renderFloatingAdvisorButton'), false);
-  assert.equal(names.includes('renderTutorialIntro'), true);
   assert.equal(names.at(-1), 'endFrame');
 });
 
@@ -477,83 +468,6 @@ test('CanvasFrameRenderer treats expired manual active mission as idle in explor
   // Mission expired -> no explore progress chip, but back-to-city stays.
   assert.equal(activeHost.calls.some((call) => call[0] === 'drawText' && String(call[1][0]).includes('探索中')), false);
   assert.equal(activeHost.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'resetWorldPan'), true);
-});
-
-test('CanvasFrameRenderer hides debug reset while tutorial shields are active', () => {
-  const host = createHost({
-    renderTutorialHighlight(...args) {
-      this.calls.push(['renderTutorialHighlight', args]);
-      this.addHitTarget({ x: 0, y: 0, width: this.width, height: this.height }, { type: 'blockCanvasModal' });
-    },
-  });
-  const renderer = new CanvasFrameRenderer({ host });
-
-  renderer.render({ resources: {} }, {
-    activeTab: 'resources',
-    tutorialHighlight: {
-      rect: { left: 12, top: 160, width: 80, height: 40 },
-      message: 'guide',
-    },
-  });
-
-  const resetIndex = host.calls.findLastIndex((call) => call[0] === 'addHitTarget' && call[1][1].type === 'requestResetGame');
-  const blockIndex = host.calls.findLastIndex((call) => call[0] === 'addHitTarget' && call[1][1].type === 'blockCanvasModal');
-  assert.equal(blockIndex > -1, true);
-  assert.equal(resetIndex, -1);
-  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1][2] === 76 && call[1][3] === 28), false);
-});
-
-test('CanvasFrameRenderer hides debug reset behind tutorial advisor dialogue', () => {
-  const host = createHost();
-  const renderer = new CanvasFrameRenderer({ host });
-
-  renderer.render({ resources: {} }, {
-    activeTab: 'resources',
-    tutorialAdvisorDialogue: {
-      message: 'guide',
-      advisorName: 'advisor',
-      source: 'tutorial',
-    },
-  });
-
-  assert.equal(
-    host.calls.some((call) => call[0] === 'addHitTarget' && call[1][1].type === 'requestResetGame'),
-    false,
-  );
-  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1][2] === 76 && call[1][3] === 28), false);
-});
-
-test('CanvasFrameRenderer prioritizes tutorial spine advisor over generic advisor panels', () => {
-  const host = createHost();
-  const renderer = new CanvasFrameRenderer({ host });
-  const tutorialAdvisorDialogue = {
-    message: '民居已经建立起来了。',
-    advisorName: '谋士',
-    source: 'houseBuilt',
-  };
-
-  renderer.render({ resources: {}, softGuide: { message: 'generic' } }, {
-    activeTab: 'resources',
-    showAdvisor: true,
-    tutorialAdvisorDialogue,
-  });
-
-  let names = callNames(host);
-  assert.equal(names.includes('renderTutorialAdvisorDialogue'), true);
-  assert.equal(names.includes('renderAdvisor'), false);
-  assert.equal(names.includes('renderAdvisorPanel'), false);
-
-  host.calls.length = 0;
-  renderer.renderMapHomeOverlays({}, {
-    showAdvisor: true,
-    tutorialAdvisorDialogue,
-  });
-
-  names = callNames(host);
-  assert.equal(names.includes('renderTutorialAdvisorDialogue'), true);
-  assert.equal(names.includes('renderAdvisorPanel'), false);
-  const dialogueCall = host.calls.find((call) => call[0] === 'renderTutorialAdvisorDialogue');
-  assert.deepEqual(dialogueCall[1][2], { action: { type: 'closeAdvisor', source: 'houseBuilt' } });
 });
 
 test('CanvasGameRenderer exposes root frame rendering through facade', () => {

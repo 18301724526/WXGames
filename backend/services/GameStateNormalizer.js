@@ -1,5 +1,4 @@
 const BuildingState = require('../modules/BuildingState');
-const TutorialService = require('./TutorialService');
 const BuildingActionService = require('./BuildingActionService');
 const BuildingEffectCalculator = require('../calculators/BuildingEffectCalculator');
 const MilitaryService = require('./MilitaryService');
@@ -60,8 +59,6 @@ function createInitialGameState(playerId, options = {}) {
     offlineEventLog: [],
     negativeStreak: 0,
     lastEventAt: 0,
-    tutorial: TutorialService.createInitialTutorialState(),
-    softGuideState: {},
     military: { soldiers: 0, soldierCap: 0, trainingProgress: 0, trainingIntervalSeconds: 0, trainingBatchSize: 0, defensePerSoldier: 0.01, defense: 0 },
     polity: TerritoryService.createInitialPolity(),
     territories: TerritoryService.createInitialTerritories(nowIso, { spawn }),
@@ -135,8 +132,6 @@ function normalizeStateStructure(rawState) {
   EventService.cleanupRuntimeState(state);
   state.offlineSnapshot = state.offlineSnapshot || {};
   state.offlineEventLog = state.offlineEventLog || [];
-  state.tutorial = TutorialService.normalizeTutorialState(state.tutorial);
-  state.softGuideState = state.softGuideState && typeof state.softGuideState === 'object' ? state.softGuideState : {};
   state.military = MilitaryService.normalizeMilitaryState(state.military, state);
   state.currentEra = Number.isFinite(state.currentEra) ? state.currentEra : 0;
   state.talentPolicies = TalentPolicyService.normalizeTalentPolicyState(state.talentPolicies);

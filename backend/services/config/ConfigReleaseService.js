@@ -139,6 +139,9 @@ function summarizeComparison(comparison = null) {
   const changedRegistries = Array.isArray(comparison.changedRegistries)
     ? comparison.changedRegistries
     : [];
+  const retiredRegistries = Array.isArray(comparison.retiredRegistries)
+    ? comparison.retiredRegistries
+    : [];
   return {
     success: comparison.success === true,
     changedCount: changedRegistries.length,
@@ -148,6 +151,8 @@ function summarizeComparison(comparison = null) {
     changedRegistryIds: changedRegistries.map((entry) => entry.id).filter(Boolean),
     addedRegistryIds: Array.isArray(comparison.addedRegistryIds) ? comparison.addedRegistryIds : [],
     removedRegistryIds: Array.isArray(comparison.removedRegistryIds) ? comparison.removedRegistryIds : [],
+    retiredRegistryIds: retiredRegistries.map((entry) => entry.id).filter(Boolean),
+    retiredRegistries,
   };
 }
 

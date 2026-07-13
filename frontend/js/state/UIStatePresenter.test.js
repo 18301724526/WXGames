@@ -39,10 +39,6 @@ test('UIStatePresenter delegates shell view state while preserving facade contra
   assert.equal(UIStatePresenter.buildAuthCredentialViewState(credentials).passwordValue, '');
   assert.deepEqual(UIStatePresenter.buildAuthShellViewState({ authenticated: false, message: 'login required' }), ShellPresenter.buildAuthShellViewState({ authenticated: false, message: 'login required' }));
 
-  const highlightRect = { top: 18, left: 40, width: 112, height: 48, bottom: 66 };
-  const viewport = { innerWidth: 390, innerHeight: 720 };
-  assert.deepEqual(UIStatePresenter.buildTutorialHighlightViewState(highlightRect, viewport), ShellPresenter.buildTutorialHighlightViewState(highlightRect, viewport));
-
   const shellState = {
     currentTab: 'territory',
     militaryView: 'world',
@@ -897,16 +893,14 @@ test('UIStatePresenter delegates building view state while preserving facade con
       threatDefense: 1,
     },
   };
-  const tutorial = { currentStep: 7, completed: false };
-
-  const view = UIStatePresenter.buildBuildingViewState(state, tutorial, buildingConfig, { activeCategory: 'all' });
-  const direct = BuildingPresenter.buildBuildingViewState(state, tutorial, buildingConfig, { activeCategory: 'all' });
+  const view = UIStatePresenter.buildBuildingViewState(state, buildingConfig, { activeCategory: 'all' });
+  const direct = BuildingPresenter.buildBuildingViewState(state, buildingConfig, { activeCategory: 'all' });
 
   assert.deepEqual(view, direct);
   assert.equal(typeof UIStatePresenter.buildBuildingViewState, 'function');
   assert.equal(view.cards.length, 3);
   assert.equal(view.cards.find((card) => card.id === 'farm').button.disabled, false);
-  assert.equal(view.cards.find((card) => card.id === 'house').button.label, '引导中锁定');
+  assert.equal(view.cards.find((card) => card.id === 'house').button.disabled, true);
   assert.equal(view.cards.find((card) => card.id === 'barracks').militaryLines[0], '士兵 3/20 · 防御 3');
   assert.deepEqual(UIStatePresenter.buildCostViewState({ wood: 1234 }).parts[0], { resource: 'wood', value: 1234, text: '1.2k' });
 });
@@ -1053,17 +1047,15 @@ test('UIStatePresenter delegates civilization view state while preserving facade
     },
   };
 
-  const lockedView = UIStatePresenter.buildCivilizationViewState(state, { currentStep: 8, completed: false });
-  const directLockedView = CivilizationPresenter.buildCivilizationViewState(state, { currentStep: 8, completed: false });
-  const unlockedView = UIStatePresenter.buildCivilizationViewState(state, { currentStep: 9, completed: false });
-  const subCityView = UIStatePresenter.buildCivilizationViewState({ ...state, isCapitalCity: false }, { completed: true });
+  const lockedView = UIStatePresenter.buildCivilizationViewState(state, { canOpenCivilizationTab: false });
+  const directLockedView = CivilizationPresenter.buildCivilizationViewState(state, { canOpenCivilizationTab: false });
+  const unlockedView = UIStatePresenter.buildCivilizationViewState(state, { canOpenCivilizationTab: true });
+  const subCityView = UIStatePresenter.buildCivilizationViewState({ ...state, isCapitalCity: false }, { canOpenCivilizationTab: true });
 
   assert.deepEqual(lockedView, directLockedView);
-  assert.equal(UIStatePresenter.canAdvanceEraByTutorial(state, { currentStep: 8, completed: false }), false);
-  assert.equal(UIStatePresenter.canAdvanceEraByTutorial(state, { currentStep: 9, completed: false }), true);
   assert.equal(lockedView.progress.percentage, 100);
   assert.equal(lockedView.advanceButton.disabled, true);
-  assert.equal(lockedView.advanceButton.canAdvanceByTutorial, false);
+  assert.equal(lockedView.advanceButton.canOpenCivilizationTab, false);
   assert.equal(unlockedView.advanceButton.disabled, false);
   assert.equal(subCityView.advanceButton.disabled, true);
   assert.deepEqual(UIStatePresenter.buildEraConditionViewState(state.eraProgress.conditions[0]), {
@@ -1320,13 +1312,13 @@ test('UIStatePresenter squad quick panel names rows by leader on the REAL server
     activeCityId: 'capital',
     famousPersons: {
       people: [
-        { id: 'fp_tutorial_scout_180t6mi', name: '斥候', attributes: {} },
+        { id: 'fp_scout_180t6mi', name: '斥候', attributes: {} },
         { id: 'fp_hero_zhangfei_9k2m1x', name: '张飞', attributes: {} },
       ],
     },
     military: {
       formations: [
-        { slot: 1, name: '', memberIds: ['fp_tutorial_scout_180t6mi'], maxMembers: 5, maxSoldiersPerMember: 1000, soldierAssignments: { fp_tutorial_scout_180t6mi: 1000 }, soldiersAssigned: 1000 },
+        { slot: 1, name: '', memberIds: ['fp_scout_180t6mi'], maxMembers: 5, maxSoldiersPerMember: 1000, soldierAssignments: { fp_scout_180t6mi: 1000 }, soldiersAssigned: 1000 },
         { slot: 2, name: '虎豹骑', memberIds: ['fp_hero_zhangfei_9k2m1x'], maxMembers: 5, maxSoldiersPerMember: 1000, soldierAssignments: { fp_hero_zhangfei_9k2m1x: 500 }, soldiersAssigned: 500 },
         { slot: 3, name: '', memberIds: [], maxMembers: 5, maxSoldiersPerMember: 1000, soldierAssignments: {}, soldiersAssigned: 0 },
       ],
@@ -1549,7 +1541,7 @@ test('UIStatePresenter enables direct occupation of an empty site with zero sold
     defense: 100,
     recommendedSoldiers: 100,
   };
-  // No tutorial grant, no reserve soldiers: settlement needs neither.
+  // No special grant and no reserve soldiers: settlement needs neither.
   const territoryState = { availableSoldiers: 0 };
   const action = UIStatePresenter.buildWorldSiteActionViewState(emptySite, territoryState, {});
   const conquer = action.buttons.find((button) => button.action === 'conquer');

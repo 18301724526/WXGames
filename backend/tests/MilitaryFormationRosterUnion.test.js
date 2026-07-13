@@ -5,14 +5,12 @@ const MilitaryService = require('../services/MilitaryService');
 
 // Regression: formation members must validate against the FULL famous-person
 // roster, not just the legacy flat `gameState.famousPeople`. The persisted
-// single-source is `famousPersons.people`; when the tutorial scout grant became
-// a one-shot task reward (nothing repopulated the flat copy on load),
-// formation normalization silently dropped the scout from formation slot 1,
-// which tripped the world-march tutorial gate (403 TUTORIAL_BLOCKED) even though
-// the scout was correctly in the formation. See TutorialSelectors.hasTutorialScoutFormation.
+// single-source is `famousPersons.people`; when a one-shot reward wrote only
+// that collection, formation normalization silently dropped the person from
+// formation slot 1 after reload.
 
 test('city formations normalization keeps members present only in famousPersons.people', () => {
-  const scoutId = 'fp_tutorial_scout_alus23';
+  const scoutId = 'fp_starter_scout_alus23';
   const gameState = {
     activeCityId: 'capital',
     // flat famousPeople is ABSENT (the failing production shape after reload)

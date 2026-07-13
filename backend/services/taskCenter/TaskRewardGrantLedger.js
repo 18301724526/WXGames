@@ -53,20 +53,11 @@ function ensureTaskRewardGrants(gameState) {
   return gameState.taskRewardGrants;
 }
 
-function readLegacyTutorialGrant(gameState, key) {
-  return gameState?.tutorial?.grants?.[key] || null;
-}
-
 function getFamousPersonGrant(gameState, key) {
   if (!gameState || typeof gameState !== 'object') return null;
   const ledger = ensureTaskRewardGrants(gameState);
   const existing = normalizeFamousPersonGrant(ledger.famousPersons[key]);
   if (existing) return existing;
-  const legacy = normalizeFamousPersonGrant(readLegacyTutorialGrant(gameState, key));
-  if (legacy) {
-    ledger.famousPersons[key] = legacy;
-    return legacy;
-  }
   return null;
 }
 
@@ -75,11 +66,6 @@ function getSoldierGrant(gameState, key) {
   const ledger = ensureTaskRewardGrants(gameState);
   const existing = normalizeSoldierGrant(ledger.soldiers[key]);
   if (existing) return existing;
-  const legacy = normalizeSoldierGrant(readLegacyTutorialGrant(gameState, key));
-  if (legacy) {
-    ledger.soldiers[key] = legacy;
-    return legacy;
-  }
   return null;
 }
 

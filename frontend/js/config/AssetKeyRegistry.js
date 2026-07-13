@@ -93,7 +93,6 @@
     asset('world-site:ruins', 'world-site', 'assets/art/world-site-ruins-cutout.png'),
     asset('world-site:town', 'world-site', 'assets/art/world-site-town-cutout.png'),
 
-    asset('spine:tutorial-advisor:texture', 'tutorial', 'assets/art/spine/tutorial/advisor/tutorial_advisor.png'),
     asset('battle:background:forest-camp', 'battle', 'assets/art/battle/battlefield-forest-camp.png'),
   ]);
 

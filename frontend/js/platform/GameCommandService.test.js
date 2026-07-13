@@ -4,8 +4,6 @@ const assert = require('node:assert/strict');
 const GameCommandService = require('./GameCommandService');
 const LocaleText = require('../ecs/resource/LocaleText');
 const CanvasGameApp = require('./CanvasGameApp');
-const UIStatePresenter = require('../state/UIStatePresenter');
-const TutorialGuideController = require('../tutorial/TutorialGuideController');
 const ChangeEventBus = require('../state/ChangeEventBus');
 const { CanvasModalOwnerTestHost } = require('../../test-support/CanvasOwnerTestHarness');
 
@@ -92,7 +90,7 @@ test('GameCommandService research applies API state and keeps selected tech UI s
   assert.deepEqual(calls.find(([name]) => name === 'showFloatingText'), ['showFloatingText', 'researched writing']);
 });
 
-test('GameCommandService keeps tutorial hint but submits non-house building', async () => {
+test('GameCommandService submits non-house building commands', async () => {
   const apiCalls = [];
   const api = {
     async build(buildingId) {
@@ -101,17 +99,10 @@ test('GameCommandService keeps tutorial hint but submits non-house building', as
     },
   };
   const { host, calls } = createCommandHost(api);
-  host.emitTutorialEvent = (eventName, payload) => {
-    calls.push(['tutorialEvent', eventName, payload.buildingId, payload.action]);
-    return payload.buildingId === 'house';
-  };
   const service = new GameCommandService({ host });
 
   assert.equal(await service.buildBuilding('farm'), true);
   assert.deepEqual(apiCalls, ['farm']);
-  assert.deepEqual(calls.filter(([name]) => name === 'tutorialEvent'), [
-    ['tutorialEvent', 'buildingAction', 'farm', 'build'],
-  ]);
   assert.equal(calls.some(([name]) => name === 'showFloatingText'), true);
 });
 
@@ -242,7 +233,7 @@ test('CanvasGameApp advanceEra returns true after applying successful API state'
   const calls = [];
   const changeEventBus = ChangeEventBus.createEventBus();
   changeEventBus.subscribe('eraAdvanced', ({ result }) => {
-    calls.push(['eraAdvanced', result.tutorial.currentStep]);
+    calls.push(['eraAdvanced', result.gameState.currentEra]);
   });
   const app = new CanvasGameApp({
     changeEventBus,
@@ -272,13 +263,7 @@ test('CanvasGameApp advanceEra returns true after applying successful API state'
             isCapitalCity: true,
             eraProgress: { canAdvance: false },
           },
-          tutorial: { completed: false, currentStep: 6 },
         };
-      },
-    },
-    tutorialController: {
-      sync(tutorial) {
-        calls.push(['sync', tutorial.currentStep]);
       },
     },
   });
@@ -291,243 +276,9 @@ test('CanvasGameApp advanceEra returns true after applying successful API state'
   assert.equal(app.state.currentEra, 1);
   assert.deepEqual(calls.filter(([name]) => ['advanceEra', 'eraAdvanced', 'showFloatingText'].includes(name)), [
     ['advanceEra'],
-    ['eraAdvanced', 6],
+    ['eraAdvanced', 1],
     ['showFloatingText', '进入农耕时代'],
   ]);
-});
-
-test('CanvasGameApp can advance era two when farm completion is promoted to era guide step', async () => {
-  const calls = [];
-  const changeEventBus = ChangeEventBus.createEventBus();
-  changeEventBus.subscribe('eraAdvanced', ({ result }) => {
-    calls.push(['eraAdvanced', result.tutorial.currentStep]);
-  });
-  const app = new CanvasGameApp({
-    changeEventBus,
-    runtimeRequired: false,
-    apiRequired: false,
-    rendererRequired: false,
-    presenter: UIStatePresenter,
-    initialState: {
-      currentTab: 'military',
-      currentEra: 1,
-      isCapitalCity: true,
-      resources: { food: 132, knowledge: 10, wood: 0 },
-      buildings: { house: { level: 1 }, farm: { level: 1 } },
-      population: { total: 3 },
-      eraProgress: {
-        canAdvance: true,
-        percentage: 100,
-        conditions: [],
-      },
-      tutorial: { completed: false, currentStep: 9, phaseCompleted: { newbie: true, era2: false } },
-    },
-    api: {
-      async advanceEra() {
-        calls.push(['advanceEra']);
-        return {
-          success: true,
-          message: '进入聚落时代',
-          gameState: {
-            currentTab: 'military',
-            currentEra: 2,
-            isCapitalCity: true,
-            resources: { food: 12, knowledge: 5, wood: 0 },
-            buildings: { house: { level: 1 }, farm: { level: 1 } },
-            eraProgress: { canAdvance: false, percentage: 0, conditions: [] },
-          },
-          tutorial: { completed: false, currentStep: 11, phaseCompleted: { newbie: true, era2: false } },
-        };
-      },
-    },
-    tutorialController: {
-      sync(tutorial) {
-        calls.push(['sync', tutorial.currentStep]);
-      },
-    },
-  });
-  app.tutorial = { completed: false, currentStep: 9, phaseCompleted: { newbie: true, era2: false } };
-  app.showFloatingText = (message) => calls.push(['showFloatingText', message]);
-  app.log = (message) => calls.push(['log', message]);
-  app.renderMilitary = () => calls.push(['renderMilitary']);
-  app.render = () => calls.push(['render']);
-
-  assert.equal(app.canAdvanceEraNow(), true);
-  assert.equal(await app.advanceEra(), true);
-  assert.equal(app.state.currentEra, 2);
-  assert.equal(app.tutorial.currentStep, 11);
-  assert.deepEqual(calls.filter(([name]) => ['advanceEra', 'eraAdvanced', 'showFloatingText'].includes(name)), [
-    ['advanceEra'],
-    ['eraAdvanced', 11],
-    ['showFloatingText', '进入聚落时代'],
-  ]);
-});
-
-test('CanvasGameApp advisor task target opens task center through modal funnels', () => {
-  const calls = [];
-  const app = new CanvasGameApp({
-    runtimeRequired: false,
-    apiRequired: false,
-    rendererRequired: false,
-    initialState: { currentTab: 'resources', softGuide: null },
-    actionController: {
-      handle_openTaskCenter(action) {
-        calls.push(['handle_openTaskCenter', action]);
-        app.showTaskCenter = true;
-        app.activeTaskCenterTab = action.tab;
-        return true;
-      },
-    },
-  });
-  app.openBlockingPanelSnapshot('showAdvisor', true);
-  app.canvasShell = {
-    hideTutorialHighlight() {
-      calls.push(['hideTutorialHighlight']);
-      return true;
-    },
-    actionController: {
-      handle_openTaskCenter(action) {
-        calls.push(['shell_handle_openTaskCenter', action]);
-        app.showTaskCenter = true;
-        app.activeTaskCenterTab = action.tab;
-        app.canvasShell.showTaskCenter = true;
-        app.canvasShell.activeTaskCenterTab = action.tab;
-        return true;
-      },
-    },
-  };
-  app.activeAdvisor = { target: 'task-center-button' };
-
-  assert.equal(app.goToAdvisorTarget(), true);
-  assert.equal(app.isBlockingPanelSnapshotOpen('showAdvisor'), false);
-  assert.equal(app.showTaskCenter, true);
-  assert.equal(app.canvasShell.showTaskCenter, true);
-  assert.equal(app.activeTaskCenterTab, 'main');
-  assert.deepEqual(calls.map(([name]) => name), ['hideTutorialHighlight', 'shell_handle_openTaskCenter']);
-});
-
-test('CanvasGameApp shows tutorial spine advisor dialogue after first house build', () => {
-  const calls = [];
-  const app = new CanvasGameApp({
-    runtimeRequired: false,
-    apiRequired: false,
-    rendererRequired: false,
-    initialState: { currentTab: 'buildings', softGuide: null },
-  });
-  app.tutorial = {
-    completed: false,
-    currentStep: TutorialGuideController.TUTORIAL_STEPS.houseBuilt,
-  };
-  app.tutorialController = new TutorialGuideController({ game: app });
-  app.openBlockingPanelSnapshot('showCityManagement', true);
-  app.openBlockingPanelSnapshot('showSubcityList', true);
-  app.openBlockingPanelSnapshot('activeCommandPanel', 'capital');
-  app.openEventSnapshot('event-1');
-  app.canvasShell = {};
-  app.renderCanvasSurface = (tab) => calls.push(['renderCanvasSurface', tab]);
-
-  assert.equal(app.isEventSnapshotOpen(), true);
-  assert.equal(app.maybeShowHouseBuiltAdvisor('build', 'house'), true);
-
-  assert.equal(app.isBlockingPanelSnapshotOpen('showAdvisor'), false);
-  assert.equal(app.isBlockingPanelSnapshotOpen('showCityManagement'), false);
-  assert.equal(app.isBlockingPanelSnapshotOpen('showSubcityList'), false);
-  assert.equal(app.getCommandPanelValue(), '');
-  assert.equal(app.isEventSnapshotOpen(), false);
-  assert.equal(app.tutorialAdvisorDialogue.source, 'houseBuilt');
-  assert.equal(app.tutorialAdvisorDialogue.advisorName, '谋士');
-  assert.match(app.tutorialAdvisorDialogue.message, /民居已经建立起来/);
-  assert.equal(app.canvasShell.tutorialAdvisorDialogue, app.tutorialAdvisorDialogue);
-  assert.equal(app.state.softGuide.target, 'tab-civilization');
-  assert.deepEqual(calls, [['renderCanvasSurface', 'buildings']]);
-});
-
-test('CanvasGameApp waits for house-built advisor before refreshing civilization highlight', async () => {
-  const calls = [];
-  const app = new CanvasGameApp({
-    runtimeRequired: false,
-    apiRequired: false,
-    rendererRequired: false,
-    initialState: { currentTab: 'buildings', softGuide: null },
-    commandService: {
-      async handleBuildingSuccess(result) {
-        app.applyApiState(result);
-        return true;
-      },
-    },
-    stateNormalizer: {
-      normalizeGameState(data) {
-        return {
-          ...(data.gameState || {}),
-          currentTab: 'buildings',
-          militaryView: 'army',
-          softGuide: null,
-        };
-      },
-      normalizeTutorialState(data) {
-        return data.tutorial || {};
-      },
-    },
-  });
-  app.tutorial = {
-    completed: false,
-    currentStep: TutorialGuideController.TUTORIAL_STEPS.cityEntered,
-  };
-  app.state = {
-    currentTab: 'buildings',
-    militaryView: 'army',
-    tutorial: app.tutorial,
-    softGuide: null,
-  };
-  app.tutorialController = new TutorialGuideController({ game: app });
-  app.tutorialController.refreshCurrentHighlight = () => {
-    calls.push(['refreshCurrentHighlight', Boolean(app.pendingTutorialAdvisorDialogue)]);
-    return true;
-  };
-  app.openBlockingPanelSnapshot('showCityManagement', true);
-  app.openBlockingPanelSnapshot('activeCommandPanel', 'capital');
-  app.openEventSnapshot('event-1');
-  app.canvasShell = {
-    renderReadOnly() {
-      calls.push(['renderReadOnly', Boolean(app.pendingTutorialAdvisorDialogue)]);
-    },
-    hideTutorialHighlight() {
-      calls.push(['hideTutorialHighlight']);
-      this.tutorialHighlight = null;
-      return true;
-    },
-    tutorialHighlight: { source: 'old' },
-  };
-
-  const result = {
-    gameState: {
-      currentTab: 'buildings',
-      militaryView: 'army',
-      tutorial: {
-        completed: false,
-        currentStep: TutorialGuideController.TUTORIAL_STEPS.houseBuilt,
-      },
-    },
-    tutorial: {
-      completed: false,
-      currentStep: TutorialGuideController.TUTORIAL_STEPS.houseBuilt,
-    },
-  };
-
-  assert.equal(await app.handleBuildingSuccess(result, 'build', 'house'), true);
-
-  assert.equal(app.pendingTutorialAdvisorDialogue, false);
-  assert.equal(app.tutorialAdvisorDialogue.source, 'houseBuilt');
-  assert.equal(app.canvasShell.tutorialAdvisorDialogue, app.tutorialAdvisorDialogue);
-  assert.equal(app.isBlockingPanelSnapshotOpen('showCityManagement'), false);
-  assert.equal(app.getCommandPanelValue(), '');
-  assert.equal(app.isEventSnapshotOpen(), false);
-  assert.equal(app.canvasShell.tutorialHighlight, null);
-  assert.equal(calls.some(([name]) => name === 'refreshCurrentHighlight'), false);
-  assert.deepEqual(
-    calls.filter(([name]) => name === 'renderReadOnly').map((call) => call[1]),
-    [true, true],
-  );
 });
 
 test('CanvasGameApp openNaming writes the owner snapshot through the modal funnel', () => {

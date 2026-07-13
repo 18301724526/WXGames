@@ -13,7 +13,6 @@ const requireBackend = createRequire(path.join(REPO_ROOT, 'backend', 'package.js
 const Database = requireBackend('better-sqlite3');
 const { openDatabase } = require('../backend/services/DatabaseRuntime');
 const GameStateRepository = require('../backend/repositories/GameStateRepository');
-const TutorialService = require('../backend/services/TutorialService');
 const ConfigPipeline = require('../backend/services/config/ConfigPipeline');
 const ConfigReleaseService = require('../backend/services/config/ConfigReleaseService');
 
@@ -101,12 +100,6 @@ function configureEmptyFormation(dbPath, playerId) {
     repository.init();
     const gameState = repository.findByPlayerId(playerId);
     if (!gameState) throw new Error(`missing seeded player state: ${playerId}`);
-    gameState.tutorial = {
-      ...TutorialService.normalizeTutorialState(gameState.tutorial),
-      currentStep: TutorialService.TUTORIAL_STEPS.completed,
-      completed: true,
-      disabled: true,
-    };
     gameState.exploreMissions = [];
     const capital = gameState.cities?.capital;
     if (!capital?.military) throw new Error('missing capital military state');

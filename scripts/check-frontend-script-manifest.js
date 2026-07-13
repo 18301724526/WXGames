@@ -19,21 +19,24 @@ const REQUIRED_SCRIPTS = [
   'js/state/UIStatePresenter.js',
   'js/state/UiRuntimeStateStore.js',
   'shared/formationDeploymentEligibility.js',
-  'shared/tutorialFlowConfig.js',
   'js/shared/FormationDeploymentEligibilityAdapter.js',
   'js/platform/CanvasRuntimeContract.js',
   'js/platform/CanvasLayerRegistry.js',
   'js/platform/CanvasActionDescriptorRegistry.js',
   'js/platform/CanvasActionDispatchRegistry.js',
   'js/platform/CanvasActionDispatcher.js',
-  'js/platform/TutorialActionMatches.js',
-  'js/platform/renderers/TutorialHighlightLayer.js',
   'js/ecs/runtime/EcsModeRuntimeBundle.js',
   'js/platform/CanvasModeOwnershipRuntime.js',
   'js/platform/CanvasModalSnapshotAdapter.js',
   'js/platform/CanvasGameShell.js',
   'app.js',
   'auth.js',
+];
+
+const FORBIDDEN_SCRIPTS = [
+  'shared/tutorialFlowConfig.js',
+  'js/platform/TutorialActionMatches.js',
+  'js/platform/renderers/TutorialHighlightLayer.js',
 ];
 
 const REQUIRED_ORDER_PAIRS = [
@@ -50,12 +53,6 @@ const REQUIRED_ORDER_PAIRS = [
   ['js/state/UIStatePresenterDelegates.js', 'js/state/UIStatePresenter.js'],
   ['shared/featureFlags.js', 'js/config/FeatureFlags.js'],
   ['shared/formationDeploymentEligibility.js', 'js/shared/FormationDeploymentEligibilityAdapter.js'],
-  // The shared tutorial step table must load before every consumer that binds
-  // it at module-eval (step policy, presenters, ECS GameState projection).
-  ['shared/tutorialFlowConfig.js', 'js/tutorial/TutorialGuideStepPolicy.js'],
-  ['shared/tutorialFlowConfig.js', 'js/state/presenters/BuildingPresenter.js'],
-  ['shared/tutorialFlowConfig.js', 'js/state/presenters/CivilizationPresenter.js'],
-  ['shared/tutorialFlowConfig.js', 'js/ecs/projection/GameState.js'],
   ['js/shared/FormationDeploymentEligibilityAdapter.js', 'js/platform/renderers/WorldMarchHudCanvasRenderer.js'],
   ['js/shared/FormationDeploymentEligibilityAdapter.js', 'js/platform/CanvasActionController.js'],
   ['js/debug/ActorPickingDiagnostics.js', 'js/ecs/input/WorldMapInputActionMap.js'],
@@ -72,12 +69,8 @@ const REQUIRED_ORDER_PAIRS = [
   ['js/ui/H5GameApiTransportAdapter.js', 'js/ui/H5ShellAdapter.js'],
   ['js/platform/CanvasActionDescriptorRegistry.js', 'js/platform/CanvasActionDispatchRegistry.js'],
   ['js/platform/CanvasActionDispatchRegistry.js', 'js/platform/CanvasActionDispatcher.js'],
-  ['js/platform/TutorialActionMatches.js', 'js/platform/CanvasGameShell.js'],
-  ['js/platform/renderers/TutorialHighlightLayer.js', 'js/platform/renderers/TutorialCanvasRenderer.js'],
   ['js/ecs/runtime/EcsModeRuntimeBundle.js', 'js/platform/CanvasModeOwnershipRuntime.js'],
   ['js/platform/CanvasModeOwnershipRuntime.js', 'js/platform/CanvasModalSnapshotAdapter.js'],
-  ['js/platform/CanvasModalSnapshotAdapter.js', 'js/tutorial/TutorialGuideEventRegistry.js'],
-  ['js/platform/CanvasModalSnapshotAdapter.js', 'js/tutorial/TutorialGuideController.js'],
   ['js/platform/CanvasModalSnapshotAdapter.js', 'js/platform/CanvasActionController.js'],
   ['js/platform/CanvasModalSnapshotAdapter.js', 'js/platform/GameCommandService.js'],
   ['js/platform/CanvasModeOwnershipRuntime.js', 'js/platform/CanvasGameApp.js'],
@@ -128,6 +121,11 @@ function extractScripts(html) {
 
 function stripQuery(src) {
   return String(src || '').split('?')[0];
+}
+
+function findForbiddenScripts(scriptPaths, forbiddenScripts = FORBIDDEN_SCRIPTS) {
+  const present = new Set(scriptPaths);
+  return forbiddenScripts.filter((scriptPath) => present.has(scriptPath));
 }
 
 function getQueryVersion(src) {
@@ -254,6 +252,11 @@ function checkManifest(options = {}) {
   if (mismatchedVersion.length > 0) fail('local assets do not use required cache-busting version', mismatchedVersion);
   if (missingFiles.length > 0) fail('local asset files missing on disk', missingFiles);
 
+  const forbiddenScripts = findForbiddenScripts(scriptPaths);
+  if (forbiddenScripts.length > 0) {
+    fail('retired tutorial scripts must not be restored to index.html', forbiddenScripts);
+  }
+
   const orderPositions = REQUIRED_SCRIPTS.map((scriptPath) => ({
     scriptPath,
     index: scriptPaths.indexOf(scriptPath),
@@ -303,4 +306,5 @@ module.exports = {
   isIifeWrapped,
   collectTopLevelBindings,
   checkGlobalBindingCollisions,
+  findForbiddenScripts,
 };

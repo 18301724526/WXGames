@@ -213,7 +213,6 @@
         { x: autoX, y: autoY, width: 60, height: 24 },
         {
           type: 'autoReplenishArmyFormation',
-          tutorialTargetDisabled: draftAssigned > 0,
           visualDisabled: selectedMembers.length <= 0 || editor.saving,
           commandDisabled: editor.saving
             ? 'IN_FLIGHT'
@@ -274,7 +273,6 @@
             disabled ? { type: 'blockCanvasModal' } : {
               type: 'toggleArmyFormationMember',
               personId: person.id,
-              tutorialTargetDisabled: selected,
             },
           );
         });

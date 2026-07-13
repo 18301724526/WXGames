@@ -2,31 +2,16 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const TerritoryAction = require('../actions/TerritoryAction');
-const TutorialService = require('../services/TutorialService');
 const TerritoryService = require('../services/TerritoryService');
 const WorldMapService = require('../services/WorldMapService');
-const WorldExplorerService = require('../services/WorldExplorerService');
 
-function createGuidedFirstCityState() {
+function createFirstSettlementState() {
   const siteId = 'site_3_1';
-  const tutorial = {
-    ...TutorialService.manualAdvance(
-      TutorialService.createInitialTutorialState(),
-      TutorialService.TUTORIAL_STEPS.firstCityDiscovered,
-    ),
-    grants: {
-      [WorldExplorerService.TUTORIAL_FIRST_SITE_GRANT_KEY]: {
-        siteId,
-        discoveredAt: '2026-06-06T00:00:00.000Z',
-      },
-    },
-  };
   const state = {
-    playerId: 'territory-action-tutorial-test',
+    playerId: 'territory-action-settlement-test',
     activeCityId: 'capital',
-    tutorial,
     polity: TerritoryService.createInitialPolity(),
-    worldMap: WorldMapService.createInitialWorldMap('territory-action-tutorial-test'),
+    worldMap: WorldMapService.createInitialWorldMap('territory-action-settlement-test'),
     territories: [
       {
         id: 'capital',
@@ -60,46 +45,74 @@ function createGuidedFirstCityState() {
         name: 'Capital',
         resources: { food: 0, knowledge: 0, wood: 0, iron: 0, stone: 0, metal: 0 },
         buildings: {},
-        population: { total: 3, max: 3, maxPop: 3, farmers: 3, scholars: 0, craftsmen: 0, unassigned: 0 },
+        population: {
+          total: 3,
+          max: 3,
+          maxPop: 3,
+          farmers: 3,
+          scholars: 0,
+          craftsmen: 0,
+          unassigned: 0,
+        },
         military: { soldiers: 0, soldierCap: 0 },
       },
     },
     military: { soldiers: 0, soldierCap: 0 },
     warMissions: [],
   };
-  WorldMapService.bindSiteToTile(state, 3, 1, siteId, new Date('2026-06-06T00:00:00.000Z'), { visibility: 'scouted' });
+  WorldMapService.bindSiteToTile(
+    state,
+    3,
+    1,
+    siteId,
+    new Date('2026-06-06T00:00:00.000Z'),
+    { visibility: 'scouted' },
+  );
   return { state, siteId };
 }
 
-test('guided first empty city occupation and naming advance tutorial by real territory actions', () => {
-  const { state, siteId } = createGuidedFirstCityState();
+test('first non-capital settlement can be occupied with zero reserve soldiers', () => {
+  const { state, siteId } = createFirstSettlementState();
 
   const started = TerritoryAction.execute('startConquest', state, { territoryId: siteId });
   assert.equal(started.success, true);
-  assert.equal(started.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstCityConquestStarted);
-  // Settlement occupation succeeds with zero reserve soldiers, commits zero, and
-  // no tutorial soldier grant is written along the way.
   assert.equal(state.cities.capital.military.soldiers, 0);
   assert.equal(state.warMissions[0].soldiersCommitted, 0);
-  assert.equal(state.tutorial.grants[WorldExplorerService.TUTORIAL_FIRST_SITE_GRANT_KEY].settlementSoldiersGranted, undefined);
   assert.equal(state.warMissions[0].status, 'ready');
   assert.equal(state.territories[1].status, 'contested');
 
   const claimed = TerritoryAction.execute('claimConquest', state, { territoryId: siteId });
   assert.equal(claimed.success, true);
-  assert.equal(claimed.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstCityOccupied);
   assert.equal(state.territories[1].status, 'occupied');
   assert.equal(state.territories[1].owner, 'player');
   assert.equal(state.cities[siteId].territoryId, siteId);
 
-  const renamedCity = TerritoryAction.execute('renameCity', state, { territoryId: siteId, name: '河湾城' });
+  const renamedCity = TerritoryAction.execute('renameCity', state, {
+    territoryId: siteId,
+    name: 'River City',
+  });
   assert.equal(renamedCity.success, true);
-  assert.equal(renamedCity.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstCityNamed);
-  assert.equal(state.territories[1].cityName, '河湾城');
-  assert.equal(state.cities[siteId].name, '河湾城');
+  assert.equal(state.territories[1].cityName, 'River City');
+  assert.equal(state.cities[siteId].name, 'River City');
 
-  const renamedPolity = TerritoryAction.execute('renamePolity', state, { name: '赤火联盟' });
+  const renamedPolity = TerritoryAction.execute('renamePolity', state, { name: 'Red Alliance' });
   assert.equal(renamedPolity.success, true);
-  assert.equal(renamedPolity.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.polityNamed);
-  assert.equal(state.polity.name, '赤火联盟');
+  assert.equal(state.polity.name, 'Red Alliance');
+});
+
+test('later settlements do not bypass their conquest timeline', () => {
+  const { state, siteId } = createFirstSettlementState();
+  state.territories.push({
+    id: 'site_2_0',
+    x: 2,
+    y: 0,
+    type: 'town',
+    owner: 'player',
+    status: 'occupied',
+  });
+
+  const started = TerritoryAction.execute('startConquest', state, { territoryId: siteId });
+
+  assert.equal(started.success, true);
+  assert.equal(state.warMissions[0].status, 'active');
 });

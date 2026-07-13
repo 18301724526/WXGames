@@ -7,7 +7,6 @@ const BattleConfig = require('../config/BattleConfig');
 const EraConfig = require('../config/EraConfig');
 const GameConfig = require('../config/GameConfig');
 const TechTreeConfig = require('../config/TechTreeConfig');
-const TutorialFlowConfig = require('../config/TutorialFlowConfig');
 const TaskDefinitionNormalizer = require('../services/taskDefinitions/TaskDefinitionNormalizer');
 
 test('ConfigRegistryContract creates stable metadata independent of object key order', () => {
@@ -176,12 +175,6 @@ test('Core config families expose registry metadata and validation', () => {
     schema: 'era-config-registry',
     minEntries: EraConfig.ERA_NAMES.length,
     entryIds: ['era:0', 'era:1'],
-  });
-  assertConfigRegistry(TutorialFlowConfig, {
-    id: 'tutorial-flow-config',
-    schema: 'tutorial-flow-config-registry',
-    minEntries: Object.keys(TutorialFlowConfig.TUTORIAL_STEPS).length,
-    entryIds: ['step:initial', 'step:completed', 'clientGate:completed'],
   });
   assertConfigRegistry(BattleConfig, {
     id: 'battle-config',

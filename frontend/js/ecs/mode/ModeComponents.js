@@ -14,7 +14,6 @@ if (!Types || !defineComponent) {
 const ModeState = defineComponent({
   baseModeId: Types.ui8,
   modalMask: Types.ui32,
-  tutorialActive: Types.ui8,
   debugActive: Types.ui8,
   blockingOverlayActive: Types.ui8,
   techTreeBlockingOverlayActive: Types.ui8,

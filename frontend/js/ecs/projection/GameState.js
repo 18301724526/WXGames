@@ -12,44 +12,15 @@
     return null;
   }
 
-  const TutorialFlowShared = (() => {
-    if (global.TutorialFlowShared) return global.TutorialFlowShared;
-    if (typeof module !== 'undefined' && module.exports) {
-      try {
-        return require('../../../../shared/tutorialFlowConfig');
-      } catch (_error) {
-        return null;
-      }
-    }
-    return null;
-  })();
-
   function t(key, params = {}) {
     const localeText = resolveLocaleText();
     return localeText ? localeText.t(key, params) : key;
-  }
-  function normalizeTutorialState(apiResponse) {
-    const tutorial = apiResponse && apiResponse.tutorial;
-    return {
-      completed: Boolean(tutorial && tutorial.completed),
-      currentStep:
-        TutorialFlowShared.stepName(tutorial && tutorial.currentStep) ||
-        TutorialFlowShared.TUTORIAL_STEPS.initial,
-      phaseCompleted:
-        tutorial && tutorial.phaseCompleted
-          ? {
-              newbie: Boolean(tutorial.phaseCompleted.newbie),
-              era2: Boolean(tutorial.phaseCompleted.era2),
-            }
-          : { newbie: false, era2: false },
-    };
   }
 
   function normalizeGameState(apiResponse) {
     const gameState = (apiResponse && apiResponse.gameState) || {};
     return {
       resources: gameState.resources || {},
-      tutorial: normalizeTutorialState(apiResponse),
       buildings: gameState.buildings || {},
       buildingCosts: gameState.buildingCosts || {},
       buildingDefinitions: gameState.buildingDefinitions || {},
@@ -69,7 +40,6 @@
       guideTasks: (apiResponse && apiResponse.guideTasks) ||
         gameState.guideTasks || { visible: false, tasks: [] },
       taskCenter: (apiResponse && apiResponse.taskCenter) || gameState.taskCenter || null,
-      tutorialEnabled: gameState.tutorialEnabled !== false,
       talentPolicies: gameState.talentPolicies || {},
       famousPersons: gameState.famousPersons || {},
       guidebook: gameState.guidebook || {},
@@ -94,7 +64,7 @@
     };
   }
 
-  const api = { normalizeGameState, normalizeTutorialState };
+  const api = { normalizeGameState };
   global.FrontendGameState = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

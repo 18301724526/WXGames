@@ -136,23 +136,8 @@
     return nextTarget;
   }
 
-  // World-march UI changes publish state.changed immediately and on the next turn.
-  // This lets follow-through rules observe settled picker state after restoration.
-  // Shared with TargetPickerActionHandler via the class static.
-  function notifyTutorialStateChangedAfterAction(core) {
-    const game = core.getGameHost();
-    const bus = game?.changeEventBus || core.host?.changeEventBus || global.ChangeEventBus || null;
-    if (!bus?.emit) return false;
-    const notify = () => bus.emit('state.changed', {
-      owner: game || core.host || null,
-      source: 'WorldMarchActionHandler',
-    });
-    notify();
-    const scheduler = core.host?.runtime || game?.runtime || global;
-    if (typeof scheduler?.setTimeout === 'function') {
-      scheduler.setTimeout(notify, 0);
-    }
-    return true;
+  function publishWorldMarchUiChanged(core, source = 'WorldMarchActionHandler') {
+    return core?.emitGameEvent?.('worldMarchUiChanged', { source }) || null;
   }
 
   function joinNames(names = []) {
@@ -177,8 +162,8 @@
       this.helpers = options.helpers || {};
     }
 
-    refreshWorldMarchTutorialHighlight() {
-      return notifyTutorialStateChangedAfterAction(this.core);
+    publishWorldMarchUiChanged(source) {
+      return publishWorldMarchUiChanged(this.core, source);
     }
 
     getWorldMarchDeploymentEligibility(action = {}) {
@@ -313,21 +298,10 @@
         target,
         uiState: this.helpers.summarizeActorPickingUiState(uiState),
       });
-      const tutorialResult = game?.emitTutorialEvent?.('worldMarchTargetSelected', {}) || true;
-      return this.core.finalize(
-        Promise.resolve(tutorialResult).then((allowed) => {
-          this.helpers.logActorPickingDiag('territory:selectWorldMarchTarget:tutorialResult', {
-            tapTraceId,
-            allowed: allowed !== false,
-            uiState: this.helpers.summarizeActorPickingUiState(uiState),
-          });
-          if (allowed !== false) {
-            this.core.refreshWorldMarchLayer(action);
-            this.refreshWorldMarchTutorialHighlight();
-          }
-          return allowed !== false;
-        }),
-      );
+      this.core.refreshWorldMarchLayer(action);
+      this.core.emitGameEvent?.('worldMarchTargetSelected', { target: nextTarget });
+      this.publishWorldMarchUiChanged('selectWorldMarchTarget');
+      return true;
     }
 
     openFormationPicker(action) {
@@ -369,7 +343,7 @@
       uiState.selectedWorldActorId = '';
       uiState.selectedWorldMissionId = '';
       const handled = this.core.refreshWorldMarchLayer(action);
-      this.refreshWorldMarchTutorialHighlight();
+      this.publishWorldMarchUiChanged('openWorldMarchFormationPicker');
       return handled;
     }
 
@@ -380,7 +354,7 @@
       uiState.selectedWorldActorId = '';
       uiState.selectedWorldMissionId = '';
       const handled = this.core.refreshWorldMarchLayer(action);
-      this.refreshWorldMarchTutorialHighlight();
+      this.publishWorldMarchUiChanged('closeWorldMarchHud');
       return handled;
     }
 
@@ -422,7 +396,7 @@
         handled: handled !== false,
         uiState: this.helpers.summarizeActorPickingUiState(uiState),
       });
-      this.refreshWorldMarchTutorialHighlight();
+      this.publishWorldMarchUiChanged('selectWorldActor');
       return handled;
     }
 
@@ -467,7 +441,7 @@
         uiState.selectedWorldActorId = '';
         uiState.selectedWorldMissionId = '';
         this.core.refreshWorldMarchLayer(action);
-        this.refreshWorldMarchTutorialHighlight();
+        this.publishWorldMarchUiChanged('startWorldMarch');
       }
       return this.core.finalize(Promise.resolve(result).then((value) => value !== false));
     }
@@ -488,7 +462,7 @@
         this.core.getSharedTerritoryUiState().selectedWorldMissionId = '';
         this.helpers.closeTargetPickerSnapshot(this.core.host);
         this.core.refreshWorldMarchLayer(action);
-        this.refreshWorldMarchTutorialHighlight();
+        this.publishWorldMarchUiChanged('returnWorldMarch');
       }
       return this.core.finalize(Promise.resolve(result).then((value) => value !== false));
     }
@@ -510,7 +484,7 @@
             this.core.getSharedTerritoryUiState().selectedWorldMissionId = '';
             this.helpers.closeTargetPickerSnapshot(this.core.host);
             this.core.refreshWorldMarchLayer(action);
-            this.refreshWorldMarchTutorialHighlight();
+            this.publishWorldMarchUiChanged('stopWorldMarch');
           }
           return result !== false;
         }),
@@ -523,7 +497,7 @@
   WorldMarchActionHandler.t = t;
   WorldMarchActionHandler.clonePlain = clonePlain;
   WorldMarchActionHandler.openTargetPickerSnapshot = openTargetPickerSnapshot;
-  WorldMarchActionHandler.refreshTutorialHighlightAfterAction = notifyTutorialStateChangedAfterAction;
+  WorldMarchActionHandler.publishWorldMarchUiChanged = publishWorldMarchUiChanged;
 
   global.WorldMarchActionHandler = WorldMarchActionHandler;
   if (typeof module !== 'undefined' && module.exports) module.exports = WorldMarchActionHandler;

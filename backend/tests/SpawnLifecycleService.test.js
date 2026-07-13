@@ -63,7 +63,7 @@ function createLifecycle(repository, candidatesByPlayer = {}) {
           terrain: 'plains',
           score: 100,
           nearestCapitalDistance: 20,
-          tutorialTarget: { q: selected.q + 1, r: selected.r },
+          starterTarget: { q: selected.q + 1, r: selected.r },
         },
         scoredCandidates: candidates,
       };
@@ -108,7 +108,7 @@ test('SpawnLifecycleService creates the spawn companion city in the shared world
             terrain: 'plains',
             score: 100,
             nearestCapitalDistance: 30,
-            tutorialTarget: { q: 11, r: 0, terrain: 'plains' },
+            starterTarget: { q: 11, r: 0, terrain: 'plains' },
           },
           scoredCandidates: [],
         };
@@ -185,7 +185,7 @@ test('player reset rolls spawn and companion-city writes back when the command c
             terrain: 'plains',
             score: 100,
             nearestCapitalDistance: 30,
-            tutorialTarget: { q: selected.q + 1, r: selected.r, terrain: 'plains' },
+            starterTarget: { q: selected.q + 1, r: selected.r, terrain: 'plains' },
           },
           scoredCandidates: candidates,
         } : { success: false, selected: null, scoredCandidates: candidates };

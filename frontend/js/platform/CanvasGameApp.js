@@ -3,22 +3,6 @@
   if (typeof module !== 'undefined' && module.exports && !GameCommandServiceBase) {
     GameCommandServiceBase = require('./GameCommandService');
   }
-  var TutorialFlowShared = global.TutorialFlowShared;
-  if (typeof module !== 'undefined' && module.exports && !TutorialFlowShared) {
-    TutorialFlowShared = require('../../../shared/tutorialFlowConfig');
-  }
-  var TutorialGuideControllerBase = global.TutorialGuideController;
-  if (typeof module !== 'undefined' && module.exports && !TutorialGuideControllerBase) {
-    try {
-      TutorialGuideControllerBase = require('../tutorial/TutorialGuideController');
-    } catch (_error) {
-      TutorialGuideControllerBase = null;
-    }
-  }
-  var TutorialGuideTargetResolverBase = global.TutorialGuideTargetResolver;
-  if (typeof module !== 'undefined' && module.exports && !TutorialGuideTargetResolverBase) {
-    TutorialGuideTargetResolverBase = require('../tutorial/TutorialGuideTargetResolver');
-  }
   var CanvasGameAppRenderPolicy = global.CanvasGameAppRenderPolicy;
   if (typeof module !== 'undefined' && module.exports && !CanvasGameAppRenderPolicy) {
     CanvasGameAppRenderPolicy = require('./CanvasGameAppRenderPolicy');
@@ -150,10 +134,6 @@
   var BattleSceneController = global.BattleSceneController;
   if (typeof module !== 'undefined' && module.exports && !BattleSceneController) {
     BattleSceneController = require('./BattleSceneController');
-  }
-  var TutorialGuideUiController = global.TutorialGuideUiController;
-  if (typeof module !== 'undefined' && module.exports && !TutorialGuideUiController) {
-    TutorialGuideUiController = require('./TutorialGuideUiController');
   }
   var CanvasPanelSurfaceManager = global.CanvasPanelSurfaceManager;
   if (typeof module !== 'undefined' && module.exports && !CanvasPanelSurfaceManager) {
@@ -383,8 +363,6 @@
           this.activeGuidebookTab = 'planning';
           this.famousPersonsPage = 0;
           this.selectedFamousPersonId = '';
-          this.tutorialIntro = options.tutorialIntro || null;
-          this.tutorialIntroOverlay = options.tutorialIntroOverlay || null;
           this.buildingOffset = 0;
           this.activeBuildingCategory = 'all';
           this.techTreePanX = 0;
@@ -412,14 +390,6 @@
           this.externalLog = typeof options.log === 'function' ? options.log : null;
           this.stateNormalizer = options.stateNormalizer || null;
           this.stateManager = options.stateManager || null;
-          const TutorialGuideControllerCtor = options.tutorialControllerClass || TutorialGuideControllerBase || null;
-          const tutorialControllerEnabled = options.tutorialControllerEnabled !== false;
-          this.tutorialController = options.tutorialController || (
-            tutorialControllerEnabled && TutorialGuideControllerCtor
-              ? new TutorialGuideControllerCtor({ game: this })
-              : null
-          );
-          this.tutorialRenderer = options.tutorialRenderer || null;
           this.eventController = options.eventController || null;
           this.buildingController = options.buildingController || null;
           this.territoryController = options.territoryController || null;
@@ -488,17 +458,12 @@
         }
 
 
-    getTutorialController() {
-          return this.tutorialController || null;
-        }
-
     getStateHost() {
           return StateWriter.getStateHost(this);
         }
 
-    emitTutorialEvent(eventName, payload = {}) {
-          const report = this.changeEventBus?.emit?.(eventName, payload);
-          return report?.results?.find((result) => result !== undefined);
+    emitGameEvent(eventName, payload = {}) {
+          return this.changeEventBus?.emit?.(eventName, payload) || null;
         }
 
     getState() {
@@ -686,11 +651,8 @@
             getRequestedTab: (state = this.state) => state?.currentTab || this.activeTab || 'resources',
             getMilitaryView: (state = this.state) => state?.militaryView || this.militaryView,
             getForceMapHome: () => this.mapHomeActive,
-            canRouteTap: (point) => !this.isPointBlockedByTutorialShield(point),
             onAction: (action, event, meta = {}) => {
-              const handled = this.dispatchCanvasAction(action, { ...(meta || {}), event });
-              this.advanceTutorialIntroAfterHandled(handled, action);
-              return handled;
+              return this.dispatchCanvasAction(action, { ...(meta || {}), event });
             },
             onBeforeDrag: ({ phase, runtime }) => {
               if (phase === 'start') {
@@ -934,7 +896,6 @@
                   payloadWorldMap,
                   nextState: nextStateSummary,
                 });
-                const nextTutorial = payload.tutorial ?? nextState.tutorial ?? this.tutorial ?? {};
                 const localTab = this.getActiveTab();
                 const localMilitaryView = this.state?.militaryView || this.militaryView || nextState.militaryView || 'army';
                 const homeView = this.resolveMapHomeViewState(nextState, {
@@ -962,7 +923,6 @@
                   state: assignedStateSummary,
                   mapHomeActive: Boolean(this.mapHomeActive),
                 });
-                this.tutorial = nextTutorial;
                 this.activeTab = this.state.currentTab || homeView.activeTab;
                 this.militaryView = this.state.militaryView || homeView.militaryView;
                 this.mapHomeActive = homeView.isMapHome;
@@ -976,7 +936,6 @@
                   this.loading = { visible: false, percentage: 100, message: '' };
                   if (this.canvasShell?.loading) this.canvasShell.loading = { visible: false, percentage: 100, message: '' };
                 }
-                this.getTutorialController()?.sync?.(nextTutorial);
                 this.setPendingBuildingAction(null, { render: false });
                 global.WorldMarchTrace?.log?.('app:applyState:after', {
                   after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
@@ -1018,12 +977,10 @@
                     version: normalizedStateSummary?.worldMap?.version || 0,
                     currentTab: normalizedStateSummary?.currentTab || '',
                     militaryView: normalizedStateSummary?.militaryView || '',
-                    tutorialStep: normalizedStateSummary?.tutorial?.currentStep ?? null,
                   }, {
                     nextState: normalizedStateSummary,
                   });
-                  this.tutorial = this.stateNormalizer.normalizeTutorialState?.(data) || this.tutorial || {};
-                  this.syncFromServer(nextState, data.tutorial, data.eraProgress, options);
+                  this.syncFromServer(nextState, data.eraProgress, options);
                   global.WorldMarchTrace?.log?.('app:applyApiState:afterNormalizer', {
                     after: global.WorldMarchTrace?.summarizeWorldExplorerState?.(this.state?.worldExplorerState),
                   });
@@ -1032,10 +989,9 @@
                 this.applyState(data, options);
               }
 
-    syncFromServer(serverState, tutorial, eraProgress, options = {}) {
+    syncFromServer(serverState, eraProgress, options = {}) {
                 this.syncWorldClock?.({
                   gameState: serverState,
-                  tutorial,
                   eraProgress,
                 });
                 const reconciledServerState = WorldMarchOptimisticState?.reconcileState?.(this, serverState, { source: 'syncFromServer' })
@@ -1108,25 +1064,17 @@
                 this.activeTab = this.state.currentTab || syncedHomeView.activeTab;
                 this.militaryView = this.state.militaryView || syncedHomeView.militaryView;
                 this.mapHomeActive = syncedHomeView.isMapHome;
-                const nextTutorial = this.getEffectiveTutorialState(tutorial || this.tutorial || {});
-                this.tutorial = nextTutorial;
-                StateWriter.commit(this, (prev) => ({
-                  ...prev,
-                  tutorial: nextTutorial,
-                }), { source: 'syncFromServer:tutorial' });
                 const beforeRenderStateSummary = global.CodexWorldMapDiag?.summarizeState?.(this.state) || null;
                 global.CodexWorldMapDiag?.logChanged?.('state:syncFromServer:beforeRender', {
                   tileCount: beforeRenderStateSummary?.worldMap?.tileCount || 0,
                   version: beforeRenderStateSummary?.worldMap?.version || 0,
                   currentTab: beforeRenderStateSummary?.currentTab || '',
                   militaryView: beforeRenderStateSummary?.militaryView || '',
-                  tutorialStep: beforeRenderStateSummary?.tutorial?.currentStep ?? null,
                   mapHomeActive: Boolean(this.mapHomeActive),
                 }, {
                   state: beforeRenderStateSummary,
                   mapHomeActive: Boolean(this.mapHomeActive),
                 });
-                this.getTutorialController()?.sync?.(nextTutorial);
                 this.updateSyncInterval();
                 this.hasServerState = true;
                 if (this.loading.visible || this.canvasShell?.loading?.visible) {
@@ -1224,38 +1172,12 @@
                   && this.getBuildingLevel('house') > 0;
               }
 
-    getEffectiveTutorialState(tutorial) {
-                const nextTutorial = tutorial || { completed: false, currentStep: 0, phaseCompleted: { newbie: false, era2: false } };
-                const tutorialSteps = this.getTutorialController()?.constructor?.TUTORIAL_STEPS || TutorialGuideControllerBase?.TUTORIAL_STEPS || {};
-                if (!nextTutorial.completed && TutorialFlowShared.stepEquals(nextTutorial.currentStep, tutorialSteps.farmBuilt) && this.isEra2AdvanceReady()) {
-                  return {
-                    ...nextTutorial,
-                    currentStep: tutorialSteps.era2AdvanceReady,
-                    phaseCompleted: {
-                      ...nextTutorial.phaseCompleted,
-                      newbie: true,
-                    },
-                  };
-                }
-                return nextTutorial;
-              }
-
-    canAdvanceEraByTutorial() {
-                return true;
-              }
-
     canAdvanceEraNow(progress = this.state?.eraProgress) {
-                const tutorial = this.getEffectiveTutorialState(this.tutorial || this.state?.tutorial || {});
                 const view = this.presenter?.buildCivilizationViewState?.(
                   { ...this.state, eraProgress: progress },
-                  tutorial,
                   { canOpenCivilizationTab: true },
                 );
                 return Boolean(view?.advanceButton?.canAdvance);
-              }
-
-    hasActiveTutorialGuideHighlight() {
-                return false;
               }
 
     async syncOnce() {
@@ -1487,9 +1409,6 @@
                   ...(snapshotBattleScene ? { battleScene: snapshotBattleScene } : {}),
                   ...(this.entityBattle ? { entityBattle: this.entityBattle } : (snapshotEntityBattle ? { entityBattle: snapshotEntityBattle } : {})),
                   naming: snapshotNaming,
-                  tutorialIntro: this.tutorialIntro || null,
-                  tutorialAdvisorDialogue: this.tutorialAdvisorDialogue || null,
-                  tutorialHighlight: null,
                   loading: this.loading,
                   network: this.networkState,
                   confirmDialog: snapshotConfirmDialog,
@@ -1563,9 +1482,6 @@
                   ...(snapshotBattleScene ? { battleScene: snapshotBattleScene } : {}),
                   ...(this.entityBattle ? { entityBattle: this.entityBattle } : (snapshotEntityBattle ? { entityBattle: snapshotEntityBattle } : {})),
                   naming: snapshotNaming,
-                  tutorialIntro: this.tutorialIntro || null,
-                  tutorialAdvisorDialogue: this.tutorialAdvisorDialogue || null,
-                  tutorialHighlight: options.tutorialHighlight || null,
                   loading: this.loading,
                   network: this.networkState,
                   confirmDialog: snapshotConfirmDialog,
@@ -1742,9 +1658,6 @@
                   isMapHome: homeView.isMapHome,
                   territoryUiState: territoryUiState || this.territoryUiState || {},
                   targetPicker: this.getTargetPickerSnapshot?.() || null,
-                  tutorial: this.getTutorialController()?.state || this.tutorial || {},
-                  tutorialIntro: this.tutorialIntro || null,
-                  tutorialAdvisorDialogue: this.tutorialAdvisorDialogue || null,
                   worldMapRuntimeContext: this.worldMapRuntime?.getLastTileMapContext?.()
                     || this.worldMapRuntime?.lastTileMapContext
                     || this.renderer?.lastWorldTileMapContext
@@ -2407,27 +2320,6 @@
                 this.getEntityBattleController().session = value;
               }
 
-    // The tutorial-highlight blob is single-owned by TutorialGuideUiController on
-          // the state host (re-decomposition slice 10), composed lazily. The accessor
-          // keeps the legacy field name alive for every read/write site (shell input
-          // gating + render paths, advisor flows, mode facts), which retires the
-          // app<->shell highlight mirror.
-          getTutorialGuideUiController() {
-                const owner = this.getStateHost() || this;
-                if (!owner.tutorialGuideUiController) {
-                  owner.tutorialGuideUiController = new TutorialGuideUiController({ host: owner });
-                }
-                return owner.tutorialGuideUiController;
-              }
-
-    get tutorialHighlight() {
-                return this.getTutorialGuideUiController().highlight;
-              }
-
-    set tutorialHighlight(value) {
-                this.getTutorialGuideUiController().highlight = value;
-              }
-
     publishEntityBattle(session) {
                 return this.getEntityBattleController().publish(session);
               }
@@ -2704,57 +2596,11 @@
 
     async handleBuildingSuccess(result, action, buildingId) {
                 if (this.commandService?.handleBuildingSuccess) {
-                  this.pendingTutorialAdvisorDialogue = action === 'build' && buildingId === 'house';
-                  try {
-                    const handled = await this.commandService.handleBuildingSuccess(result, action, buildingId);
-                    this.getTutorialController()?.sync?.(this.tutorial);
-                    this.maybeShowHouseBuiltAdvisor(action, buildingId);
-                    return handled;
-                  } finally {
-                    this.pendingTutorialAdvisorDialogue = false;
-                  }
+                  return this.commandService.handleBuildingSuccess(result, action, buildingId);
                 }
-                this.pendingTutorialAdvisorDialogue = action === 'build' && buildingId === 'house';
-                try {
-                  this.applyApiState(result);
-                  this.showFloatingText(action === 'upgrade' ? t('command.building.upgradeSuccess') : t('command.building.buildSuccess'));
-                  this.log(t('command.success.detail', { message: result?.message || '' }));
-                  this.getTutorialController()?.sync?.(this.tutorial);
-                  this.maybeShowHouseBuiltAdvisor(action, buildingId);
-                  return true;
-                } finally {
-                  this.pendingTutorialAdvisorDialogue = false;
-                }
-              }
-
-    maybeShowHouseBuiltAdvisor(action, buildingId) {
-                const steps = this.getTutorialController()?.constructor?.TUTORIAL_STEPS || {};
-                if (action !== 'build' || buildingId !== 'house') return false;
-                if (!TutorialFlowShared.stepEquals(this.tutorial?.currentStep, steps.houseBuilt)) return false;
-                return this.showHouseBuiltAdvisorDialogue();
-              }
-
-    showHouseBuiltAdvisorDialogue() {
-                const message = t('command.house.builtAdvisor');
-                StateWriter.commit(this, (prev) => ({
-                  ...(prev || {}),
-                  softGuide: {
-                    mode: 'strong',
-                    target: 'tab-civilization',
-                    message,
-                  },
-                }), { source: 'houseBuiltAdvisor' });
-                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showAdvisor');
-                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCityManagement');
-                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showSubcityList');
-                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'activeCommandPanel');
-                this.closeEventSnapshot?.();
-                this.tutorialHighlight = null;
-                this.tutorialAdvisorDialogue = { message, advisorName: t('tutorial.advisorName'), source: 'houseBuilt' };
-                if (this.canvasShell) {
-                  this.canvasShell.tutorialAdvisorDialogue = this.tutorialAdvisorDialogue;
-                }
-                this.renderCanvasSurface(this.state?.currentTab || this.getActiveTab());
+                this.applyApiState(result);
+                this.showFloatingText(action === 'upgrade' ? t('command.building.upgradeSuccess') : t('command.building.buildSuccess'));
+                this.log(t('command.success.detail', { message: result?.message || '' }));
                 return true;
               }
 
@@ -2836,8 +2682,7 @@
                 try {
                   const result = await this.getGameApi().advanceEra();
                   this.applyApiState(result);
-                  this.getTutorialController()?.sync?.(this.tutorial);
-                  this.emitTutorialEvent('eraAdvanced', { result });
+                  this.emitGameEvent('eraAdvanced', { result });
                   this.log(t('command.era.entered', { message: result.message || this.state.currentEraName || '' }));
                   this.showFloatingText(result.message || this.state.currentEraName || t('command.era.advanced', {}));
                   return true;
@@ -2884,8 +2729,7 @@
                     selectedWorldActorId: '',
                     selectedWorldMissionId: '',
                   });
-                  this.getTutorialController()?.sync?.(this.tutorial);
-                  this.emitTutorialEvent('exploreStarted', { result });
+                  this.emitGameEvent('exploreStarted', { result });
                   this.showFloatingText(result.message || t('command.worldMarch.started', {}));
                   this.log(result.message || t('command.worldMarch.started', {}));
                   return true;
@@ -2977,8 +2821,7 @@
                   const api = this.getGameApi();
                   const result = await api.claimTaskReward(taskId, category || 'main');
                   this.applyApiState(result);
-                  this.getTutorialController()?.sync?.(this.tutorial);
-                  this.emitTutorialEvent('taskRewardClaimed', { result });
+                  this.emitGameEvent('taskRewardClaimed', { result });
                   if (!this.canvasShell?.showRewardReveal?.(result.rewardReveal) && result.rewardReveal) {
                     this.openRewardRevealSnapshot?.({ ...result.rewardReveal, createdAt: this.runtime?.now?.() || Date.now() });
                     this.renderCanvasSurface(this.state?.currentTab);
@@ -3039,8 +2882,7 @@
                     militaryView: homeView.militaryView,
                   }), { source: 'CanvasGameApp:enterCity' });
                   this.renderCanvasSurface(homeView.activeTab);
-                  const tutorialResult = this.emitTutorialEvent('cityEntered', {});
-                  tutorialResult?.catch?.((error) => this.log(error?.message || String(error)));
+                  this.emitGameEvent('cityEntered', { cityId: targetCityId });
                   return true;
                 } catch (error) {
                   this.log(t('command.failedDetail', { message: error.payload?.message || error.message }));
@@ -3088,9 +2930,7 @@
     openArmyFormation(action = {}) {
             const opened = this.getArmyFormationEditorController().open(action) !== false;
             if (opened) {
-              const owner = this.getStateHost() || this;
-              const result = this.emitTutorialEvent('armyFormationOpened', {});
-              if (result?.catch) result.catch((error) => owner.log?.(error));
+              this.emitGameEvent('armyFormationOpened', { action });
             }
             return opened;
           }
@@ -3181,7 +3021,7 @@
                     : await api.renameCity(prompt.territoryId, name);
                   this.closeNaming();
                   this.applyApiState(result);
-                  this.getTutorialController()?.sync?.(this.tutorial || this.state?.tutorial || {});
+                  this.emitGameEvent('namingSubmitted', { prompt, name, result });
                   this.showFloatingText(result.message);
                   this.log(t('command.success.detail', { message: result.message || '' }));
                 } catch (error) {
@@ -3194,16 +3034,8 @@
 
     async handleCanvasTabSelection(tabId) {
                 if (!tabId) return false;
-                const tutorialResult = this.emitTutorialEvent('tabClicked', { tabId });
-                const allowed = tutorialResult && typeof tutorialResult.then === 'function'
-                  ? await tutorialResult.catch(() => false)
-                  : tutorialResult ?? true;
-                if (!allowed) {
-                  this.log(t('guide.completeCurrentStep'));
-                  this.renderCanvasSurface(this.state?.currentTab);
-                  return false;
-                }
                 this.switchTab(tabId);
+                this.emitGameEvent('tabClicked', { tabId });
                 return true;
               }
 
@@ -3217,12 +3049,6 @@
 
     getTargetTab(key) {
                 return this.guideController?.getTargetTab?.(key) || null;
-              }
-
-    getTutorialTarget(key) {
-                return this.canvasShell?.getTutorialTarget?.(key)
-                  || this.guideController?.getTargetRect?.(key)
-                  || null;
               }
 
     getGuideState() {
@@ -3293,13 +3119,7 @@
               }
 
     hideGuideHighlight() {
-                if (this.canvasShell && typeof this.canvasShell.hideTutorialHighlight === 'function') {
-                  return this.canvasShell.hideTutorialHighlight();
-                }
-                const hadHighlight = Boolean(this.tutorialHighlight);
-                this.tutorialHighlight = null;
-                if (hadHighlight) this.renderCanvasSurface(this.state?.currentTab);
-                return hadHighlight;
+                return false;
               }
 
     showGuideControllerHighlight(target, message) {
@@ -3396,11 +3216,21 @@
 
     goToAdvisorTarget() {
                 const target = this.activeAdvisor?.target || this.state?.softGuide?.target || null;
-                const resolution = TutorialGuideTargetResolverBase?.resolveSoftGuideId?.(target) || null;
+                const targetMap = {
+                  'btn-advance-era': { kind: 'tab', tabId: 'civilization' },
+                  'card-craftsman': { kind: 'tab', tabId: 'resources' },
+                  'event-card-special': { kind: 'tab', tabId: 'events' },
+                  'btn-claim-event': { kind: 'tab', tabId: 'events' },
+                  'task-center-main-claim': { kind: 'action', action: { type: 'openTaskCenter', tab: 'main', source: 'advisor' } },
+                  'task-center-button': { kind: 'action', action: { type: 'openTaskCenter', tab: 'main', source: 'advisor' } },
+                  'tab-territory': { kind: 'tab', tabId: 'territory' },
+                };
+                const resolution = targetMap[target]
+                  || (String(target || '').startsWith('card-') ? { kind: 'tab', tabId: 'buildings' } : null)
+                  || (String(target || '').startsWith('tab-') ? { kind: 'tab', tabId: String(target).slice(4) } : null);
                 if (resolution?.kind === 'action') {
                   const action = { ...resolution.action };
                   CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showAdvisor');
-                  this.canvasShell?.hideTutorialHighlight?.();
                   if (this.canvasShell?.actionController?.handle_openTaskCenter) {
                     this.canvasShell.actionController.handle_openTaskCenter(action);
                   } else if (this.actionController?.handle_openTaskCenter) {
@@ -3505,8 +3335,6 @@
                   || this.isBlockingPanelSnapshotOpen('showSubcityList')
                   || this.isBlockingPanelSnapshotOpen('showCityManagement')
                   || this.isBlockingPanelSnapshotOpen('showAdvisor')
-                  || this.tutorialAdvisorDialogue
-                  || this.canvasShell?.tutorialAdvisorDialogue
                   || this.isBlockingPanelSnapshotOpen('showTaskCenter')
                   || this.isBlockingPanelSnapshotOpen('showGuidebook')
                   || this.isBlockingPanelSnapshotOpen('showFamousPersons')
@@ -3631,29 +3459,7 @@
                   handled: summarizeHandledForOperationLog(handledResult),
                 }, { flush: true });
                 const handled = await handledResult;
-                this.advanceTutorialIntroAfterHandled(handled, normalizedAction);
                 return handled;
-              }
-
-    advanceTutorialIntro(action = {}) {
-                const controller = this.tutorialIntroOverlay || null;
-                if (!controller || typeof controller.advanceFromAction !== 'function') return false;
-                return controller.advanceFromAction(action);
-              }
-
-    advanceTutorialIntroAfterHandled(handled, action = {}) {
-                if (handled && typeof handled.then === 'function') {
-                  handled.then((value) => {
-                    if (value !== false) this.advanceTutorialIntro(action);
-                  }).catch((error) => this.log?.(error));
-                  return true;
-                }
-                return handled ? this.advanceTutorialIntro(action) : false;
-              }
-
-    isPointBlockedByTutorialShield(point = {}) {
-                if (!this.renderer || typeof this.renderer.getHitTarget !== 'function') return false;
-                return this.renderer.getHitTarget(point)?.type === 'blockCanvasModal';
               }
 
     getModeSnapshot() {

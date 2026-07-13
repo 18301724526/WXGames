@@ -37,8 +37,8 @@ function createHost(overrides = {}) {
     ctx: { fillRect() {}, globalAlpha: 1 },
     presenterArgs: null,
     presenter: {
-      buildCivilizationViewState(state, tutorial, options) {
-        host.presenterArgs = { state, tutorial, options };
+      buildCivilizationViewState(state, options) {
+        host.presenterArgs = { state, options };
         return createCivilizationView(overrides.viewOverrides || {});
       },
     },
@@ -145,7 +145,7 @@ test('CivilizationCanvasRenderer prefers explicit drawing surface over proxy fal
     drawingSurface: explicitSurface,
   });
 
-  renderer.renderCivilization({ tutorial: { step: 'civ' } }, 100, 460, { canOpenCivilizationTab: true });
+  renderer.renderCivilization({}, 100, 460, { canOpenCivilizationTab: true });
 
   assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'explicit'), CIVILIZATION_DRAWING_METHODS);
   assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), []);
@@ -156,7 +156,7 @@ test('CivilizationCanvasRenderer falls back to host drawing surface when none is
   const fallbackHost = createDrawingSurfaceSentinel('fallback', calls);
   const renderer = new CivilizationCanvasRenderer({ host: fallbackHost });
 
-  renderer.renderCivilization({ tutorial: { step: 'civ' } }, 100, 460, { canOpenCivilizationTab: true });
+  renderer.renderCivilization({}, 100, 460, { canOpenCivilizationTab: true });
 
   assert.deepEqual(getCalledDrawingSurfaceMethods(calls, 'fallback'), CIVILIZATION_DRAWING_METHODS);
 });
@@ -188,7 +188,7 @@ test('CivilizationCanvasRenderer renders overview, era and feature areas', () =>
   const host = createHost();
   const renderer = new CivilizationCanvasRenderer({ host });
 
-  renderer.renderCivilization({ tutorial: { step: 'civ' } }, 100, 460, { canOpenCivilizationTab: true });
+  renderer.renderCivilization({}, 100, 460, { canOpenCivilizationTab: true });
 
   assert.equal(host.presenterArgs.options.canOpenCivilizationTab, true);
   assert.ok(host.calls.filter((call) => call[0] === 'drawPanel').length >= 4);

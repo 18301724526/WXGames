@@ -11,7 +11,6 @@ const GameAPI = require('../frontend/js/api/GameAPI');
 const H5GameApiTransportAdapter = require('../frontend/js/ui/H5GameApiTransportAdapter');
 const GameStateRepository = require('../backend/repositories/GameStateRepository');
 const TerritoryService = require('../backend/services/TerritoryService');
-const TutorialService = require('../backend/services/TutorialService');
 const WorldExplorerService = require('../backend/services/WorldExplorerService');
 const WorldMapService = require('../backend/services/WorldMapService');
 const WorldCombatEncounterService = require('../backend/services/worldCombat/WorldCombatEncounterService');
@@ -308,14 +307,6 @@ function summarizeState(state = null, options = {}) {
   };
 }
 
-function completeTutorial(state) {
-  state.tutorial = TutorialService.manualAdvance(
-    state.tutorial || TutorialService.createInitialTutorialState(),
-    TutorialService.TUTORIAL_STEPS.completed,
-  );
-  return state;
-}
-
 function configureFormation(state, personId, soldiers = 500) {
   const cityId = state.activeCityId || 'capital';
   const person = {
@@ -427,11 +418,6 @@ function chooseMarchEncounter(state, repository, encounterId, now) {
 function prepareTerritoryClaimState(repository, playerId, territoryId, now) {
   const state = repository.findByPlayerId(playerId);
   assertCondition(state, `Missing login state for ${playerId}`);
-  state.tutorial = {
-    ...(state.tutorial || {}),
-    completed: false,
-    disabled: false,
-  };
   state.territories = (state.territories || []).filter(
     (territory) => territory?.id !== territoryId,
   );
@@ -465,7 +451,6 @@ function prepareTerritoryClaimState(repository, playerId, territoryId, now) {
 function prepareMarchState(repository, playerId, now) {
   const state = repository.findByPlayerId(playerId);
   assertCondition(state, `Missing login state for ${playerId}`);
-  completeTutorial(state);
   const formation = configureFormation(state, 'phase6-real-march-hero', 500);
   state.exploreMissions = [];
   WorldCombatEncounterService.normalizeCombatState(state, now);
@@ -516,7 +501,6 @@ function createCombatMission(state, encounter, missionId, personId, soldiers, op
 function prepareCombatReadyState(repository, playerId, now) {
   const state = repository.findByPlayerId(playerId);
   assertCondition(state, `Missing login state for ${playerId}`);
-  completeTutorial(state);
   const personId = 'phase6-real-combat-hero';
   configureFormation(state, personId, 500);
   const fallback = WorldCombatEncounterService.createEncounter(state, now);
@@ -545,7 +529,6 @@ function prepareCombatReadyState(repository, playerId, now) {
 function prepareWorkerState(repository, db, playerId, now) {
   const state = repository.findByPlayerId(playerId);
   assertCondition(state, `Missing worker fixture state for ${playerId}`);
-  completeTutorial(state);
   const personId = 'phase6-real-worker-hero';
   configureFormation(state, personId, 500);
   const fallback = WorldCombatEncounterService.createEncounter(state, now);

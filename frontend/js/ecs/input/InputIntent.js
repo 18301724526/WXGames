@@ -20,8 +20,7 @@ const INTENT_PHASES = Object.freeze({
   CANCEL: 'cancel',
 });
 
-// Covered-mode routes Batch 4 owns. Tutorial/panel/modal routing is explicitly
-// out of scope and stays in the routers (Batch 5 + tutorial flow batch).
+// Covered-mode routes Batch 4 owns. Panel/modal routing stays in the routers.
 const INPUT_ROUTES = Object.freeze({
   ENTITY_BATTLE: 'entity-battle',
   TECH_TREE: 'tech-tree',

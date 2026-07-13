@@ -32,7 +32,7 @@ const MODAL_MODE_KEYS = Object.freeze([
   'modal:techDetail',
 ]);
 
-const OVERLAY_MODE_KEYS = Object.freeze(['tutorial', 'debug']);
+const OVERLAY_MODE_KEYS = Object.freeze(['debug']);
 
 const MODE_KEYS = Object.freeze([...BASE_MODE_KEYS, ...MODAL_MODE_KEYS, ...OVERLAY_MODE_KEYS]);
 

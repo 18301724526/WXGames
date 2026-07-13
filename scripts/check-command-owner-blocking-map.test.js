@@ -26,11 +26,11 @@ test('command owner blocking map accepts the live migrated inventory set', () =>
 
   assert.deepEqual(result.violations, []);
   assert.equal(result.counts.serverWrites, 9);
-  assert.equal(result.counts.gameActions, 29);
-  assert.equal(result.counts.frontendWriteHelpers, 33);
-  assert.equal(result.counts.frontendCommandPaths, 54);
-  assert.equal(result.expectedCount, 125);
-  assert.equal(result.gateMapCount, 125);
+  assert.equal(result.counts.gameActions, 28);
+  assert.equal(result.counts.frontendWriteHelpers, 32);
+  assert.equal(result.counts.frontendCommandPaths, 53);
+  assert.equal(result.expectedCount, 122);
+  assert.equal(result.gateMapCount, 122);
 });
 
 test('command owner blocking map fires when a migrated id has no map entry', () => {

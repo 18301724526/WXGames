@@ -11,18 +11,6 @@
     return null;
   })();
 
-  const TutorialFlowShared = (() => {
-    if (global.TutorialFlowShared) return global.TutorialFlowShared;
-    if (typeof module !== 'undefined' && module.exports) {
-      try {
-        return require('../../../../shared/tutorialFlowConfig');
-      } catch (_error) {
-        return null;
-      }
-    }
-    return null;
-  })();
-
   class CivilizationPresenter {
     static POPULATION_PER_OFFICIAL = 100;
 
@@ -43,15 +31,6 @@
       return this.toInteger(officials) * this.POPULATION_PER_OFFICIAL;
     }
 
-    static canAdvanceEraByTutorial(state = {}, tutorial = {}) {
-      if (tutorial.completed) return true;
-      const steps = TutorialFlowShared.TUTORIAL_STEPS;
-      const step = TutorialFlowShared.stepName(tutorial.currentStep) || steps.initial;
-      if (this.toNumber(state.currentEra) === 0) return TutorialFlowShared.stepAtLeast(step, steps.cityEntered);
-      if (this.toNumber(state.currentEra) === 1) return TutorialFlowShared.stepAtLeast(step, steps.farmBuilt);
-      return true;
-    }
-
     static buildEraConditionViewState(condition = {}) {
       return {
         name: condition.name || '',
@@ -61,22 +40,18 @@
       };
     }
 
-    static buildCivilizationViewState(state = {}, tutorial = {}, options = {}) {
+    static buildCivilizationViewState(state = {}, options = {}) {
       const eraName = state.currentEraName || this.t('civilization.era.fallback', {});
       const progress = state.eraProgress || { percentage: 0, canAdvance: false, conditions: [] };
       const percentage = Math.max(0, Math.min(100, this.toNumber(progress.percentage)));
-      const canAdvanceByTutorial = this.canAdvanceEraByTutorial(state, tutorial);
       const canOpenCivilizationTab = options.canOpenCivilizationTab !== false;
       const canAdvance = Boolean(progress.canAdvance)
         && state.isCapitalCity !== false
-        && canAdvanceByTutorial
         && canOpenCivilizationTab;
 
       let advanceLabel = this.t('civilization.advance.insufficient', {});
       if (state.isCapitalCity === false) {
         advanceLabel = this.t('civilization.advance.subcity', {});
-      } else if (progress.canAdvance && !canAdvanceByTutorial) {
-        advanceLabel = this.t('civilization.advance.guideLocked', {});
       } else if (progress.canAdvance) {
         advanceLabel = this.t('civilization.advance.ready', {});
       }
@@ -104,7 +79,6 @@
         advanceButton: {
           disabled: !canAdvance,
           canAdvance,
-          canAdvanceByTutorial,
           canOpenCivilizationTab,
         },
         conditions: (progress.conditions || []).map((condition) => this.buildEraConditionViewState(condition)),

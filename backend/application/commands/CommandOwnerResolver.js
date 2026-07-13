@@ -24,7 +24,6 @@ const PLAYER_COMMAND_TYPES = Object.freeze([
   'setArmyFormation',
   'stopWorldMarch',
   'switchCity',
-  'tutorialAdvance',
   'upgrade',
   'veteranCampUpgrade',
   'veteranCampWithdraw',

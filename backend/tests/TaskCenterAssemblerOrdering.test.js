@@ -3,10 +3,8 @@ const assert = require('node:assert/strict');
 
 const TaskCenterAssembler = require('../services/taskCenter/TaskCenterAssembler');
 
-// Claimable rows must render at the top of the task panel: the tutorial guide
-// resolves claim buttons by canvas hit target, and a claimable row below the
-// fold is unreachable for the highlight (this shipped once: the new mainline
-// tasks pushed the guided lumbermill claim off-screen and stalled the guide).
+// Claimable rows must render at the top of the task panel so the user can reach
+// the next actionable reward without scrolling past unfinished tasks.
 
 test('claimable tasks surface first, completed sink, definition order holds within bands', () => {
   const definitions = {

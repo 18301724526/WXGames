@@ -15,7 +15,6 @@ const registerGameRoutes = require('../routes/gameRoutes');
 const registerPlayerRoutes = require('../routes/playerRoutes');
 const GameStateService = require('../services/GameStateService');
 const TerritoryService = require('../services/TerritoryService');
-const TutorialService = require('../services/TutorialService');
 const WorldCombatEncounterService = require('../services/worldCombat/WorldCombatEncounterService');
 const WorldMapService = require('../services/WorldMapService');
 const {
@@ -118,19 +117,11 @@ function createRuntime() {
 
 function createBuildReadyState(playerId) {
   const state = GameStateService.createInitialGameState(playerId);
-  state.tutorial = TutorialService.manualAdvance(
-    TutorialService.createInitialTutorialState(),
-    TutorialService.TUTORIAL_STEPS.cityEntered,
-  );
   return state;
 }
 
 function createTerritoryClaimReadyState(playerId, territoryId) {
   const state = GameStateService.createInitialGameState(playerId);
-  state.tutorial = TutorialService.manualAdvance(
-    state.tutorial,
-    TutorialService.TUTORIAL_STEPS.completed,
-  );
   state.territories.push({
     id: territoryId,
     x: 1,
@@ -153,10 +144,6 @@ function createTerritoryClaimReadyState(playerId, territoryId) {
 
 function createWorldCombatReadyState(playerId, encounter) {
   const state = GameStateService.createInitialGameState(playerId);
-  state.tutorial = TutorialService.manualAdvance(
-    state.tutorial,
-    TutorialService.TUTORIAL_STEPS.completed,
-  );
   state.famousPeople = [{
     id: 'phase6-hero',
     name: 'Phase 6 Hero',

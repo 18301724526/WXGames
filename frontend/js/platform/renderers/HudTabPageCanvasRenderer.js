@@ -79,7 +79,7 @@
       if (activeTab === 'buildings') {
         const availableHeight = Math.max(180, tabsTop - topBarBottom - 12);
         this.renderBuildings(
-          { ...state, tutorial: options.tutorial || state.tutorial || {} },
+          state,
           topBarBottom,
           availableHeight,
           {
@@ -100,7 +100,7 @@
           state,
           topBarBottom,
           availableHeight,
-          { tutorial: options.tutorial || state.tutorial || {} },
+          options,
         );
       } else if (activeTab === 'military') {
         const availableHeight = Math.max(360, tabsTop - topBarBottom - 12);

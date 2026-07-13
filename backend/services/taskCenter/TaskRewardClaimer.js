@@ -2,7 +2,6 @@ const CityService = require('../CityService');
 const FamousPersonService = require('../FamousPersonService');
 const MilitaryService = require('../MilitaryService');
 const TaskDefinitionService = require('../TaskDefinitionService');
-const TutorialGrantService = require('../tutorial/TutorialGrantService');
 const TaskRewardGrantLedger = require('./TaskRewardGrantLedger');
 
 function addResources(target, source = {}) {
@@ -39,12 +38,11 @@ function applySoldierReward(gameState, city, soldiers) {
   CityService.applyDerivedStatsToCity(city, gameState);
 }
 
-// Famous-person rewards grant the tutorial scout (the only supported archetype;
-// TaskDefinitionNormalizer validates the config side).
+// Famous-person rewards currently support the scout archetype only.
 function applyFamousPersonReward(gameState, archetype) {
   if (archetype !== 'scout')
     return { success: false, error: `UNKNOWN_FAMOUS_PERSON_REWARD:${archetype}` };
-  const grant = FamousPersonService.grantTutorialScoutFamousPerson(gameState);
+  const grant = FamousPersonService.grantStarterScoutFamousPerson(gameState);
   if (!grant?.person) return { success: false, error: 'FAMOUS_PERSON_GRANT_FAILED' };
   const record = TaskRewardGrantLedger.recordFamousPersonGrant(
     gameState,
@@ -52,8 +50,6 @@ function applyFamousPersonReward(gameState, archetype) {
     { personId: grant.person.id, grantedAt: grant.grantedAt },
   );
   if (!record) return { success: false, error: 'FAMOUS_PERSON_GRANT_RECORD_FAILED' };
-  // Keep the legacy guided first-city anchor until the backend tutorial service is removed in B3'.
-  TutorialGrantService.grantTutorialFirstCity(gameState);
   return { success: true };
 }
 

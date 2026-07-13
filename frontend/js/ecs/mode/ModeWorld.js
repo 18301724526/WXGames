@@ -50,7 +50,6 @@ function updateModeWorld(owner, facts = {}) {
 
   ModeState.baseModeId[entity] = snapshot.baseModeId;
   ModeState.modalMask[entity] = snapshot.modalMask;
-  ModeState.tutorialActive[entity] = snapshot.tutorialActive ? 1 : 0;
   ModeState.debugActive[entity] = snapshot.debugActive ? 1 : 0;
   ModeState.blockingOverlayActive[entity] = snapshot.blockingOverlayActive ? 1 : 0;
   ModeState.techTreeBlockingOverlayActive[entity] = snapshot.techTreeBlockingOverlayActive ? 1 : 0;

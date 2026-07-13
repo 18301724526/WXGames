@@ -58,7 +58,7 @@ function createHost() {
   };
 }
 
-test('WorldActorCanvasRenderer prefers registry tutorial unit renderer over host constructor fallback', () => {
+test('WorldActorCanvasRenderer prefers registry unit renderer over host constructor fallback', () => {
   const host = createHost();
   const calls = [];
   const registryUnitRenderer = {
@@ -74,13 +74,13 @@ test('WorldActorCanvasRenderer prefers registry tutorial unit renderer over host
     },
   };
   host.constructor = {
-    getTutorialIntroUnitRenderer() {
+    getWorldUnitSpriteRenderer() {
       return fallbackUnitRenderer;
     },
   };
   const renderer = new WorldActorCanvasRenderer({ host });
 
-  withRendererDependencyRegistry({ tutorialIntroUnitRenderer: registryUnitRenderer }, () => {
+  withRendererDependencyRegistry({ worldUnitSpriteRenderer: registryUnitRenderer }, () => {
     assert.equal(renderer.drawActorUnit({ unitKey: 'scout_squad_default' }, { x: 10, y: 20 }, { scale: 1 }), true);
   });
   assert.deepEqual(calls, ['registry']);
@@ -143,7 +143,7 @@ test('WorldActorCanvasRenderer uses explicit ctx through actor and arrow drawing
   const host = createHost();
   let unitRendererCtx = null;
   host.constructor = {
-    getTutorialIntroUnitRenderer() {
+    getWorldUnitSpriteRenderer() {
       return {
         renderUnit(renderHost, x, y, scale, framePath) {
           unitRendererCtx = renderHost.ctx;

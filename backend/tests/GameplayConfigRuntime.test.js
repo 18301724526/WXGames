@@ -100,12 +100,6 @@ test('GameplayConfigRuntime consumes active runtime bundle payload after release
     buildingUnlocks: { 0: ['farm'] },
     advancement: {},
   };
-  const tutorialPayload = {
-    steps: { initial: 0, houseBuilt: 4, eraAdvancedTo1: 6, lumbermillBuilt: 15, scoutFormationSaved: 22, completed: 36 },
-    eventSteps: {},
-    passThroughActions: [],
-    clientStepGates: {},
-  };
   const techPayload = {
     techPointGrants: { 1: 4 },
     techChoiceLimits: { 1: 2 },
@@ -120,7 +114,6 @@ test('GameplayConfigRuntime consumes active runtime bundle payload after release
     createPayloadLoader('game-config', gamePayload, { entries: [{ id: 'resources' }, { id: 'population' }] }),
     createPayloadLoader('building-config', buildingPayload, { entries: [{ id: 'farm' }] }),
     createPayloadLoader('era-config', eraPayload, { entries: [{ id: 'era:0' }] }),
-    createPayloadLoader('tutorial-flow-config', tutorialPayload, { entries: [{ id: 'step:initial' }] }),
     createPayloadLoader('tech-tree-config', techPayload, { entries: [{ id: 'tech-meta' }] }),
   ];
   const snapshot = ConfigPipeline.buildCurrentSnapshot({
@@ -149,7 +142,6 @@ test('GameplayConfigRuntime consumes active runtime bundle payload after release
   assert.deepEqual(GameplayConfigRuntime.BuildingConfig.getBuildCost('farm'), { food: 1 });
   assert.equal(GameplayConfigRuntime.BuildingConfig.calculateEffectBonus('farm', 'foodOutputMultiplier', 2), 1);
   assert.equal(GameplayConfigRuntime.EraConfig.getEraName(0), 'Unit Era');
-  assert.equal(GameplayConfigRuntime.TutorialFlowConfig.TUTORIAL_STEPS.completed, 36);
   assert.equal(GameplayConfigRuntime.TechTreeConfig.TECH_POINT_GRANTS[1], 4);
 
   GameplayConfigRuntime.resetRuntimeConfig();

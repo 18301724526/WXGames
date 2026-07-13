@@ -16,7 +16,6 @@ test('ModeResolver creates serializable snapshots with capture and routing facts
   const snapshot = ModeResolver.createModeSnapshot({
     baseModeKey: 'worldMap',
     modalKeys: ['modal:naming'],
-    tutorialActive: false,
     entityBattleActive: false,
     worldMapHomeActive: true,
   });

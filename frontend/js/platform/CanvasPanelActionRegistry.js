@@ -11,20 +11,12 @@
       panelKey: FAMOUS_PANEL_KEY,
       operation: 'open',
       dirty: ['modal'],
-      hooks: Object.freeze({
-        beforeOpen: ['tutorialCanOpenTab'],
-        veto: ['tutorialVetoFeedback'],
-        afterOpen: ['tutorialOnOpened', 'tutorialRefreshNow', 'tutorialRefreshNextTick'],
-      }),
     }),
     closeFamousPersons: Object.freeze({
       type: 'closeFamousPersons',
       panelKey: FAMOUS_PANEL_KEY,
       operation: 'close',
       dirty: ['modal'],
-      hooks: Object.freeze({
-        afterClose: ['tutorialOnClosed', 'tutorialRefreshNextTick'],
-      }),
     }),
     changeFamousPersonsPage: Object.freeze({
       type: 'changeFamousPersonsPage',
@@ -39,9 +31,6 @@
       operation: 'action',
       actionName: 'openDetail',
       dirty: ['modal'],
-      hooks: Object.freeze({
-        afterAction: ['tutorialOnDetailOpened', 'tutorialRefreshNow', 'tutorialRefreshNextTick'],
-      }),
     }),
     closeFamousPersonDetail: Object.freeze({
       type: 'closeFamousPersonDetail',
@@ -49,9 +38,6 @@
       operation: 'action',
       actionName: 'closeDetail',
       dirty: ['modal'],
-      hooks: Object.freeze({
-        afterAction: ['tutorialRefreshNow', 'tutorialRefreshNextTick'],
-      }),
     }),
     showFamousSkillTooltip: Object.freeze({
       type: 'showFamousSkillTooltip',
@@ -78,7 +64,6 @@
     return {
       ...descriptor,
       dirty: Array.isArray(descriptor.dirty) ? [...descriptor.dirty] : [],
-      hooks: descriptor.hooks ? { ...descriptor.hooks } : undefined,
     };
   }
 

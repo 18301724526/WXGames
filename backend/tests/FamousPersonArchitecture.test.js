@@ -80,7 +80,7 @@ test('famous person progression module owns level, attribute, and auto-growth co
   assert.equal(person.autoGrowthMilestones[0], 10);
 });
 
-test('famous person generator preserves candidate and tutorial scout contracts', () => {
+test('famous person generator preserves candidate and starter reward contracts', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
   const gameState = {
     playerId: 'famous-arch',
@@ -93,13 +93,13 @@ test('famous person generator preserves candidate and tutorial scout contracts',
   assert.equal(candidate.joinedAt, null);
   assert.equal(candidate.appearance.version, Constants.APPEARANCE_VERSION);
 
-  const tutorialScout = FamousPersonService.createTutorialScoutFamousPerson(gameState, now);
-  assert.equal(tutorialScout.quality, 'great'); // always purple (英杰)
+  const starterScout = FamousPersonService.createStarterScoutFamousPerson(gameState, now);
+  assert.equal(starterScout.quality, 'great'); // always purple (英杰)
   // Starter gift is a RANDOM combat (military) archetype so the player can always deploy it and
   // open the game — never a civil-only officer. Assert the guarantee (military role), not a
   // specific archetype (the archetype is randomized per game).
-  assert.ok(tutorialScout.roles.includes('military'), 'tutorial starter must be a combat general');
-  assert.equal(tutorialScout.source.type, 'tutorial');
+  assert.ok(starterScout.roles.includes('military'), 'starter reward must be a combat general');
+  assert.equal(starterScout.source.type, 'starter-reward');
 
   assert.equal(Generator.makeSkillName([{ key: 'lifesteal' }, { key: 'secondHit' }]), '血刃连袭');
   assert.equal(Generator.getArchetypePool('seek').some((item) => item.id === 'scout'), true);
@@ -146,7 +146,7 @@ test('famous person candidate generation consumes server random authority by def
   assert.equal(injected.source.randomAuthority, undefined);
 });
 
-test('FamousPersonService facade preserves seek, accept, and tutorial grant API', () => {
+test('FamousPersonService facade preserves seek, accept, and starter reward API', () => {
   const expectedApi = [
     'APPEARANCE_VERSION',
     'ARCHETYPES',
@@ -167,7 +167,7 @@ test('FamousPersonService facade preserves seek, accept, and tutorial grant API'
     'calculateAutoAttributeGrowth',
     'createFamousPersonCandidate',
     'createInitialFamousPersonState',
-    'createTutorialScoutFamousPerson',
+    'createStarterScoutFamousPerson',
     'dismissFamousPersonCandidate',
     'ensureFamousPersonState',
     'getClientState',
@@ -175,7 +175,7 @@ test('FamousPersonService facade preserves seek, accept, and tutorial grant API'
     'getLevelUpExperience',
     'getSeekAvailabilityFromState',
     'grantBattleExperience',
-    'grantTutorialScoutFamousPerson',
+    'grantStarterScoutFamousPerson',
     'makeSkillName',
     'normalizeFamousPeople',
     'normalizeFamousPersonState',
@@ -201,12 +201,12 @@ test('FamousPersonService facade preserves seek, accept, and tutorial grant API'
   assert.equal(gameState.famousPeople.length, 1);
   assert.equal(gameState.famousPersonState.candidates.length, 0);
 
-  const grant = FamousPersonService.grantTutorialScoutFamousPerson(gameState, new Date('2026-06-06T00:03:00.000Z'));
+  const grant = FamousPersonService.grantStarterScoutFamousPerson(gameState, new Date('2026-06-06T00:03:00.000Z'));
   assert.ok(grant.person.roles.includes('military'), 'granted starter must be a combat general');
-  assert.equal(grant.person.source.type, 'tutorial');
+  assert.equal(grant.person.source.type, 'starter-reward');
 });
 
-test('tutorial starter general: combat-only pool + stable-marker idempotency (decoupled from archetype)', () => {
+test('starter reward general: combat-only pool + stable-marker idempotency (decoupled from archetype)', () => {
   const Generator = require('../services/famousPerson/FamousPersonGenerator');
 
   // The gift pool is combat-only (military role) — never a civil officer the player cannot deploy,
@@ -216,7 +216,7 @@ test('tutorial starter general: combat-only pool + stable-marker idempotency (de
   assert.ok(pool.every((archetype) => archetype.roles.includes('military')));
   assert.ok(!pool.some((archetype) => ['warden', 'scholar', 'artisan', 'envoy'].includes(archetype.id)));
 
-  // Idempotency keys off the stable tutorial marker, NOT the (randomized) archetype: a second
+  // Idempotency keys off the stable starter-reward marker, NOT the (randomized) archetype: a second
   // grant at a DIFFERENT time returns the SAME person — proving future changes to WHAT the starter
   // is never touch how it is found.
   const gameState = {
@@ -225,13 +225,13 @@ test('tutorial starter general: combat-only pool + stable-marker idempotency (de
     famousPeople: [],
     famousPersonState: FamousPersonService.createInitialFamousPersonState(),
   };
-  const first = FamousPersonService.grantTutorialScoutFamousPerson(gameState, new Date('2026-06-06T00:00:00.000Z'));
+  const first = FamousPersonService.grantStarterScoutFamousPerson(gameState, new Date('2026-06-06T00:00:00.000Z'));
   assert.equal(first.created, true);
   assert.equal(first.person.quality, 'great');
   assert.ok(first.person.roles.includes('military'));
-  assert.ok(Generator.isTutorialStarterFamousPerson(first.person));
+  assert.ok(Generator.isStarterRewardFamousPerson(first.person));
 
-  const second = FamousPersonService.grantTutorialScoutFamousPerson(gameState, new Date('2026-06-06T09:00:00.000Z'));
+  const second = FamousPersonService.grantStarterScoutFamousPerson(gameState, new Date('2026-06-06T09:00:00.000Z'));
   assert.equal(second.created, false);
   assert.equal(gameState.famousPeople.length, 1);
   assert.equal(second.person.id, first.person.id);

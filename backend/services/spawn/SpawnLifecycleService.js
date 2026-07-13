@@ -58,7 +58,7 @@ function createReservationAssignment(playerId, selected = {}, options = {}) {
       score: selected.score,
       terrain: selected.terrain,
       nearestCapitalDistance: selected.nearestCapitalDistance,
-      tutorialTarget: selected.tutorialTarget || null,
+      starterTarget: selected.starterTarget || null,
     },
   });
 }

@@ -1,4 +1,3 @@
-const TutorialService = require('../services/TutorialService');
 const TaskCenterService = require('../services/TaskCenterService');
 const WorldExplorerTrace = require('../services/worldExplorer/WorldExplorerTrace');
 const { prepareCommandEntry, sendCommandEntryError } = require('../application/commands/CommandEntryContext');
@@ -6,8 +5,8 @@ const GameActionProjection = require('../application/projections/GameActionProje
 
 const WORLD_COMBAT_ACTIONS = new Set(['startWorldCombat', 'resolveWorldCombat']);
 
-function buildGameView(gameState, tutorial, gameStateService, projection = {}) {
-  return GameActionProjection.buildGameActionView(gameState, tutorial, gameStateService, projection);
+function buildGameView(gameState, gameStateService, projection = {}) {
+  return GameActionProjection.buildGameActionView(gameState, gameStateService, projection);
 }
 
 function loadProjection(repository, playerId) {
@@ -140,10 +139,9 @@ function registerGameRoutes(app, deps) {
         missions: (gameState.exploreMissions || []).map(summarizeMission),
       });
     }
-    const tutorial = TutorialService.normalizeTutorialState(gameState.tutorial);
     const syncTime = new Date().toISOString();
     const responsePayload = {
-      ...buildGameView(gameState, tutorial, gameStateService, projection),
+      ...buildGameView(gameState, gameStateService, projection),
       syncTime,
       serverTime: syncTime,
     };

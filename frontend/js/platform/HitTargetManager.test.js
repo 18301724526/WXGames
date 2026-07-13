@@ -6,15 +6,13 @@ const HitTargetManager = require('./HitTargetManager');
 
 // Isolated contract tests for HitTargetManager (god-file re-decomposition slice 12).
 // The manager is exercised against a stub host: a plain surfaceState POJO built by the
-// REAL CanvasSurfaceState module, plus optional stub sub-renderers to prove the
-// forward-probe vs local-fallback split (surfaceRenderer for set/add/get/suppress,
-// tutorialRenderer for find).
+// REAL CanvasSurfaceState module, plus an optional surface renderer stub to prove
+// the forward-probe vs local-fallback split for set/add/get/suppress operations.
 
 function createHost(overrides = {}) {
   return {
     surfaceState: CanvasSurfaceState.createCanvasSurfaceState(),
     surfaceRenderer: null,
-    tutorialRenderer: null,
     ...overrides,
   };
 }
@@ -175,25 +173,4 @@ test('withSuppressedHitTargets forwards, else invokes the callback without the f
   });
   assert.equal(value, 42);
   assert.equal(local.manager.withSuppressedHitTargets(), undefined);
-});
-
-test('findHitTarget forwards to the tutorialRenderer and null-defaults otherwise', () => {
-  const found = { x: 0, y: 0, width: 1, height: 1, action: { type: 'enterCity' } };
-  const forwarded = createManager({
-    tutorialRenderer: {
-      findHitTarget(type, predicate) {
-        if (type !== 'enterCity') return undefined;
-        return !predicate || predicate(found.action) ? found : undefined;
-      },
-    },
-  });
-  assert.equal(forwarded.manager.findHitTarget('enterCity'), found);
-  assert.equal(
-    forwarded.manager.findHitTarget('enterCity', () => false),
-    null,
-  );
-  assert.equal(forwarded.manager.findHitTarget('missing'), null);
-
-  const local = createManager();
-  assert.equal(local.manager.findHitTarget('enterCity'), null);
 });

@@ -22,7 +22,6 @@ function createGameState() {
     buildings: city.buildings,
     currentEra: 1,
     eventHistory: [{ id: 'forest_whisper' }],
-    tutorial: { currentStep: 1, completed: false },
     taskProgress: { claimed: {} },
   };
 }

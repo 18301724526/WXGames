@@ -15,17 +15,6 @@ test('UnitSpriteManifest exposes extensible spearman move frame paths', () => {
   assert.equal(UnitSpriteManifest.getFramePaths('spearman', 'move').length, 11);
 });
 
-test('UnitSpriteManifest separates tutorial and scout unit resource identities', () => {
-  const tutorial = UnitSpriteManifest.getUnitDefinition('tutorial_intro_soldier');
-  const scout = UnitSpriteManifest.getUnitDefinition('scout_squad_default');
-
-  assert.equal(tutorial.id, 'tutorial_intro_soldier');
-  assert.equal(scout.id, 'scout_squad_default');
-  assert.equal(UnitSpriteManifest.getFramePaths('tutorial_intro_soldier', 'move').length, 11);
-  assert.equal(UnitSpriteManifest.getFramePaths('scout_squad_default', 'move').length, 11);
-  assert.notEqual(tutorial, scout);
-});
-
 test('UnitSpriteManifest returns empty values for unknown unit animations', () => {
   assert.deepEqual(UnitSpriteManifest.getFramePaths('unknown', 'move'), []);
   assert.equal(UnitSpriteManifest.getFramePath('spearman', 'unknown', 0), '');
@@ -45,7 +34,6 @@ test('UnitSpriteManifest resolves the barbarian infantry spine descriptor for ma
   assert.equal(descriptor.atlasFile, 'barbarian_infantry.atlas');
   // Every march-capable unit currently shares the one barbarian infantry skeleton.
   assert.equal(UnitSpriteManifest.getSpineDescriptor('hostile_squad_default'), descriptor);
-  assert.equal(UnitSpriteManifest.getSpineDescriptor('tutorial_intro_soldier'), descriptor);
   assert.equal(UnitSpriteManifest.getSpineDescriptor('barbarian_infantry'), descriptor);
   assert.equal(UnitSpriteManifest.hasSpine('scout_squad_default'), true);
 });

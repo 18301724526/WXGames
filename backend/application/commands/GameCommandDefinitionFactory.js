@@ -1,6 +1,5 @@
 'use strict';
 
-const TutorialService = require('../../services/TutorialService');
 const { BuildBuildingCommandHandler } = require('./BuildBuildingCommandHandler');
 const { GameActionCommandHandler } = require('./GameActionCommandHandler');
 const { HeartbeatCommandHandler } = require('./HeartbeatCommandHandler');
@@ -65,13 +64,10 @@ class GameCommandDefinitionFactory {
 
   _projectGameView(context) {
     const responseProjection = loadProjection(this.repository, context.envelope.playerId);
-    const tutorial = context.application.tutorial
-      || TutorialService.normalizeTutorialState(context.state?.tutorial);
     return {
       result: context.execution || {},
       view: buildGameView(
         context.state,
-        tutorial,
         this.gameStateService,
         responseProjection,
       ),
@@ -167,7 +163,6 @@ class GameCommandDefinitionFactory {
           : this.gameStateService.calculateEraProgress(context.state);
         return {
           gameState: clientState,
-          tutorial: context.state.tutorial,
           eraProgress,
         };
       },

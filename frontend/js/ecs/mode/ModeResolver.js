@@ -40,7 +40,6 @@ function modalKeysFromMask(mask = 0) {
 
 function deriveTopCaptureModeKey(facts = {}) {
   const modalMask = Number(facts.modalMask) || 0;
-  if (readBool(facts.tutorialActive)) return 'tutorial';
   return (
     CAPTURE_PRIORITY.find((key) => {
       if (key.startsWith('modal:')) return (modalMask & (MODAL_BIT_BY_KEY[key] || 0)) !== 0;
@@ -71,7 +70,6 @@ function createModeSnapshot(facts = {}) {
     baseModeKey,
     modalMask,
     modalKeys: Object.freeze(modalKeys),
-    tutorialActive: readBool(facts.tutorialActive),
     debugActive: readBool(facts.debugActive),
     blockingOverlayActive,
     techTreeBlockingOverlayActive,
@@ -95,7 +93,6 @@ function snapshotFromComponent(ModeState, entity) {
   return createModeSnapshot({
     baseModeKey,
     modalMask,
-    tutorialActive: ModeState.tutorialActive[entity] === 1,
     debugActive: ModeState.debugActive[entity] === 1,
     blockingOverlayActive: ModeState.blockingOverlayActive[entity] === 1,
     techTreeBlockingOverlayActive: ModeState.techTreeBlockingOverlayActive[entity] === 1,

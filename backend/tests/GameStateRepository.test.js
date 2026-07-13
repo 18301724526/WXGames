@@ -1375,7 +1375,7 @@ test('GameStateRepository reserves player spawns with unique coordinates', () =>
       q: 24,
       r: -8,
       score: 120,
-      tutorialTarget: { q: 25, r: -8 },
+      starterTarget: { q: 25, r: -8 },
     }, { nowIso: '2026-06-16T00:00:00.000Z' });
 
     assert.equal(first.playerId, 'spawn-owner-a');

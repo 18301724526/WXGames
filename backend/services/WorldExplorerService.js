@@ -10,7 +10,6 @@ module.exports = {
   MAX_MANUAL_ROUTE_LENGTH: Shared.MAX_MANUAL_ROUTE_LENGTH,
   MAX_ACTIVE_EXPLORE_MISSIONS: Shared.MAX_ACTIVE_EXPLORE_MISSIONS,
   EXPLORE_REVEAL_RADIUS: Shared.EXPLORE_REVEAL_RADIUS,
-  TUTORIAL_FIRST_SITE_GRANT_KEY: Shared.TUTORIAL_FIRST_SITE_GRANT_KEY,
   normalizeExploreState: Progression.normalizeExploreState,
   advanceExploreMissions: Progression.advanceExploreMissions,
   startWorldMarch: Actions.startWorldMarch,

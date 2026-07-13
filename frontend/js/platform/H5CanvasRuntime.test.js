@@ -251,8 +251,8 @@ test('H5CanvasRuntime clips fixed screen overlay layers to their declared rect',
   });
 
   runtime.ensureCanvas();
-  const spineCanvas = runtime.ensureLayerCanvas('tutorialSpine', {
-    zIndex: 1003,
+  const spineCanvas = runtime.ensureLayerCanvas('worldActorSpine', {
+    zIndex: 999,
     contextType: 'webgl',
     rect: { x: 18, y: 44, width: 108, height: 240 },
   });
@@ -261,7 +261,7 @@ test('H5CanvasRuntime clips fixed screen overlay layers to their declared rect',
   assert.equal(spineCanvas.style.top, '119px');
   assert.equal(spineCanvas.style.width, '108px');
   assert.equal(spineCanvas.style.height, '240px');
-  assert.deepEqual(runtime.getLayerMetrics('tutorialSpine'), {
+  assert.deepEqual(runtime.getLayerMetrics('worldActorSpine'), {
     width: 108,
     height: 240,
     viewportWidth: 390,
@@ -288,48 +288,40 @@ test('H5CanvasRuntime appends layer canvases in physical z-order regardless of e
   });
 
   const mainCanvas = runtime.ensureCanvas();
-  // The tutorial dialogue layer is ensured FIRST (begin()) but must sit ABOVE the spine
-  // layer that is ensured LATER (portrait). DOM order must follow z-index so that
-  // WebView compositors which break ties by document order still stack correctly.
-  const dialogue = runtime.ensureLayerCanvas('tutorialDialogue', {
-    zIndex: 1004,
-    contextType: '2d',
-    rect: { x: 126, y: 560, width: 288, height: 136 },
-  });
-  const spine = runtime.ensureLayerCanvas('tutorialSpine', {
-    zIndex: 1003,
-    contextType: 'webgl',
-    rect: { x: 18, y: 44, width: 108, height: 240 },
-  });
-  const highlight = runtime.ensureLayerCanvas('tutorialHighlight', {
-    zIndex: 1002,
-    contextType: '2d',
-    rect: { x: 0, y: 0, width: 390, height: 693 },
-  });
+  // The panel layer is ensured first but must sit above world-space layers ensured later.
+  // DOM order follows z-index for legacy WebViews that break ties by document order.
   const panel = runtime.ensureLayerCanvas('panelOverlay', {
     zIndex: 1001,
     contextType: '2d',
+    rect: { x: 126, y: 560, width: 288, height: 136 },
+  });
+  const spine = runtime.ensureLayerCanvas('worldActorSpine', {
+    zIndex: 999,
+    contextType: 'webgl',
+    rect: { x: 18, y: 44, width: 108, height: 240 },
+  });
+  const fog = runtime.ensureLayerCanvas('worldFog', {
+    zIndex: 998,
+    contextType: 'webgl',
     rect: { x: 0, y: 0, width: 390, height: 693 },
   });
 
   const order = document.body.children;
   const mainIndex = order.indexOf(mainCanvas);
   const panelIndex = order.indexOf(panel);
-  const highlightIndex = order.indexOf(highlight);
+  const fogIndex = order.indexOf(fog);
   const spineIndex = order.indexOf(spine);
-  const dialogueIndex = order.indexOf(dialogue);
 
-  assert.ok([mainIndex, panelIndex, highlightIndex, spineIndex, dialogueIndex].every((index) => index >= 0));
-  assert.ok(mainIndex < panelIndex, 'mainHud (1000) must precede panelOverlay (1001) in DOM order');
-  assert.ok(panelIndex < highlightIndex, 'panelOverlay (1001) must precede tutorialHighlight (1002) in DOM order');
-  assert.ok(highlightIndex < spineIndex, 'tutorialHighlight (1002) must precede tutorialSpine (1003) in DOM order');
-  assert.ok(spineIndex < dialogueIndex, 'tutorialSpine (1003) must precede tutorialDialogue (1004) in DOM order');
+  assert.ok([mainIndex, panelIndex, fogIndex, spineIndex].every((index) => index >= 0));
+  assert.ok(fogIndex < spineIndex, 'worldFog (998) must precede worldActorSpine (999)');
+  assert.ok(spineIndex < mainIndex, 'worldActorSpine (999) must precede mainHud (1000)');
+  assert.ok(mainIndex < panelIndex, 'mainHud (1000) must precede panelOverlay (1001)');
 });
 
 test('H5CanvasRuntime orders layer inserts even when host.children is a live HTMLCollection', () => {
   // In the browser host.children is an HTMLCollection (array-like, not an Array). The ordering
   // helper must not depend on Array.isArray, or it silently degrades to appendChild and the
-  // spine/dialogue stacking regresses. This host mimics that live-collection shape.
+  // layer stacking regresses. This host mimics that live-collection shape.
   const document = createDocument();
   const runtime = new H5CanvasRuntime({
     document,
@@ -337,7 +329,7 @@ test('H5CanvasRuntime orders layer inserts even when host.children is a live HTM
   });
 
   const stored = [];
-  const higher = { style: { zIndex: '1004' } };
+  const higher = { style: { zIndex: '1001' } };
   const host = {
     get children() {
       // array-like collection object, deliberately NOT an Array instance
@@ -359,10 +351,10 @@ test('H5CanvasRuntime orders layer inserts even when host.children is a live HTM
   };
   stored.push(higher);
   runtime.canvas = null;
-  runtime.layerCanvases = new Map([['tutorialDialogue', higher]]);
+  runtime.layerCanvases = new Map([['panelOverlay', higher]]);
 
-  const lower = { style: { zIndex: '1003' } };
-  runtime.insertLayerElementInStackOrder(host, lower, '1003');
+  const lower = { style: { zIndex: '999' } };
+  runtime.insertLayerElementInStackOrder(host, lower, '999');
 
   assert.equal(stored.indexOf(lower), 0, 'lower z-index element must be inserted before the higher one');
   assert.equal(stored.indexOf(higher), 1);
@@ -432,16 +424,16 @@ function createOffscreenRuntime() {
 test('H5CanvasRuntime gives every layer an offscreen draw surface with no DOM canvas per layer', () => {
   const { runtime, document } = createOffscreenRuntime();
 
-  const surface = runtime.ensureLayerCanvas('tutorialSpine', {
-    zIndex: 1003,
+  const surface = runtime.ensureLayerCanvas('worldActorSpine', {
+    zIndex: 999,
     contextType: 'webgl',
     pixelRatio: 2,
     rect: { x: 18, y: 44, width: 108, height: 240 },
   });
 
   assert.equal(surface instanceof FakeOffscreenCanvas, true, 'ensureLayerCanvas must return the offscreen draw surface');
-  assert.equal(runtime.getLayerDrawSurface('tutorialSpine'), surface);
-  assert.equal(runtime.getLayerCanvas('tutorialSpine'), surface, 'the draw surface IS the layer canvas in stage mode');
+  assert.equal(runtime.getLayerDrawSurface('worldActorSpine'), surface);
+  assert.equal(runtime.getLayerCanvas('worldActorSpine'), surface, 'the draw surface IS the layer canvas in stage mode');
   // surface sized from fixedRect * pixelRatio override
   assert.equal(surface.width, 216);
   assert.equal(surface.height, 480);
@@ -453,8 +445,8 @@ test('H5CanvasRuntime gives every layer an offscreen draw surface with no DOM ca
     .filter(Boolean);
   assert.deepEqual(domLayers, []);
   // re-ensure returns the SAME surface (stable identity for player reuse checks)
-  const again = runtime.ensureLayerCanvas('tutorialSpine', {
-    zIndex: 1003,
+  const again = runtime.ensureLayerCanvas('worldActorSpine', {
+    zIndex: 999,
     contextType: 'webgl',
     pixelRatio: 2,
     rect: { x: 18, y: 44, width: 108, height: 240 },
@@ -465,8 +457,8 @@ test('H5CanvasRuntime gives every layer an offscreen draw surface with no DOM ca
 test('H5CanvasRuntime presentLayer composites the stage onto the visible canvas', () => {
   const { runtime, recordingCtxByCanvas } = createOffscreenRuntime();
 
-  const surface = runtime.ensureLayerCanvas('tutorialSpine', {
-    zIndex: 1003,
+  const surface = runtime.ensureLayerCanvas('worldActorSpine', {
+    zIndex: 999,
     contextType: 'webgl',
     pixelRatio: 1,
     rect: { x: 18, y: 44, width: 108, height: 240 },
@@ -475,7 +467,7 @@ test('H5CanvasRuntime presentLayer composites the stage onto the visible canvas'
   const ctx = recordingCtxByCanvas.get(visibleCanvas);
 
   ctx.calls.length = 0;
-  assert.equal(runtime.presentLayer('tutorialSpine'), true);
+  assert.equal(runtime.presentLayer('worldActorSpine'), true);
   // webgl layers composite from their persistent present cache, placed at their fixed rect
   assert.equal(surface._presentCache instanceof FakeOffscreenCanvas, true);
   assert.deepEqual(ctx.calls[0], ['setTransform', 1, 0, 0, 1, 0, 0]);
@@ -489,15 +481,15 @@ test('H5CanvasRuntime presentLayer composites the stage onto the visible canvas'
 test('H5CanvasRuntime refreshLayerPresentCache snapshots webgl layers without compositing', () => {
   const { runtime, recordingCtxByCanvas } = createOffscreenRuntime();
 
-  const surface = runtime.ensureLayerCanvas('tutorialSpine', {
-    zIndex: 1003,
+  const surface = runtime.ensureLayerCanvas('worldActorSpine', {
+    zIndex: 999,
     contextType: 'webgl',
     rect: { x: 18, y: 44, width: 108, height: 240 },
   });
   const ctx = recordingCtxByCanvas.get(runtime.canvas);
   ctx.calls.length = 0;
 
-  assert.equal(runtime.refreshLayerPresentCache('tutorialSpine'), true);
+  assert.equal(runtime.refreshLayerPresentCache('worldActorSpine'), true);
   assert.equal(surface._presentCache instanceof FakeOffscreenCanvas, true);
   assert.equal(ctx.calls.length, 0, 'cache refresh must not composite; the HUD frame folds it in');
   assert.equal(runtime.refreshLayerPresentCache('missingLayer'), false);
@@ -510,13 +502,13 @@ test('H5CanvasRuntime composites the full stack onto the visible canvas in physi
   const fogSurface = runtime.ensureLayerCanvas('worldFog', { zIndex: 998, contextType: 'webgl', padding: 120 });
   const actorSurface = runtime.ensureLayerCanvas('worldActor', { zIndex: 999, padding: 120 });
   const hudSurface = runtime.ensureLayerCanvas('mainHud', { zIndex: 1000, pointerEvents: 'auto' });
-  const dialogueSurface = runtime.ensureLayerCanvas('tutorialDialogue', {
-    zIndex: 1004,
+  const panelSurface = runtime.ensureLayerCanvas('panelOverlay', {
+    zIndex: 1001,
     rect: { x: 0, y: 0, width: 390, height: 693 },
   });
 
   // All layers draw on distinct offscreen surfaces; the DOM holds ONLY the visible canvas.
-  assert.equal(new Set([mapSurface, fogSurface, actorSurface, hudSurface, dialogueSurface]).size, 5);
+  assert.equal(new Set([mapSurface, fogSurface, actorSurface, hudSurface, panelSurface]).size, 5);
   assert.equal(mapSurface._layerName, 'worldMap');
   const domLayers = document.body.children
     .map((el) => el.attributes?.['data-canvas-layer'])
@@ -539,12 +531,12 @@ test('H5CanvasRuntime composites the full stack onto the visible canvas in physi
   assert.equal(runtime.compositeStage(), true);
   assert.deepEqual(visibleCtx.calls[0], ['setTransform', 1, 0, 0, 1, 0, 0]);
   assert.deepEqual(visibleCtx.calls[1], ['clearRect', 0, 0, 390, 693]);
-  // PHYSICAL_LAYER_ORDER: worldMap, worldFog(cache), worldActor, mainHud, tutorialDialogue
+  // PHYSICAL_LAYER_ORDER: worldMap, worldFog(cache), worldActor, mainHud, panelOverlay
   assert.deepEqual(visibleCtx.calls[2], ['drawImage', mapSurface, 120, 120, 390, 693, 0, 0, 390, 693]);
   assert.deepEqual(visibleCtx.calls[3], ['drawImage', fogSurface._presentCache, 120, 120, 390, 693, 0, 0, 390, 693]);
   assert.deepEqual(visibleCtx.calls[4], ['drawImage', actorSurface, 120, 120, 390, 693, 0, 0, 390, 693]);
   assert.deepEqual(visibleCtx.calls[5], ['drawImage', hudSurface, 0, 0, 390, 693, 0, 0, 390, 693]);
-  assert.deepEqual(visibleCtx.calls[6], ['drawImage', dialogueSurface, 0, 0, 390, 693, 0, 0, 390, 693]);
+  assert.deepEqual(visibleCtx.calls[6], ['drawImage', panelSurface, 0, 0, 390, 693, 0, 0, 390, 693]);
 });
 
 test('H5CanvasRuntime pans and hides stage layers through the composite state', () => {

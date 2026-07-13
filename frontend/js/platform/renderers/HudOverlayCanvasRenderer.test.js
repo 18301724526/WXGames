@@ -57,9 +57,6 @@ function createHost(overrides = {}) {
     renderCanvasDebugResetButton(...args) { calls.push(['renderCanvasDebugResetButton', args]); },
     renderConfirmDialog(...args) { calls.push(['renderConfirmDialog', args]); },
     renderTopBar(...args) { calls.push(['renderTopBar', args]); return 96; },
-    renderTutorialAdvisorDialogue(...args) { calls.push(['renderTutorialAdvisorDialogue', args]); },
-    renderTutorialHighlight(...args) { calls.push(['renderTutorialHighlight', args]); },
-    renderTutorialIntro(...args) { calls.push(['renderTutorialIntro', args]); },
     renderWorldMarchHud(...args) { calls.push(['renderWorldMarchHud', args]); },
     renderWorldSiteModal(...args) { calls.push(['renderWorldSiteModal', args]); },
     setHitTargets(targets = []) {
@@ -95,7 +92,6 @@ test('HudOverlayCanvasRenderer preserves login early-return flow', () => {
     'beginFrame',
     'setHitTargets',
     'clear',
-    'renderTutorialHighlight',
     'renderLoginPanel',
     'endFrame',
   ]);
@@ -112,43 +108,6 @@ test('HudOverlayCanvasRenderer preserves battle early-return flow', () => {
   assert.equal(callNames(host).includes('clear'), true);
   assert.equal(callNames(host).includes('renderBattleSceneOverlay'), true);
   assert.equal(callNames(host).includes('renderTopBar'), false);
-  assert.ok(callNames(host).indexOf('renderTutorialHighlight') < callNames(host).indexOf('renderBattleSceneOverlay'));
-});
-
-test('HudOverlayCanvasRenderer clears stale highlight before every blocking early-return overlay', () => {
-  const scenarios = [
-    {
-      options: { auth: { view: { loginPanelVisible: true } } },
-      renderCall: 'renderLoginPanel',
-    },
-    {
-      options: { loading: { visible: true } },
-      renderCall: 'renderLoadingScreen',
-    },
-    {
-      options: { entityBattle: { visible: true } },
-      renderCall: 'renderEntityBattleOverlay',
-    },
-    {
-      options: { battleScene: { visible: true } },
-      renderCall: 'renderBattleSceneOverlay',
-    },
-  ];
-
-  scenarios.forEach((scenario) => {
-    const host = createHost();
-    const renderer = createRenderer(host);
-    renderer.renderHudOverlay({}, {
-      ...scenario.options,
-      tutorialHighlight: { rect: { left: 10, top: 20, width: 30, height: 40 } },
-    });
-
-    const names = callNames(host);
-    const clearCall = host.calls.find((call) => call[0] === 'renderTutorialHighlight');
-    assert.deepEqual(clearCall[1], [null]);
-    assert.ok(names.indexOf('renderTutorialHighlight') < names.indexOf(scenario.renderCall));
-    assert.equal(names.includes('renderTopBar'), false);
-  });
 });
 
 test('HudOverlayCanvasRenderer preserves map-home HUD overlay sequence', () => {
@@ -172,7 +131,6 @@ test('HudOverlayCanvasRenderer preserves map-home HUD overlay sequence', () => {
   assert.equal(names.includes('renderFloatingEventButton'), true);
   assert.equal(names.includes('renderFloatingAccountButton'), true);
   assert.equal(names.includes('renderFloatingAdvisorButton'), false);
-  assert.equal(names.includes('renderTutorialIntro'), true);
   assert.equal(names.includes('renderResourceDetailsPanel'), false);
   assert.equal(names.at(-1), 'endFrame');
 });
@@ -408,51 +366,6 @@ test('HudOverlayCanvasRenderer renders confirm dialog above debug reset', () => 
   const names = callNames(host);
   assert.equal(names.at(-3), 'renderCanvasDebugResetButton');
   assert.equal(names.at(-2), 'renderConfirmDialog');
-});
-
-test('HudOverlayCanvasRenderer hides debug reset while tutorial dialogue is visible', () => {
-  const host = createHost();
-  const renderer = createRenderer(host);
-
-  renderer.renderHudOverlay({ militaryView: 'world' }, {
-    activeTab: 'military',
-    isMapHome: true,
-    tutorialAdvisorDialogue: {
-      message: 'guide',
-      advisorName: 'advisor',
-      source: 'tutorial',
-    },
-    confirmDialog: { visible: true, kind: 'resetGame' },
-  });
-
-  const names = callNames(host);
-  assert.equal(names.includes('renderFloatingSubcityButton'), true);
-  assert.equal(names.includes('renderFloatingAccountButton'), true);
-  assert.equal(names.includes('renderTutorialAdvisorDialogue'), true);
-  assert.equal(names.includes('renderCanvasDebugResetButton'), false);
-  assert.equal(names.includes('renderConfirmDialog'), true);
-});
-
-test('HudOverlayCanvasRenderer prioritizes tutorial spine advisor over generic advisor panel', () => {
-  const host = createHost();
-  const renderer = createRenderer(host);
-  const options = {
-    activeTab: 'resources',
-    showAdvisor: true,
-    tutorialAdvisorDialogue: {
-      message: '民居已经建立起来了。',
-      advisorName: '谋士',
-      source: 'houseBuilt',
-    },
-  };
-
-  renderer.renderHudOverlay({ resources: {} }, options);
-
-  const names = callNames(host);
-  assert.equal(names.includes('renderTutorialAdvisorDialogue'), true);
-  assert.equal(names.includes('renderAdvisorPanel'), false);
-  const dialogueCall = host.calls.find((call) => call[0] === 'renderTutorialAdvisorDialogue');
-  assert.deepEqual(dialogueCall[1][2], { action: { type: 'closeAdvisor', source: 'houseBuilt' } });
 });
 
 test('CanvasGameRenderer exposes HUD overlay rendering through facade', () => {

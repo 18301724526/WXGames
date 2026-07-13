@@ -62,7 +62,6 @@ function getDefaultRegistryLoaders() {
   return [
     createConfigModuleLoader('game-config', path.join(REPO_ROOT, 'backend', 'config', 'GameConfig.js')),
     createConfigModuleLoader('era-config', path.join(REPO_ROOT, 'backend', 'config', 'EraConfig.js')),
-    createConfigModuleLoader('tutorial-flow-config', path.join(REPO_ROOT, 'backend', 'config', 'TutorialFlowConfig.js')),
     createConfigModuleLoader('battle-config', path.join(REPO_ROOT, 'backend', 'config', 'BattleConfig.js')),
     createConfigModuleLoader('tech-tree-config', path.join(REPO_ROOT, 'backend', 'config', 'TechTreeConfig.js')),
     createConfigModuleLoader('building-config', path.join(REPO_ROOT, 'backend', 'config', 'BuildingConfig.js')),
@@ -158,6 +157,19 @@ function getSnapshotRegistryMap(snapshot = {}) {
   return new Map(registries.map((registry) => [registry.id, registry]));
 }
 
+function getDeclaredRegistryRetirementMap(options = {}) {
+  const declarations = Array.isArray(options.declaredRegistryRetirements)
+    ? options.declaredRegistryRetirements
+    : [];
+  return new Map(declarations
+    .map((entry = {}) => ({
+      id: String(entry.id || '').trim(),
+      reason: String(entry.reason || '').trim(),
+    }))
+    .filter((entry) => entry.id && entry.reason)
+    .map((entry) => [entry.id, entry]));
+}
+
 function compareSnapshots(baseline = {}, current = {}, options = {}) {
   const beforeMap = getSnapshotRegistryMap(baseline);
   const afterMap = getSnapshotRegistryMap(current);
@@ -167,11 +179,19 @@ function compareSnapshots(baseline = {}, current = {}, options = {}) {
   const removedRegistryIds = beforeIds.filter((id) => !afterMap.has(id));
   const unchangedRegistryIds = [];
   const changedRegistries = [];
+  const retiredRegistries = [];
   const errors = [];
   const warnings = [];
+  const declaredRetirements = getDeclaredRegistryRetirementMap(options);
 
   removedRegistryIds.forEach((id) => {
-    errors.push(`${id}: registry removed`);
+    const declaration = declaredRetirements.get(id);
+    if (!declaration) {
+      errors.push(`${id}: registry removed`);
+      return;
+    }
+    retiredRegistries.push(declaration);
+    warnings.push(`${id}: registry retired (${declaration.reason})`);
   });
 
   addedRegistryIds.forEach((id) => {
@@ -219,6 +239,7 @@ function compareSnapshots(baseline = {}, current = {}, options = {}) {
     removedRegistryIds,
     unchangedRegistryIds,
     changedRegistries,
+    retiredRegistries,
   };
 }
 
@@ -256,6 +277,7 @@ module.exports = {
   buildPipelineReport,
   collectRegistryReports,
   compareSnapshots,
+  getDeclaredRegistryRetirementMap,
   createSnapshot,
   getDefaultRegistryLoaders,
   readSnapshot,

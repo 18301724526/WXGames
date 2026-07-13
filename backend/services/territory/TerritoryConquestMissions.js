@@ -32,9 +32,13 @@ function createTerritoryConquestMissions(dependencies = {}) {
     return territory?.owner === 'neutral';
   }
 
-  function isTutorialActive(gameState) {
-    const tutorial = gameState?.tutorial || {};
-    return tutorial.completed !== true && tutorial.disabled !== true;
+  function getOccupiedCityCount(gameState) {
+    return (Array.isArray(gameState?.territories) ? gameState.territories : [])
+      .filter((territory) => (
+        territory?.status === 'occupied'
+        && territory.type !== 'capital'
+        && (territory.owner === 'player' || territory.ownerPlayerId === gameState.playerId)
+      )).length;
   }
 
   // 距首城 ring distance, stamped on the territory by TerritoryStateNormalizer from the ACTUAL
@@ -43,14 +47,14 @@ function createTerritoryConquestMissions(dependencies = {}) {
     return Math.max(0, Number(territory?.capitalDistance) || 0);
   }
 
-  // Neutral (empty) cities settle directly (no battle) inside the spawn area and throughout the
-  // tutorial; farther, defended distance bands must be taken by conquest. Non-neutral (hostile)
+  // A player's first neutral city settles directly. Later neutral cities settle only inside the
+  // undefended spawn band; farther defended bands must be taken by conquest. Non-neutral (hostile)
   // territories are always conquest. getOccupationMode and normalizeGarrison agree via the same
   // GarrisonPolicy.isNeutralCityDefended check, so a settlement never faces a garrison and a
   // conquest always has one.
   function getOccupationMode(territory, gameState) {
     if (!isUnownedTerritory(territory)) return 'conquest';
-    if (isTutorialActive(gameState)) return 'settlement';
+    if (getOccupiedCityCount(gameState) === 0) return 'settlement';
     const distance = getNeutralCityDistance(territory);
     return GarrisonPolicy.isNeutralCityDefended(territory, distance) ? 'conquest' : 'settlement';
   }
@@ -153,7 +157,7 @@ function createTerritoryConquestMissions(dependencies = {}) {
       territory.occupiedAt = now.toISOString();
       territory.cityName = null;
       // A frictionless settlement faces no defender: clear any band garrison the site carried
-      // (a defended-band neutral city settled during the tutorial), mirroring the conquest branch.
+      // (including the first city when it is outside the safe band), mirroring the conquest branch.
       territory.defenderLeader = null;
       territory.garrison = null;
       revealOccupiedCityTerrain(gameState, territory, now);

@@ -1,22 +1,11 @@
 'use strict';
 
 const GameActionRegistry = require('../../actions/GameActionRegistry');
-const TutorialService = require('../../services/TutorialService');
 const WorldExplorerTrace = require('../../services/worldExplorer/WorldExplorerTrace');
 const { requireOwnerContext } = require('./CommandOwnerContext');
 const {
   generateCommandEvents,
-  isTutorialRuntimeEnabled,
-  normalizeResultTutorial,
-  syncEra2Tutorial,
 } = require('./GameCommandStateSupport');
-
-function buildTutorialPayload(payload = {}) {
-  return {
-    ...payload,
-    target: payload.target ?? payload.buildingId ?? payload.job,
-  };
-}
 
 class GameActionCommandHandler {
   constructor(options = {}) {
@@ -51,24 +40,7 @@ class GameActionCommandHandler {
         };
       }
     }
-    const tutorialEnabled = isTutorialRuntimeEnabled();
-    context.application.tutorialEnabled = tutorialEnabled;
-    const tutorial = syncEra2Tutorial(context.state, this.gameStateService, { tutorialEnabled });
-    context.application.tutorial = tutorial;
-    if (!tutorialEnabled) return { success: true };
-    const result = TutorialService.validateAction(
-      tutorial,
-      action,
-      buildTutorialPayload(context.envelope?.payload || {}),
-      context.state,
-    );
-    if (result.allowed) return { success: true };
-    return {
-      success: false,
-      statusCode: 403,
-      error: result.code,
-      message: result.message,
-    };
+    return { success: true };
   }
 
   execute(context = {}) {
@@ -89,20 +61,11 @@ class GameActionCommandHandler {
         action: context.envelope.type,
         body: payload,
         gameState: context.state,
-        tutorial: context.application.tutorial,
         planningContext: context.application.projection,
         worldEncounterRepo: context.application.worldEncounterRepo,
         sharedWorldEncounters: context.application.projection?.sharedWorldEncounters,
       }),
     );
-    context.state.tutorial = normalizeResultTutorial(
-      result,
-      context.application.tutorial,
-      { tutorialEnabled: context.application.tutorialEnabled },
-    );
-    context.application.tutorial = syncEra2Tutorial(context.state, this.gameStateService, {
-      tutorialEnabled: context.application.tutorialEnabled,
-    });
     generateCommandEvents(context.state);
     return result;
   }
@@ -110,5 +73,4 @@ class GameActionCommandHandler {
 
 module.exports = {
   GameActionCommandHandler,
-  buildTutorialPayload,
 };

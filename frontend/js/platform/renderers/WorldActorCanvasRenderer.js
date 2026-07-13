@@ -187,9 +187,9 @@
       const ctx = this.getActorRenderCtx(options);
       const framePath = this.getActorFramePath(actor, options);
       const scale = Math.max(0.32, Math.min(0.62, (Number(viewport.scale) || 1) * 0.92));
-      const unitRenderer = global.WorldMapRendererDependencyRegistry?.getRendererDependency?.('tutorialIntroUnitRenderer')
-        || this.host?.constructor?.getTutorialIntroUnitRenderer?.()
-        || this.constructor.getTutorialIntroUnitRenderer?.();
+      const unitRenderer = global.WorldMapRendererDependencyRegistry?.getRendererDependency?.('worldUnitSpriteRenderer')
+        || this.host?.constructor?.getWorldUnitSpriteRenderer?.()
+        || this.constructor.getWorldUnitSpriteRenderer?.();
       if (unitRenderer?.renderUnit) {
         return unitRenderer.renderUnit(this.getActorRenderHost(ctx), point.x, point.y + 6 * scale, scale, framePath);
       }

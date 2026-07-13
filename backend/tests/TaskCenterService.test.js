@@ -3,7 +3,6 @@ const assert = require('node:assert/strict');
 
 const CityService = require('../services/CityService');
 const TaskCenterService = require('../services/TaskCenterService');
-const TutorialService = require('../services/TutorialService');
 const TaskRewardGrantLedger = require('../services/taskCenter/TaskRewardGrantLedger');
 const {
   publishCurrentConfigRuntime,
@@ -33,10 +32,6 @@ function createMainTaskState(options = {}) {
     resources,
     buildings: options.houseBuilt === false ? {} : { house: { level: 1 } },
   });
-  const tutorial = TutorialService.manualAdvance(
-    TutorialService.createInitialTutorialState(),
-    options.tutorialStep ?? TutorialService.TUTORIAL_STEPS.eraAdvancedTo1,
-  );
   return {
     playerId: 'task-center-service-test',
     activeCityId: CityService.CAPITAL_CITY_ID,
@@ -47,7 +42,6 @@ function createMainTaskState(options = {}) {
     military: city.military,
     currentEra: Number(options.currentEra ?? 1),
     eventHistory: [],
-    tutorial,
     taskProgress: { claimed: {} },
   };
 }
@@ -70,7 +64,7 @@ test('main first supplies waits for house and first era advancement', () => {
   assert.equal(getMainFirstTask(afterEraAdvance).status, 'claimable');
 });
 
-test('claiming main first supplies applies dynamic rewards and advances toward farm guide', () => {
+test('claiming main first supplies applies dynamic rewards', () => {
   const gameState = createMainTaskState({ food: 7, knowledge: 2 });
   const result = TaskCenterService.claimTask(gameState, 'main_first_supplies', 'main');
 
@@ -79,7 +73,6 @@ test('claiming main first supplies applies dynamic rewards and advances toward f
   assert.equal(gameState.cities.capital.resources.food, 127);
   assert.equal(gameState.cities.capital.resources.knowledge, 7);
   assert.equal(gameState.taskProgress.claimed.main_first_supplies.reward.resources.food, 120);
-  assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.farmPrepReserved);
   assert.equal(getMainFirstTask(gameState).status, 'completed');
 });
 
@@ -103,7 +96,6 @@ function getMainTask(gameState, taskId) {
 test('claiming the first-army task pays soldiers into the city military with the grant record', () => {
   const gameState = createMainTaskState({
     currentEra: 3,
-    tutorialStep: TutorialService.TUTORIAL_STEPS.barracksBuilt,
   });
   gameState.buildings.barracks = { level: 1 };
   gameState.cities.capital.buildings.barracks = { level: 1 };
@@ -123,8 +115,6 @@ test('claiming the first-army task pays soldiers into the city military with the
   );
   assert.equal(grant.soldiers, 1000);
   assert.equal(typeof grant.grantedAt, 'string');
-  assert.equal(gameState.tutorial.grants.firstArmy, undefined);
-  assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstArmyClaimed);
 
   const duplicate = TaskCenterService.claimTask(gameState, 'main_first_army', 'main');
   assert.equal(duplicate.success, false);
@@ -132,10 +122,9 @@ test('claiming the first-army task pays soldiers into the city military with the
   assert.equal(gameState.cities.capital.military.soldiers, 1000);
 });
 
-test('claiming the scout-officer task grants the tutorial scout famous person once', () => {
+test('claiming the scout-officer task grants the starter scout famous person once', () => {
   const gameState = createMainTaskState({
     currentEra: 3,
-    tutorialStep: TutorialService.TUTORIAL_STEPS.firstArmyClaimed,
   });
   TaskRewardGrantLedger.recordSoldierGrant(
     gameState,
@@ -157,8 +146,6 @@ test('claiming the scout-officer task grants the tutorial scout famous person on
     TaskRewardGrantLedger.SCOUT_FAMOUS_GRANT_KEY,
   );
   assert.equal(grant.personId, gameState.famousPeople[0].id);
-  assert.equal(gameState.tutorial.grants.scoutFamousPerson, undefined);
-  assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutFamousGranted);
 
   // Double-claim attempts are rejected before the grant core runs.
   const duplicate = TaskCenterService.claimTask(gameState, 'main_scout_officer', 'main');
@@ -167,27 +154,12 @@ test('claiming the scout-officer task grants the tutorial scout famous person on
   assert.equal(gameState.famousPeople.length, 1);
 });
 
-test('legacy first-army tutorial grant keeps the scout-officer task claimable for old saves', () => {
-  const gameState = createMainTaskState({
-    currentEra: 3,
-    tutorialStep: TutorialService.TUTORIAL_STEPS.firstArmyClaimed,
-  });
-  gameState.tutorial.grants.firstArmy = { soldiers: 1000, grantedAt: '2026-07-03T00:00:00.000Z' };
-
-  assert.equal(getMainTask(gameState, 'main_scout_officer').status, 'claimable');
-  assert.equal(
-    TaskRewardGrantLedger.getSoldierGrant(gameState, TaskRewardGrantLedger.FIRST_ARMY_GRANT_KEY).soldiers,
-    1000,
-  );
-});
-
 test('main lumbermill supplies wait for lumbermill and pay next era cost', () => {
   const gameState = createMainTaskState({
     food: 11,
     knowledge: 3,
     wood: 7,
     currentEra: 2,
-    tutorialStep: TutorialService.TUTORIAL_STEPS.lumbermillBuilt,
   });
   gameState.buildings.farm = { level: 1 };
 
@@ -203,6 +175,4 @@ test('main lumbermill supplies wait for lumbermill and pay next era cost', () =>
   assert.equal(gameState.cities.capital.resources.knowledge, 103);
   assert.equal(gameState.cities.capital.resources.wood, 207);
   assert.equal(getMainLumbermillTask(gameState).status, 'completed');
-  assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.era3AdvanceReady);
-  assert.equal(gameState.tutorial.completed, false);
 });

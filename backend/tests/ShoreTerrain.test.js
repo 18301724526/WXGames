@@ -304,7 +304,7 @@ test('world map authority repository lazily repairs stale water blobs and keeps 
   }
 });
 
-test('shore maps to the coast planning archive and stays off spawn/site/tutorial placement', () => {
+test('shore maps to the coast planning archive and stays off spawn/site/starter placement', () => {
   assert.equal(TerritoryShared.getPlanningTerrainForMapTerrain('shore'), 'coast');
   assert.equal(SpawnScoring.isBlockedTerrain('shore'), true);
 
@@ -314,12 +314,12 @@ test('shore maps to the coast planning archive and stays off spawn/site/tutorial
 
   // The spawn target search and companion city planner keep the companion city on solid land.
   const originShore = { q: shore.q, r: shore.r };
-  const target = SpawnScoring.findTutorialTarget(originShore, { seed: SEED });
+  const target = SpawnScoring.findStarterTarget(originShore, { seed: SEED });
   assert.ok(target, 'a land target is chosen near even a shore origin');
   assert.notEqual(WorldMapService.chooseTerrain(SEED, target.q, target.r), 'shore');
   assert.equal(WorldMarchCore.isMarchBlockedTerrain(WorldMapService.chooseTerrain(SEED, target.q, target.r)), false);
-  assert.ok(WorldCitySpawner.planCompanionCity(SEED, { allocation: { tutorialTarget: target } }));
+  assert.ok(WorldCitySpawner.planCompanionCity(SEED, { allocation: { starterTarget: target } }));
   assert.equal(WorldCitySpawner.planCompanionCity(SEED, {
-    allocation: { tutorialTarget: { q: shore.q, r: shore.r, terrain: 'shore' } },
+    allocation: { starterTarget: { q: shore.q, r: shore.r, terrain: 'shore' } },
   }), null);
 });

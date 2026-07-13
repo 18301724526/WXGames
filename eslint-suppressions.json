@@ -120,11 +120,6 @@
       "count": 1
     }
   },
-  "frontend/js/platform/renderers/CanvasFrameRenderer.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
   "frontend/js/platform/renderers/CanvasPreloadAssetManifest.js": {
     "no-unused-vars": {
       "count": 2
@@ -151,16 +146,6 @@
     }
   },
   "frontend/js/platform/renderers/TechCanvasRenderer.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/platform/renderers/TutorialAdvisorDialogueRenderer.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "frontend/js/platform/renderers/TutorialCanvasRenderer.js": {
     "no-unused-vars": {
       "count": 1
     }

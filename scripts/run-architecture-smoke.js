@@ -26,7 +26,6 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/state/BattleStore.test.js',
   'frontend/js/state/ModalStore.js',
   'frontend/js/state/ModalStore.test.js',
-  'frontend/js/tutorial/TutorialGuideEventRegistry.contract.test.js',
   'frontend/js/ecs/projection/FogProjection.js',
   'frontend/js/ecs/projection/FogProjection.test.js',
   'frontend/js/ecs/snapshot/RendererSnapshotBoundary.js',
@@ -93,22 +92,13 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-step4-final-audit.test.js',
   'scripts/check-ui-runtime-field-ownership.js',
   'scripts/check-ui-runtime-field-ownership.test.js',
-  'scripts/check-tutorial-host-context-boundary.js',
-  'scripts/check-tutorial-host-context-boundary.test.js',
-  'frontend/js/tutorial/TutorialHostContextStepScript.test.js',
-  'scripts/check-tutorial-engine-purity.js',
-  'scripts/check-tutorial-engine-purity.test.js',
-  'frontend/js/tutorial-engine/StepScriptTypeRegistry.js',
-  'frontend/js/tutorial-engine/StepScriptRunner.js',
-  'frontend/js/tutorial-engine/StepScriptRunner.test.js',
-  'frontend/js/tutorial-config/TaskPanelStepScripts.js',
-  'frontend/js/tutorial-config/TaskPanelStepScripts.test.js',
-  'scripts/check-tutorial-step-config-purity.js',
-  'scripts/check-tutorial-step-config-purity.test.js',
-  'scripts/generate-tutorial-rule-inventory.js',
-  'scripts/generate-tutorial-rule-inventory.test.js',
-  'scripts/check-tutorial-action-matches-purity.js',
-  'scripts/check-tutorial-action-matches-purity.test.js',
+  'scripts/check-tutorial-demolition-retirements.js',
+  'scripts/check-tutorial-demolition-retirements.test.js',
+  'scripts/check-game-tutorial-awareness.js',
+  'scripts/check-game-tutorial-awareness.test.js',
+  'scripts/playtest-game-smoke.js',
+  'scripts/playtest-step-script-trace.js',
+  'scripts/playtest-online-tutorial.js',
   'scripts/check-step5-action-descriptor-coverage.js',
   'scripts/check-step5-action-descriptor-coverage.test.js',
   'scripts/verify-step4-phase3-real-server.js',
@@ -152,8 +142,6 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/platform/H5CanvasRuntime.js',
   'frontend/js/platform/H5CanvasRuntime.test.js',
   'frontend/js/platform/CanvasGameShell.js',
-  'frontend/js/platform/TutorialActionMatches.js',
-  'frontend/js/platform/TutorialActionMatches.test.js',
   'frontend/js/platform/WorldMapRuntimePolicy.js',
   'frontend/js/platform/WorldMapRuntimePolicy.test.js',
   'frontend/js/platform/CanvasGameShell.test.js',
@@ -256,14 +244,6 @@ const CHECK_FILES = Object.freeze([
   'frontend/js/platform/renderers/ResourceTopBarCanvasRenderer.test.js',
   'frontend/js/platform/renderers/CityPeopleCanvasRenderer.js',
   'frontend/js/platform/renderers/CityPeopleCanvasRenderer.test.js',
-  'frontend/js/tutorial/TutorialGuideStepPolicy.js',
-  'frontend/js/tutorial/TutorialGuideStepPolicy.test.js',
-  'frontend/js/tutorial/TutorialGuideTargetResolver.js',
-  'frontend/js/tutorial/TutorialGuideTargetResolver.test.js',
-  'frontend/js/tutorial/TutorialGuideArchitecture.test.js',
-  'frontend/js/tutorial/TutorialHostContext.js',
-  'frontend/js/tutorial/TutorialGuideController.js',
-  'frontend/js/tutorial/TutorialGuideController.test.js',
   'frontend/js/platform/CanvasGameAppRenderPolicy.js',
   'frontend/js/platform/CanvasGameAppRenderPolicy.test.js',
   'frontend/js/platform/CanvasGameAppRenderScheduler.js',
@@ -340,7 +320,6 @@ const CHECK_FILES = Object.freeze([
   'backend/config/GameConfig.js',
   'backend/config/SecurityConfig.js',
   'backend/config/TechTreeConfig.js',
-  'backend/config/TutorialFlowConfig.js',
   'backend/modules/BuildingState.js',
   'backend/services/SkillGeneratorService.js',
   'backend/services/skillGenerator/SkillAbilityFactory.js',
@@ -485,12 +464,6 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-duplicate-coord-helpers.test.js',
   'scripts/check-duplicate-march-builders.js',
   'scripts/check-duplicate-march-builders.test.js',
-  'scripts/check-tutorial-advance-single-source.js',
-  'scripts/check-tutorial-advance-single-source.test.js',
-  'scripts/check-tutorial-step-contract.js',
-  'scripts/check-tutorial-step-contract.test.js',
-  'shared/tutorialFlowConfig.js',
-  'shared/tutorialFlowConfig.test.js',
   'scripts/check-source-encoding.js',
   'scripts/check-source-encoding.test.js',
   'scripts/check-renderer-host-bridge-retired.js',
@@ -529,10 +502,6 @@ const CHECK_FILES = Object.freeze([
   'scripts/validate-config-pipeline.test.js',
   'scripts/build-config-tables.js',
   'scripts/build-config-tables.test.js',
-  'scripts/generate-tutorial-event-contracts.js',
-  'scripts/generate-tutorial-event-contracts.test.js',
-  'scripts/generate-tutorial-hit-target-types.js',
-  'scripts/generate-tutorial-hit-target-types.test.js',
   'scripts/check-client-command-block-reasons.js',
   'scripts/check-client-command-block-reasons.test.js',
 ]);
@@ -545,7 +514,6 @@ const TEST_FILES = Object.freeze([
   'frontend/js/state/StateWriter.test.js',
   'frontend/js/state/BattleStore.test.js',
   'frontend/js/state/ModalStore.test.js',
-  'frontend/js/tutorial/TutorialGuideEventRegistry.contract.test.js',
   'frontend/js/ecs/snapshot/RendererSnapshotBoundary.test.js',
   'frontend/js/ecs/input/InputIntent.test.js',
   'frontend/js/ecs/input/InputIntentResolver.test.js',
@@ -638,10 +606,6 @@ const TEST_FILES = Object.freeze([
   'frontend/js/platform/CanvasGameRendererCompositionFactory.test.js',
   'frontend/js/platform/renderers/ResourceTopBarCanvasRenderer.test.js',
   'frontend/js/platform/renderers/CityPeopleCanvasRenderer.test.js',
-  'frontend/js/tutorial/TutorialGuideStepPolicy.test.js',
-  'frontend/js/tutorial/TutorialGuideTargetResolver.test.js',
-  'frontend/js/tutorial/TutorialGuideArchitecture.test.js',
-  'frontend/js/tutorial/TutorialGuideController.test.js',
   'frontend/js/platform/CanvasGameAppRenderPolicy.test.js',
   'frontend/js/platform/CanvasGameAppRenderScheduler.test.js',
   'frontend/js/state/presenters/WorldTileMapTileNormalizer.test.js',
@@ -724,10 +688,6 @@ const TEST_FILES = Object.freeze([
   'scripts/check-duplicate-coord-helpers.test.js',
   'scripts/check-duplicate-march-builders.test.js',
   'scripts/build-config-tables.test.js',
-  'scripts/generate-tutorial-event-contracts.test.js',
-  'scripts/check-tutorial-advance-single-source.test.js',
-  'scripts/check-tutorial-step-contract.test.js',
-  'shared/tutorialFlowConfig.test.js',
   'scripts/check-source-encoding.test.js',
   'scripts/check-renderer-host-bridge-retired.test.js',
   'scripts/check-frontend-single-source-redline.test.js',
@@ -754,13 +714,8 @@ const TEST_FILES = Object.freeze([
   'scripts/check-step4-blocking-map.test.js',
   'scripts/check-step4-final-audit.test.js',
   'scripts/check-ui-runtime-field-ownership.test.js',
-  'scripts/check-tutorial-host-context-boundary.test.js',
-  'frontend/js/tutorial/TutorialHostContextStepScript.test.js',
-  'scripts/check-tutorial-engine-purity.test.js',
-  'frontend/js/tutorial-engine/StepScriptRunner.test.js',
-  'frontend/js/tutorial-config/TaskPanelStepScripts.test.js',
-  'scripts/check-tutorial-step-config-purity.test.js',
-  'scripts/generate-tutorial-rule-inventory.test.js',
+  'scripts/check-tutorial-demolition-retirements.test.js',
+  'scripts/check-game-tutorial-awareness.test.js',
   'scripts/check-step5-action-descriptor-coverage.test.js',
   'scripts/verify-step4-phase3-real-server.test.js',
 ]);
@@ -895,18 +850,11 @@ function main() {
   run('ui runtime field ownership blocking guard', process.execPath, [
     'scripts/check-ui-runtime-field-ownership.js',
   ]);
-  run('tutorial host context boundary blocking guard', process.execPath, [
-    'scripts/check-tutorial-host-context-boundary.js',
+  run('tutorial demolition retirement declarations blocking guard', process.execPath, [
+    'scripts/check-tutorial-demolition-retirements.js',
   ]);
-  run('tutorial engine purity blocking guard', process.execPath, [
-    'scripts/check-tutorial-engine-purity.js',
-  ]);
-  run('tutorial StepScript config purity blocking guard', process.execPath, [
-    'scripts/check-tutorial-step-config-purity.js',
-  ]);
-  run('tutorial rule inventory freshness guard', process.execPath, [
-    'scripts/generate-tutorial-rule-inventory.js',
-    '--check',
+  run('game tutorial awareness zero blocking guard', process.execPath, [
+    'scripts/check-game-tutorial-awareness.js',
   ]);
   run('Step5 action descriptor coverage blocking guard', process.execPath, [
     'scripts/check-step5-action-descriptor-coverage.js',
@@ -945,24 +893,6 @@ function main() {
   ]);
   run('duplicate march builders blocking guard', process.execPath, [
     'scripts/check-duplicate-march-builders.js',
-  ]);
-  run('tutorial advance single-source blocking guard', process.execPath, [
-    'scripts/check-tutorial-advance-single-source.js',
-  ]);
-  run('tutorial step contract blocking guard', process.execPath, [
-    'scripts/check-tutorial-step-contract.js',
-  ]);
-  run('tutorial host surface inventory freshness guard', process.execPath, [
-    'scripts/generate-tutorial-host-surface-inventory.js',
-    '--check',
-  ]);
-  run('tutorial event contract freshness guard', process.execPath, [
-    'scripts/generate-tutorial-event-contracts.js',
-    '--check',
-  ]);
-  run('tutorial hit-target type freshness guard', process.execPath, [
-    'scripts/generate-tutorial-hit-target-types.js',
-    '--check',
   ]);
   run('source encoding blocking guard', process.execPath, [
     'scripts/check-source-encoding.js',

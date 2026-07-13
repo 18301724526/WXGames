@@ -104,6 +104,46 @@ test('ConfigReleaseService publishes release history and active release pointer'
   assert.equal(active.release.snapshot.registries[0].id, 'unit-config');
 });
 
+test('ConfigReleaseService records an explicitly declared registry retirement', () => {
+  const paths = createTempPaths();
+  const first = createSnapshot();
+  first.registryCount = 2;
+  first.registries.push({
+    id: 'legacy-config',
+    schema: 'legacy-config-registry',
+    schemaVersion: 1,
+    version: '1.0.0',
+    contentHash: 'bbbbbbbbbbbb',
+    entryCount: 1,
+    entryIds: ['legacy'],
+    source: 'unit-test',
+  });
+  const second = createSnapshot();
+
+  assert.equal(ConfigReleaseService.publishRelease(
+    { snapshot: first, source: 'unit:first' },
+    { ...paths, operator: 'codexqa' },
+  ).success, true);
+  const publish = ConfigReleaseService.publishRelease(
+    { snapshot: second, source: 'unit:retire' },
+    {
+      ...paths,
+      operator: 'codexqa',
+      declaredRegistryRetirements: [{
+        id: 'legacy-config',
+        reason: 'legacy feature removed',
+      }],
+    },
+  );
+
+  assert.equal(publish.success, true);
+  assert.deepEqual(publish.release.comparison.retiredRegistryIds, ['legacy-config']);
+  assert.deepEqual(publish.release.comparison.retiredRegistries, [{
+    id: 'legacy-config',
+    reason: 'legacy feature removed',
+  }]);
+});
+
 test('ConfigReleaseService rolls back active release to a previous audited snapshot', () => {
   const paths = createTempPaths();
   const first = createSnapshot();

@@ -5,12 +5,12 @@
 // Single-owner rule: UiRuntimeStateStore owns the editor state on the state host
 // (StateWriter.getStateHost -- the mounted game for a shell, the app itself otherwise).
 // The controller owns the editor behavior and reads/writes that store, so App, Shell,
-// CanvasActionController, CanvasModeOwnershipRuntime and the tutorial layer observe
+// CanvasActionController and CanvasModeOwnershipRuntime observe
 // the same value.
 //
 // The controller reaches its host only through explicit facilities: getState(),
 // renderCanvasSurface(), showFloatingText(), log(), getGameApi(), applyApiState(),
-// tutorialController, runtime.requestTextInput. Formation queries go straight to
+// runtime.requestTextInput. Formation queries go straight to
 // ArmyFormationQueries (SHAPE-A) with the same host.
 (function (global) {
   var LocaleText = global.LocaleText;
@@ -305,15 +305,10 @@
           .setArmyFormation(cityId, slot, memberIds, soldierAssignments);
         host.applyApiState(result);
         this.close({ render: false });
-        const tutorialHandled = await Promise.resolve(
-          host.emitTutorialEvent?.('armyFormationSaved', { result }),
-        ) === true;
+        host.emitGameEvent?.('armyFormationSaved', { result });
         host.showFloatingText(result.message || t('command.formation.saved'));
         host.log(result.message || t('command.formation.saved'));
-        if (!tutorialHandled) {
-          (host.getTutorialController?.() || host.tutorialController)?.sync?.(host.tutorial);
-          host.renderCanvasSurface(host.getState()?.currentTab);
-        }
+        host.renderCanvasSurface(host.getState()?.currentTab);
         return true;
       } catch (error) {
         const message =

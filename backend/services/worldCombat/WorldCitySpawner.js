@@ -173,9 +173,9 @@ function toRawTerritory(spec) {
 
 function getCompanionTarget(spawn = {}) {
   const target = spawn?.allocation?.companionCity
-    || spawn?.allocation?.tutorialTarget
+    || spawn?.allocation?.starterTarget
     || spawn?.companionCity
-    || spawn?.tutorialTarget
+    || spawn?.starterTarget
     || null;
   if (!target || typeof target !== 'object') return null;
   return {

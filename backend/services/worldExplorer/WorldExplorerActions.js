@@ -1,5 +1,4 @@
 const WorldMapService = require('../WorldMapService');
-const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
 const {
   EXPLORE_STEP_DURATION_MS,
   MAX_ACTIVE_EXPLORE_MISSIONS,
@@ -13,14 +12,11 @@ const {
   createPlannedTiles,
 } = require('./WorldExplorerRoutePlanner');
 const {
-  validateTutorialFormation,
-} = require('./WorldExplorerTutorial');
-const { manualAdvance } = require('../tutorial/TutorialProgression');
-const {
   AoiSyncSnapshot,
   CommandAuthorityContract,
   ServerTimelineSnapshot,
 } = require('../realtime');
+const MilitaryService = require('../MilitaryService');
 const FormationStrengthService = require('../military/FormationStrengthService');
 const WorldCombatEncounterService = require('../worldCombat/WorldCombatEncounterService');
 const FormationDeploymentEligibility = require('../../../shared/formationDeploymentEligibility');
@@ -32,6 +28,22 @@ function countActiveMissions(gameState) {
 function normalizeFormationSlot(value, fallback = 1) {
   const slot = Math.floor(Number(value));
   return Number.isFinite(slot) && slot > 0 ? slot : fallback;
+}
+
+function getFormationSnapshot(gameState = {}, payload = {}) {
+  const cityId = String(payload.cityId || gameState.activeCityId || 'capital').trim() || 'capital';
+  const slot = normalizeFormationSlot(payload.formationSlot ?? payload.slot);
+  const military = MilitaryService.getCityMilitary(gameState, cityId);
+  const formations = MilitaryService.normalizeCityFormations(
+    MilitaryService.pickCityFormationsSource(military.formations, cityId),
+  );
+  const formation = formations[slot - 1] || {};
+  return {
+    ...formation,
+    cityId,
+    slot,
+    memberIds: Array.isArray(formation.memberIds) ? formation.memberIds.map(String) : [],
+  };
 }
 
 function getBusyFormationMission(gameState, formation = {}) {
@@ -127,7 +139,6 @@ function traceWorldMarch(stage, options = {}, payload = {}) {
 }
 
 function startWorldMarch(gameState, options = {}, now = new Date()) {
-  const TUTORIAL_STEPS = TutorialFlowConfig.TUTORIAL_STEPS;
   const worldContext = {
     worldEncounterRepo: options.worldEncounterRepo || null,
     sharedWorldEncounters: options.sharedWorldEncounters || null,
@@ -154,24 +165,18 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     traceWorldMarch('actions:startWorldMarch:missionBusy', options, { mission: summarizeMission(explicitMission) });
     return { success: false, error: 'EXPLORE_FORMATION_BUSY', message: '该编队已在行军中。', mission: getClientMission(explicitMission, now) };
   }
-  const formationValidation = validateTutorialFormation(gameState, explicitMission ? {
+  const formation = getFormationSnapshot(gameState, explicitMission ? {
     ...options, cityId: explicitMission.formation?.cityId || options.cityId,
     formationSlot: explicitMission.formation?.slot ?? options.formationSlot ?? options.slot,
   } : options);
-  if (!formationValidation.success) {
-    traceWorldMarch('actions:startWorldMarch:formationRejected', options, {
-      result: formationValidation,
-    });
-    return formationValidation;
-  }
   const deploymentFailure = combatTarget.encounter
-    ? FormationDeploymentEligibility.getCombatDeploymentFailure(formationValidation.formation)
-    : FormationDeploymentEligibility.getMarchDeploymentFailure(formationValidation.formation);
+    ? FormationDeploymentEligibility.getCombatDeploymentFailure(formation)
+    : FormationDeploymentEligibility.getMarchDeploymentFailure(formation);
   if (deploymentFailure) return deploymentFailure;
-  const busyMission = explicitMission ? null : getBusyFormationMission(gameState, formationValidation.formation);
+  const busyMission = explicitMission ? null : getBusyFormationMission(gameState, formation);
   if (busyMission) {
     traceWorldMarch('actions:startWorldMarch:busyFormation', options, {
-      formation: formationValidation.formation,
+      formation,
       busyMission: summarizeMission(busyMission),
     });
     return {
@@ -189,7 +194,7 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     return { success: false, error: 'EXPLORE_LIMIT_REACHED', message: '已有行军任务进行中。' };
   }
   const origin = getExploreOrigin(gameState);
-  const idleMission = explicitMission || getIdleFormationMission(gameState, formationValidation.formation);
+  const idleMission = explicitMission || getIdleFormationMission(gameState, formation);
   const marchOrigin = idleMission
     ? (idleMission.position || getLastRevealedOrOrigin(idleMission))
     : origin;
@@ -221,11 +226,8 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     origin: marchOrigin,
     target: routeResult.target || route.at(-1),
   });
-  // The invent-city engine (createTutorialPlannedSites + route-truncation-to-invented-city) is DELETED
-  // (march-discovery refactor S5, docs/design/10 §3.3). The tutorial first city is now PRE-PLACED at grant
-  // time and DISCOVERED by the march's vision (WorldExplorerProgression.discoverPrePlacedCitiesInVision) —
-  // the player marches to a target THEY pick and the pre-placed city flips to discovered when its tile
-  // enters vision. Missions no longer carry planned sites; the field stays empty for shape compatibility.
+  // Shared neutral cities are pre-placed and discovered by march vision. Missions no longer
+  // author city sites, but retain the empty field for persisted mission shape compatibility.
   const plannedSites = [];
   traceWorldMarch('actions:startWorldMarch:planned', options, {
     plannedTileCount: plannedTiles.length,
@@ -235,9 +237,9 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
     idleMission: summarizeMission(idleMission),
   });
   const missionFormationIdentity = toMissionFormationIdentity(explicitMission
-    ? (idleMission?.formation || formationValidation.formation)
-    : formationValidation.formation);
-  const snapshotFormation = formationValidation.formation;
+    ? (idleMission?.formation || formation)
+    : formation);
+  const snapshotFormation = formation;
   const mission = idleMission || normalizeMission({
     id: `explore_manual_${now.getTime()}`,
     mode: 'manual',
@@ -280,12 +282,10 @@ function startWorldMarch(gameState, options = {}, now = new Date()) {
   if (routeResult.inPlace && combatTarget.encounter) {
     WorldCombatEncounterService.resolveImmediateArrival(gameState, mission, targetInput, now, worldContext);
   }
-  gameState.tutorial = manualAdvance(gameState.tutorial, TUTORIAL_STEPS.scoutExploreStarted);
   const result = {
     success: true,
     message: '部队已出发。',
     mission: getClientMission(mission, now),
-    tutorial: gameState.tutorial,
   };
   traceWorldMarch('actions:startWorldMarch:result', options, {
     mission: summarizeMission(mission),
@@ -448,7 +448,6 @@ function returnWorldMarch(gameState, missionId, options = {}, now = new Date()) 
     success: true,
     message: '部队正在返回。',
     mission: getClientMission(mission, resolvedNow),
-    tutorial: gameState.tutorial,
   };
   return attachMarchAuthority(result, gameState, mission, 'returnWorldMarch', resolvedNow, {
     clientSequence: resolvedOptions.clientSequence,
@@ -486,7 +485,6 @@ function stopWorldMarch(gameState, missionId, options = {}, now = new Date()) {
     success: true,
     message: '部队已原地停驻。',
     mission: getClientMission(mission, now),
-    tutorial: gameState.tutorial,
   };
   return attachMarchAuthority(result, gameState, mission, 'stopWorldMarch', now, {
     clientSequence: options.clientSequence,

@@ -50,9 +50,9 @@ test('CanvasGameApp owns retired responsibility methods directly', () => {
     actorAnimation: ['startWorldActorAnimationLoop', 'stopWorldActorAnimationLoop', 'renderWorldActorAnimationFrame'],
     renderingRuntime: ['renderCanvasSurface', 'buildRenderOptions', 'ensureWorldMapRuntime', 'switchTab', 'setTechTreeZoom'],
     battleScene: ['startBattleScene', 'skipBattleScene', 'closeBattleScene'],
-    commands: ['buildBuilding', 'advanceEra', 'research', 'enterCity', 'showHouseBuiltAdvisorDialogue'],
-    guideUi: ['openNaming', 'closeCityManagement', 'renderSoftGuide', 'cacheRequestLog'],
-    inputRouter: ['handleTap', 'handleDrag', 'handleGesture', 'dispatchCanvasAction', 'isPointBlockedByTutorialShield'],
+    commands: ['buildBuilding', 'advanceEra', 'research', 'enterCity'],
+    systemUi: ['openNaming', 'closeCityManagement', 'cacheRequestLog'],
+    inputRouter: ['handleTap', 'handleDrag', 'handleGesture', 'dispatchCanvasAction'],
   };
 
   Object.entries(expectedMethods).forEach(([group, methods]) => {
@@ -156,15 +156,11 @@ test('CanvasGameApp advanceEra always reaches GameAPI before local era eligibili
   const calls = [];
   const changeEventBus = ChangeEventBus.createEventBus();
   changeEventBus.subscribe('eraAdvanced', ({ result }) => {
-    calls.push(['tutorial.eraAdvanced', result.message]);
+    calls.push(['eraAdvanced', result.message]);
   });
   const app = makeAppHost({
     changeEventBus,
     state: { currentEraName: 'Bronze Age' },
-    tutorial: {},
-    tutorialController: {
-      sync(value) { calls.push(['tutorial.sync', value]); },
-    },
     canAdvanceEraNow() {
       calls.push(['canAdvanceEraNow']);
       return false;
@@ -195,8 +191,7 @@ test('CanvasGameApp advanceEra always reaches GameAPI before local era eligibili
   assert.deepEqual(calls.map((entry) => entry[0]), [
     'api.advanceEra',
     'applyApiState',
-    'tutorial.sync',
-    'tutorial.eraAdvanced',
+    'eraAdvanced',
     'log',
     'showFloatingText',
     'renderMilitary',
@@ -318,11 +313,10 @@ test('acceptFamousPerson keeps famous panel updates on the panel surface manager
   ]);
 });
 
-test('saveArmyFormation lets tutorial own the post-save map transition', async () => {
+test('saveArmyFormation persists the visible draft and redraws after completion', async () => {
   const calls = [];
   const host = makeAppHost({
     state: { currentTab: 'buildings' },
-    tutorial: { completed: false, currentStep: 22 },
     armyFormationEditor: {
       open: true,
       cityId: 'capital',
@@ -340,23 +334,14 @@ test('saveArmyFormation lets tutorial own the post-save map transition', async (
           calls.push(['setArmyFormation', cityId, slot, memberIds, soldierAssignments]);
           return {
             message: 'saved',
-            tutorial: { completed: false, currentStep: 22 },
+            gameState: { currentTab: 'buildings' },
           };
         },
       };
     },
     applyApiState(result) {
-      calls.push(['applyApiState', result.tutorial.currentStep]);
-      this.tutorial = result.tutorial;
-    },
-    emitTutorialEvent(eventName, payload) {
-      calls.push(['tutorialEvent', eventName, payload.result.tutorial.currentStep]);
-      return Promise.resolve(true);
-    },
-    tutorialController: {
-      sync() {
-        calls.push(['sync']);
-      },
+      calls.push(['applyApiState', result.gameState.currentTab]);
+      this.state = result.gameState;
     },
     renderCanvasSurface(tab) {
       calls.push(['renderCanvasSurface', tab]);
@@ -373,10 +358,10 @@ test('saveArmyFormation lets tutorial own the post-save map transition', async (
   assert.deepEqual(calls, [
     ['renderCanvasSurface', 'buildings'],
     ['setArmyFormation', 'capital', 1, ['fp-scout'], { 'fp-scout': 999 }],
-    ['applyApiState', 22],
-    ['tutorialEvent', 'armyFormationSaved', 22],
+    ['applyApiState', 'buildings'],
     ['showFloatingText', 'saved'],
     ['log', 'saved'],
+    ['renderCanvasSurface', 'buildings'],
   ]);
 });
 
@@ -2078,65 +2063,6 @@ test('CanvasGameApp routes battleScene replay overlay through BattleStore', () =
   assert.equal(app.skipBattleScene(), true);
   assert.equal(BattleStore.getBattleScene().turnIndex, 1);
   BattleStore.closeBattleScene();
-});
-
-// Characterization tests for the tutorial-highlight lifecycle (god-file
-// re-decomposition slice 10). Written against the pre-extraction bodies and kept
-// UNCHANGED through the TutorialGuideUiController extraction. The shell-side
-// show/hide machinery is already pinned by the CanvasGameShell.test.js suite.
-test('hideGuideHighlight forwards to the shell hide and reports its result', () => {
-  const calls = [];
-  const host = makeAppHost({
-    state: { currentTab: 'military' },
-    canvasShell: {
-      hideTutorialHighlight() {
-        calls.push(['hideTutorialHighlight']);
-        return true;
-      },
-    },
-    renderCanvasSurface(tab) {
-      calls.push(['renderCanvasSurface', tab]);
-    },
-  });
-
-  assert.equal(host.hideGuideHighlight(), true);
-  assert.deepEqual(calls, [['hideTutorialHighlight']]);
-});
-
-test('hideGuideHighlight without a shell clears the highlight and re-renders once', () => {
-  const calls = [];
-  const host = makeAppHost({
-    state: { currentTab: 'military' },
-    canvasShell: null,
-    tutorialHighlight: { rect: { left: 1, top: 2, width: 3, height: 4 } },
-    renderCanvasSurface(tab) {
-      calls.push(['renderCanvasSurface', tab]);
-    },
-  });
-
-  assert.equal(host.hideGuideHighlight(), true);
-  assert.equal(host.tutorialHighlight, null);
-  assert.deepEqual(calls, [['renderCanvasSurface', 'military']]);
-  assert.equal(host.hideGuideHighlight(), false);
-  assert.equal(calls.length, 1);
-});
-
-test('showHouseBuiltAdvisorDialogue clears the tutorial highlight and opens the advisor dialogue', () => {
-  const calls = [];
-  const host = makeAppHost({
-    state: { currentTab: 'buildings' },
-    tutorialHighlight: { rect: { left: 1, top: 2, width: 3, height: 4 } },
-    closeEventSnapshot() {},
-    renderCanvasSurface(tab) {
-      calls.push(['renderCanvasSurface', tab]);
-    },
-  });
-
-  assert.equal(host.showHouseBuiltAdvisorDialogue(), true);
-  assert.equal(host.tutorialHighlight, null);
-  assert.equal(host.tutorialAdvisorDialogue.source, 'houseBuilt');
-  assert.equal(host.state.softGuide.target, 'tab-civilization');
-  assert.deepEqual(calls, [['renderCanvasSurface', 'buildings']]);
 });
 
 // Characterization tests for the turn-card battle-scene timer cluster (god-file

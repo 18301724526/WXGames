@@ -86,66 +86,6 @@
       };
     }
 
-    static buildTutorialHighlightViewState(rect = {}, viewport = {}) {
-      const innerWidth = Math.max(0, this.toNumber(viewport.innerWidth));
-      const innerHeight = Math.max(0, this.toNumber(viewport.innerHeight));
-      const target = {
-        top: this.toNumber(rect.top),
-        left: this.toNumber(rect.left),
-        width: this.toNumber(rect.width),
-        height: this.toNumber(rect.height),
-        bottom: this.toNumber(rect.bottom, this.toNumber(rect.top) + this.toNumber(rect.height)),
-      };
-
-      const overlayPadding = 8;
-      const overlayTop = Math.max(6, target.top - overlayPadding);
-      const overlayLeft = Math.max(6, target.left - overlayPadding);
-      const overlayWidth = Math.max(28, Math.min(innerWidth - overlayLeft - 6, target.width + overlayPadding * 2));
-      const overlayHeight = Math.max(28, Math.min(innerHeight - overlayTop - 6, target.height + overlayPadding * 2));
-
-      const bubbleWidth = 220;
-      const bubbleHeight = 72;
-      const horizontalPadding = 12;
-      const viewportTopPadding = 12;
-      const prefersBelow = target.top < bubbleHeight + 28;
-      const bubbleTop = prefersBelow
-        ? Math.min(innerHeight - bubbleHeight - viewportTopPadding, target.bottom + 14)
-        : Math.max(viewportTopPadding, target.top - bubbleHeight - 14);
-      const bubbleLeft = Math.max(
-        horizontalPadding,
-        Math.min(innerWidth - bubbleWidth - horizontalPadding, target.left + target.width / 2 - bubbleWidth / 2),
-      );
-
-      const pointerWidth = 24;
-      const pointerHeight = 28;
-      const pointerTop = Math.max(
-        12,
-        Math.min(innerHeight - pointerHeight - 12, target.bottom + 6),
-      );
-      const pointerLeft = Math.max(
-        12,
-        Math.min(innerWidth - pointerWidth - 12, target.left + target.width / 2 - pointerWidth / 2),
-      );
-
-      return {
-        overlay: {
-          top: `${overlayTop}px`,
-          left: `${overlayLeft}px`,
-          width: `${overlayWidth}px`,
-          height: `${overlayHeight}px`,
-        },
-        bubble: {
-          top: `${bubbleTop}px`,
-          left: `${bubbleLeft}px`,
-          maxWidth: '',
-        },
-        pointer: {
-          top: `${pointerTop}px`,
-          left: `${pointerLeft}px`,
-        },
-      };
-    }
-
     static buildTabNavigationViewState(state = {}, options = {}) {
       const requestedTab = options.requestedTab || state.currentTab || 'resources';
       const activeTab = requestedTab === 'territory' ? 'military' : requestedTab;

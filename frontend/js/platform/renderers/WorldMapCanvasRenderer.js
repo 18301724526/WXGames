@@ -54,7 +54,7 @@
     worldMapCacheState: getRendererDependency('worldMapCacheState'),
     worldActorCanvasRenderer: getRendererDependency('worldActorCanvasRenderer'),
     worldMarchHudCanvasRenderer: getRendererDependency('worldMarchHudCanvasRenderer'),
-    tutorialIntroUnitRenderer: getRendererDependency('tutorialIntroUnitRenderer'),
+    worldUnitSpriteRenderer: getRendererDependency('worldUnitSpriteRenderer'),
     worldMapRendererCompositionFactory: getRendererDependency('worldMapRendererCompositionFactory'),
     worldMapLayoutModel: getRendererDependency('worldMapLayoutModel'),
     worldMapHitTargetModel: getRendererDependency('worldMapHitTargetModel'),
@@ -192,8 +192,8 @@
       return sharedDependencies.worldMarchRoutePolicy || null;
     }
 
-    static getTutorialIntroUnitRenderer() {
-      return sharedDependencies.tutorialIntroUnitRenderer || null;
+    static getWorldUnitSpriteRenderer() {
+      return sharedDependencies.worldUnitSpriteRenderer || null;
     }
 
     render(tileMapView = {}, x = 0, y = 0, width = 0, height = 0, uiState = {}, options = {}) {

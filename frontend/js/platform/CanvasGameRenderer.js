@@ -212,8 +212,6 @@
       this.bottomSafeArea = options.bottomSafeArea || 12;
       this.assetCache = options.assetCache || new Map();
       this.assetMetricsCache = options.assetMetricsCache || new Map();
-      this.tutorialAdvisorSpine = null;
-      this.tutorialAdvisorSpineFailed = false;
       this.surfaceState = createSurfaceState();
       this.hitTargetManager = createHitTargetManager(this);
       this.worldMapRenderState = options.worldMapRenderState || createWorldMapRenderState();
@@ -684,30 +682,6 @@
         ? renderer.getFamousSkillTooltipAction(...args)
         : undefined;
       return result === undefined ? null : result;
-    }
-
-    isAllowedUnderTutorialShield(...args) {
-      const renderer = this.surfaceRenderer;
-      const result = typeof renderer?.isAllowedUnderTutorialShield === 'function'
-        ? renderer.isAllowedUnderTutorialShield(...args)
-        : undefined;
-      return result === undefined ? false : result;
-    }
-
-    matchesTutorialShieldAllowedAction(...args) {
-      const renderer = this.surfaceRenderer;
-      const result = typeof renderer?.matchesTutorialShieldAllowedAction === 'function'
-        ? renderer.matchesTutorialShieldAllowedAction(...args)
-        : undefined;
-      return result === undefined ? false : result;
-    }
-
-    matchesCurrentTutorialIntroAction(...args) {
-      const renderer = this.surfaceRenderer;
-      const result = typeof renderer?.matchesCurrentTutorialIntroAction === 'function'
-        ? renderer.matchesCurrentTutorialIntroAction(...args)
-        : undefined;
-      return result === undefined ? false : result;
     }
 
     withSuppressedHitTargets(...args) {
@@ -1924,130 +1898,6 @@
       return result === undefined ? false : result;
     }
 
-    renderTutorialIntro(...args) {
-      const renderer = this.tutorialRenderer;
-      const result = typeof renderer?.renderTutorialIntro === 'function'
-        ? renderer.renderTutorialIntro(...args)
-        : undefined;
-      return result === undefined ? false : result;
-    }
-
-    disposeTutorialAdvisorSpine(...args) {
-      const renderer = this.tutorialRenderer;
-      const result = typeof renderer?.disposeTutorialAdvisorSpine === 'function'
-        ? renderer.disposeTutorialAdvisorSpine(...args)
-        : undefined;
-      return result === undefined ? false : result;
-    }
-
-    resolveTutorialIntroTarget(...args) {
-      const renderer = this.tutorialRenderer;
-      const result = typeof renderer?.resolveTutorialIntroTarget === 'function'
-        ? renderer.resolveTutorialIntroTarget(...args)
-        : undefined;
-      return result === undefined ? null : result;
-    }
-
-    findHitTarget(...args) {
-      return this.hitTargetManager.findHitTarget(...args);
-    }
-
-    inflateRect(...args) {
-      const renderer = this.tutorialRenderer;
-      const result = typeof renderer?.inflateRect === 'function'
-        ? renderer.inflateRect(...args)
-        : undefined;
-      return result === undefined ? { x: 0, y: 0, width: 0, height: 0, action: null } : result;
-    }
-
-    renderTutorialIntroMarch(...args) {
-      const renderer = this.tutorialRenderer;
-      const result = typeof renderer?.renderTutorialIntroMarch === 'function'
-        ? renderer.renderTutorialIntroMarch(...args)
-        : undefined;
-      return result === undefined ? false : result;
-    }
-
-    renderTutorialIntroUnit(...args) {
-      const renderer = this.tutorialRenderer;
-      const result = typeof renderer?.renderTutorialIntroUnit === 'function'
-        ? renderer.renderTutorialIntroUnit(...args)
-        : undefined;
-      return result === undefined ? false : result;
-    }
-
-    renderTutorialIntroSpotlight(...args) {
-      const renderer = this.tutorialRenderer;
-      const result = typeof renderer?.renderTutorialIntroSpotlight === 'function'
-        ? renderer.renderTutorialIntroSpotlight(...args)
-        : undefined;
-      return result === undefined ? false : result;
-    }
-
-    normalizeRect(...args) {
-      const renderer = this.tutorialRenderer;
-      const result = typeof renderer?.normalizeRect === 'function'
-        ? renderer.normalizeRect(...args)
-        : undefined;
-      return result === undefined ? null : result;
-    }
-
-    renderTutorialIntroFinger(...args) {
-      const renderer = this.tutorialRenderer;
-      const result = typeof renderer?.renderTutorialIntroFinger === 'function'
-        ? renderer.renderTutorialIntroFinger(...args)
-        : undefined;
-      return result === undefined ? false : result;
-    }
-
-    renderTutorialIntroDialogue(...args) {
-      const renderer = this.tutorialRenderer;
-      const result = typeof renderer?.renderTutorialIntroDialogue === 'function'
-        ? renderer.renderTutorialIntroDialogue(...args)
-        : undefined;
-      return result === undefined ? false : result;
-    }
-
-    renderTutorialAdvisorDialogue(...args) {
-      const renderer = this.tutorialRenderer;
-      const result = typeof renderer?.renderTutorialAdvisorDialogue === 'function'
-        ? renderer.renderTutorialAdvisorDialogue(...args)
-        : undefined;
-      return result === undefined ? false : result;
-    }
-
-    clearTutorialAdvisorDialogue(...args) {
-      const renderer = this.tutorialRenderer;
-      const result = typeof renderer?.clearTutorialAdvisorDialogue === 'function'
-        ? renderer.clearTutorialAdvisorDialogue(...args)
-        : undefined;
-      return result === undefined ? false : result;
-    }
-
-    renderTutorialIntroAdvisorPortrait(...args) {
-      const renderer = this.tutorialRenderer;
-      const result = typeof renderer?.renderTutorialIntroAdvisorPortrait === 'function'
-        ? renderer.renderTutorialIntroAdvisorPortrait(...args)
-        : undefined;
-      return result === undefined ? false : result;
-    }
-
-    renderTutorialAdvisorSpineLayer(...args) {
-      const renderer = this.tutorialRenderer;
-      const result = typeof renderer?.renderTutorialAdvisorSpineLayer === 'function'
-        ? renderer.renderTutorialAdvisorSpineLayer(...args)
-        : undefined;
-      return result === undefined ? false : result;
-    }
-
-    drawTutorialAdvisorImageCover(...args) {
-      const renderer = this.tutorialRenderer;
-      const result = typeof renderer?.drawTutorialAdvisorImageCover === 'function'
-        ? renderer.drawTutorialAdvisorImageCover(...args)
-        : undefined;
-      return result === undefined ? false : result;
-    }
-
     renderMilitary(...args) {
       const renderer = this.militaryRenderer;
       const result = typeof renderer?.renderMilitary === 'function'
@@ -2179,22 +2029,6 @@
 
     interpolateRect(fromRect = {}, toRect = {}, progress = 1) {
       return SharedCanvasLayoutService.interpolateRect(fromRect, toRect, progress);
-    }
-
-    renderTutorialHighlight(...args) {
-      const renderer = this.tutorialRenderer;
-      const result = typeof renderer?.renderTutorialHighlight === 'function'
-        ? renderer.renderTutorialHighlight(...args)
-        : undefined;
-      return result === undefined ? false : result;
-    }
-
-    addTutorialShield(...args) {
-      const renderer = this.tutorialRenderer;
-      const result = typeof renderer?.addTutorialShield === 'function'
-        ? renderer.addTutorialShield(...args)
-        : undefined;
-      return result === undefined ? false : result;
     }
 
     renderHudOverlay(...args) {

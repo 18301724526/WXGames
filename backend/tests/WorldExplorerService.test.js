@@ -2,36 +2,23 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const Database = require('better-sqlite3');
 
-const TutorialService = require('../services/TutorialService');
 const WorldExplorerService = require('../services/WorldExplorerService');
 const WorldMapService = require('../services/WorldMapService');
 const GameStateNormalizer = require('../services/GameStateNormalizer');
 const WorldCombatEncounterService = require('../services/worldCombat/WorldCombatEncounterService');
 const WorldCampSpawner = require('../services/worldCombat/WorldCampSpawner');
-const TutorialGrantService = require('../services/tutorial/TutorialGrantService');
 const { materializeDiscoveredNeutralCity } = require('../services/worldCity/WorldCityPlayerDiscovery');
 const { WorldEncounterRepository } = require('../repositories/WorldEncounterRepository');
 require('../../frontend/js/ecs/foundation/WorldTime');
 require('../../frontend/js/ecs/system/WorldMarchProgressSnapshot');
 const WorldActorProjection = require('../../frontend/js/ecs/projection/WorldActorProjection');
 
-// Build the guided-explore state at scoutFormationSaved. The companion city already exists in the
-// player's map; the tutorial grant only records its site id and coordinate for guide targeting.
-function createTutorialExploreState() {
-  const scoutPersonId = 'fp-tutorial-scout';
+function createExploreState() {
+  const scoutPersonId = 'fp-starter-scout';
   const gameState = {
-    playerId: 'world-explorer-tutorial-test',
+    playerId: 'world-explorer-test',
     activeCityId: 'capital',
     currentEra: 3,
-    tutorial: {
-      ...TutorialService.manualAdvance(
-        TutorialService.createInitialTutorialState(),
-        TutorialService.TUTORIAL_STEPS.scoutFormationSaved,
-      ),
-      grants: {
-        scoutFamousPerson: { personId: scoutPersonId },
-      },
-    },
     territories: [{
       id: 'capital',
       x: 0,
@@ -42,8 +29,8 @@ function createTutorialExploreState() {
       owner: 'player',
       status: 'occupied',
     }],
-    worldMap: WorldMapService.createInitialWorldMap('tutorial-explorer-seed', new Date('2026-06-06T00:00:00.000Z')),
-    famousPeople: [{ id: scoutPersonId, name: 'Tutorial Scout' }],
+    worldMap: WorldMapService.createInitialWorldMap('world-explorer-seed', new Date('2026-06-06T00:00:00.000Z')),
+    famousPeople: [{ id: scoutPersonId, name: 'Starter Scout' }],
     military: {
       soldiers: 300,
       soldierCap: 300,
@@ -75,15 +62,14 @@ function createTutorialExploreState() {
     naturalName: 'First Companion',
     mapTerrain: 'plains',
   }, new Date('2026-06-06T00:00:00.000Z'));
-  TutorialGrantService.grantTutorialFirstCity(gameState);
   return gameState;
 }
 
 function createSharedCombatContext(gameState, now = new Date('2026-06-22T00:00:00.000Z'), overrides = {}) {
   const db = new Database(':memory:');
-  const repo = new WorldEncounterRepository(db, { worldSeed: gameState.worldMap?.seed || 'tutorial-explorer-seed' });
+  const repo = new WorldEncounterRepository(db, { worldSeed: gameState.worldMap?.seed || 'world-explorer-seed' });
   repo.init();
-  const planned = WorldCampSpawner.planCamps(gameState.worldMap?.seed || 'tutorial-explorer-seed', { q: 0, r: 0 }, {
+  const planned = WorldCampSpawner.planCamps(gameState.worldMap?.seed || 'world-explorer-seed', { q: 0, r: 0 }, {
     minSpacing: 1,
     chooseTerrain: () => 'plains',
   })[0];
@@ -120,95 +106,9 @@ function createSharedCombatContext(gameState, now = new Date('2026-06-22T00:00:0
   };
 }
 
-test('guided world march plans the route toward the spawn companion city and starts exploring', () => {
-  const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
-  // The grant references the existing companion city; it does not carry its own city payload.
-  assert.equal(gameState.tutorial.grants.firstExploreEmptyCity.siteId, 'site_1_0');
-  assert.equal(gameState.tutorial.grants.firstExploreEmptyCity.x, 1);
-  assert.equal(Object.prototype.hasOwnProperty.call(gameState.tutorial.grants.firstExploreEmptyCity, 'city'), false);
-
-  const result = WorldExplorerService.startWorldMarch(gameState, { targetQ: 2, targetR: 0, formationSlot: 1 }, now);
-
-  assert.equal(result.success, true);
-  assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.scoutExploreStarted);
-  assert.equal(result.mission.route.length, 2);
-  assert.equal(result.mission.plannedTiles.length, 12);
-  // No invented plannedSites — discovery is vision-driven now.
-  assert.equal((result.mission.plannedSites || []).length, 0);
-  assert.equal(result.mission.formation.slot, 1);
-  assert.equal(result.mission.formationSnapshot.soldiersCommitted, 120);
-  assert.equal(result.mission.formationSnapshot.soldiersRemaining, 120);
-  assert.equal(result.mission.nextStepAt, new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS).toISOString());
-  assert.equal(result.mission.completesAt, new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * 2).toISOString());
-  assert.deepEqual(result.mission.formation.memberIds, ['fp-tutorial-scout']);
-  // The companion city is already present when the player state is created.
-  assert.equal(gameState.territories.some((territory) => territory.id === 'site_1_0'), true);
-  assert.equal(gameState.worldMap.tiles.some((tile) => tile.siteId === 'site_1_0'), true);
-});
-
-test('guided world march keeps the same companion city identity and advances the tutorial', () => {
-  const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
-  const firstCityId = gameState.tutorial.grants.firstExploreEmptyCity.siteId;
-  WorldExplorerService.startWorldMarch(gameState, { targetQ: 2, targetR: 0, formationSlot: 1 }, now);
-  const mission = gameState.exploreMissions[0];
-  const finishAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * mission.route.length + 1);
-
-  WorldExplorerService.advanceExploreMissions(gameState, finishAt);
-
-  const discovered = gameState.territories.find((territory) => territory.id === firstCityId);
-  assert.ok(discovered, 'the companion city remains the same neutral city after the guided march');
-  assert.equal(discovered.owner, 'neutral');
-  assert.equal(discovered.status, 'discovered');
-  // §4-4: garrison/capitalDistance/battleTarget are DERIVED downstream, never authored here.
-  assert.equal(Object.prototype.hasOwnProperty.call(discovered, 'garrison'), false);
-  // The grant identity is unchanged (set at grant time) — the single source (§4-6).
-  assert.equal(gameState.tutorial.grants.firstExploreEmptyCity.siteId, firstCityId);
-  assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstCityDiscovered);
-  assert.equal(gameState.exploreMissions[0].status, 'idle');
-  assert.equal(gameState.worldMap.tiles.some((tile) => tile.siteId === firstCityId), true);
-  assert.equal(gameState.exploreMissions.length, 1);
-});
-
-test('stranded guided-explore tutorial step self-heals on the next mission pass', () => {
-  // A revision race can persist the completed (idle) mission while losing the
-  // tutorial-step write. The convergent advance must re-fire on later passes off the
-  // ACTUAL discovery (the city's tile stays bound), not only on the one tick that discovered it.
-  const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
-  WorldExplorerService.startWorldMarch(gameState, { targetQ: 2, targetR: 0, formationSlot: 1 }, now);
-  const mission = gameState.exploreMissions[0];
-  const finishAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * mission.route.length + 1);
-  WorldExplorerService.advanceExploreMissions(gameState, finishAt);
-  assert.equal(gameState.exploreMissions[0].status, 'idle');
-  assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstCityDiscovered);
-
-  // Simulate the lost tutorial write: mission stayed idle + city stays discovered, step snapped back.
-  gameState.tutorial.currentStep = TutorialService.TUTORIAL_STEPS.scoutExploreStarted;
-  gameState.tutorial.completed = false;
-
-  WorldExplorerService.advanceExploreMissions(gameState, new Date(finishAt.getTime() + 5000));
-
-  assert.equal(gameState.tutorial.currentStep, TutorialService.TUTORIAL_STEPS.firstCityDiscovered);
-});
-
-test('guided world march rejects a formation without the tutorial scout', () => {
-  const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
-  gameState.military.formations[0].memberIds = ['fp-other'];
-  gameState.cities.capital.military.formations[0].memberIds = ['fp-other'];
-
-  const result = WorldExplorerService.startWorldMarch(gameState, { targetQ: 2, targetR: 0, formationSlot: 1 }, now);
-
-  assert.equal(result.success, false);
-  assert.equal(result.error, 'EXPLORE_TUTORIAL_FORMATION_REQUIRED');
-  assert.equal(gameState.exploreMissions.length, 0);
-});
-
 test('world march starts a manual route and stops only at the server timeline tile', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
+  const gameState = createExploreState();
 
   const started = WorldExplorerService.startWorldMarch(gameState, {
     targetQ: 2,
@@ -238,7 +138,7 @@ test('world march starts a manual route and stops only at the server timeline ti
 
 test('world march does not treat world actor identity as reusable mission identity', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
+  const gameState = createExploreState();
 
   const started = WorldExplorerService.startWorldMarch(gameState, {
     targetQ: 2,
@@ -254,7 +154,7 @@ test('world march does not treat world actor identity as reusable mission identi
 
 test('world march treats client input intent as evidence, not coordinate authority', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
+  const gameState = createExploreState();
 
   const started = WorldExplorerService.startWorldMarch(gameState, {
     targetQ: 2,
@@ -277,7 +177,7 @@ test('world march treats client input intent as evidence, not coordinate authori
 
 test('return world march carries client input evidence into authority envelope', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
+  const gameState = createExploreState();
   const started = WorldExplorerService.startWorldMarch(gameState, {
     targetQ: 2,
     targetR: 0,
@@ -298,7 +198,7 @@ test('return world march carries client input evidence into authority envelope',
 
 test('stopped world march remains a client-visible idle mission after normalization', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
+  const gameState = createExploreState();
   const started = WorldExplorerService.startWorldMarch(gameState, {
     targetQ: 2,
     targetR: 0,
@@ -323,7 +223,7 @@ test('stopped world march remains a client-visible idle mission after normalizat
 
 test('world march treats wrapped edge targets as adjacent movement', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
+  const gameState = createExploreState();
 
   const started = WorldExplorerService.startWorldMarch(gameState, {
     targetQ: 1023,
@@ -340,7 +240,7 @@ test('world march treats wrapped edge targets as adjacent movement', () => {
 
 test('world march becomes idle at destination and can continue from its current tile', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
+  const gameState = createExploreState();
   const started = WorldExplorerService.startWorldMarch(gameState, {
     targetQ: 2,
     targetR: 0,
@@ -381,8 +281,7 @@ test('world march becomes idle at destination and can continue from its current 
 
 test('world march with mission id reuses the selected idle mission even when formation options differ', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
-  gameState.tutorial = TutorialService.manualAdvance(gameState.tutorial, TutorialService.TUTORIAL_STEPS.completed);
+  const gameState = createExploreState();
   gameState.exploreMissions = [WorldExplorerService.normalizeMission({
     id: 'manual-frontier',
     mode: 'manual',
@@ -392,7 +291,7 @@ test('world march with mission id reuses the selected idle mission even when for
     target: { q: 4, r: -1 },
     position: { q: 4, r: -1 },
     route: [],
-    formation: { cityId: 'frontier-city', slot: 2, memberIds: ['fp-tutorial-scout'] },
+    formation: { cityId: 'frontier-city', slot: 2, memberIds: ['fp-starter-scout'] },
     stepDurationMs: WorldExplorerService.EXPLORE_STEP_DURATION_MS,
   })];
   gameState.cities['frontier-city'] = {
@@ -401,8 +300,8 @@ test('world march with mission id reuses the selected idle mission even when for
         { slot: 1, memberIds: [], soldierAssignments: {} },
         {
           slot: 2,
-          memberIds: ['fp-tutorial-scout'],
-          soldierAssignments: { 'fp-tutorial-scout': 120 },
+          memberIds: ['fp-starter-scout'],
+          soldierAssignments: { 'fp-starter-scout': 120 },
         },
       ],
     },
@@ -421,13 +320,12 @@ test('world march with mission id reuses the selected idle mission even when for
   assert.equal(result.mission.id, 'manual-frontier');
   assert.equal(result.mission.origin.tileId, 'tile_4_-1');
   assert.equal(result.mission.route.at(-1).tileId, 'tile_6_-1');
-  assert.deepEqual(gameState.exploreMissions[0].formation, { cityId: 'frontier-city', slot: 2, memberIds: ['fp-tutorial-scout'] });
+  assert.deepEqual(gameState.exploreMissions[0].formation, { cityId: 'frontier-city', slot: 2, memberIds: ['fp-starter-scout'] });
 });
 
 test('world march with missing mission id fails without creating a new mission', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
-  gameState.tutorial = TutorialService.manualAdvance(gameState.tutorial, TutorialService.TUTORIAL_STEPS.completed);
+  const gameState = createExploreState();
 
   const result = WorldExplorerService.startWorldMarch(gameState, {
     missionId: 'missing-mission',
@@ -443,7 +341,7 @@ test('world march with missing mission id fails without creating a new mission',
 
 test('world march without mission id still creates a new manual mission by formation', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
+  const gameState = createExploreState();
 
   const result = WorldExplorerService.startWorldMarch(gameState, {
     targetQ: 2,
@@ -460,7 +358,7 @@ test('world march without mission id still creates a new manual mission by forma
 
 test('world march can be redirected home', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
+  const gameState = createExploreState();
   const started = WorldExplorerService.startWorldMarch(gameState, {
     targetQ: 2,
     targetR: 0,
@@ -482,7 +380,7 @@ test('world march can be redirected home', () => {
 
 test('returned world march carries server-planned route footprint', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
+  const gameState = createExploreState();
   const started = WorldExplorerService.startWorldMarch(gameState, {
     targetQ: 3,
     targetR: 0,
@@ -508,7 +406,7 @@ test('returned world march carries server-planned route footprint', () => {
 
 test('stopped world march carries server-planned route footprint when stop tile is ahead', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
+  const gameState = createExploreState();
   const started = WorldExplorerService.startWorldMarch(gameState, {
     targetQ: 3,
     targetR: 0,
@@ -534,7 +432,7 @@ test('stopped world march carries server-planned route footprint when stop tile 
 
 test('idle world march can return home from its parked tile', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
+  const gameState = createExploreState();
   const started = WorldExplorerService.startWorldMarch(gameState, {
     targetQ: 2,
     targetR: 0,
@@ -562,7 +460,7 @@ test('idle world march can return home from its parked tile', () => {
 
 test('returned-home idle world march stays in explorer state but leaves the world actor projection', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
+  const gameState = createExploreState();
   const started = WorldExplorerService.startWorldMarch(gameState, {
     targetQ: 2,
     targetR: 0,
@@ -588,7 +486,7 @@ test('returned-home idle world march stays in explorer state but leaves the worl
 
 test('returned-home world march settles surviving snapshot troops back to the saved formation', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
+  const gameState = createExploreState();
   const started = WorldExplorerService.startWorldMarch(gameState, {
     targetQ: 2,
     targetR: 0,
@@ -608,13 +506,13 @@ test('returned-home world march settles surviving snapshot troops back to the sa
   WorldExplorerService.advanceExploreMissions(gameState, returnedAt);
 
   const formation = gameState.cities.capital.military.formations[0];
-  assert.deepEqual(formation.soldierAssignments, { 'fp-tutorial-scout': 77 });
+  assert.deepEqual(formation.soldierAssignments, { 'fp-starter-scout': 77 });
   assert.equal(gameState.exploreMissions[0].formationSnapshot.settledAt, returnedAt.toISOString());
 });
 
 test('returned-home idle world march can start a new march from home', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
+  const gameState = createExploreState();
   const started = WorldExplorerService.startWorldMarch(gameState, {
     targetQ: 2,
     targetR: 0,
@@ -644,7 +542,7 @@ test('returned-home idle world march can start a new march from home', () => {
 
 test('returned-home idle world march with mission id redeploys saved formation troops', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
+  const gameState = createExploreState();
   const started = WorldExplorerService.startWorldMarch(gameState, {
     targetQ: 2,
     targetR: 0,
@@ -662,7 +560,7 @@ test('returned-home idle world march with mission id redeploys saved formation t
 
   assert.equal(gameState.exploreMissions[0].formationSnapshot.settledAt, returnedAt.toISOString());
   assert.deepEqual(gameState.cities.capital.military.formations[0].soldierAssignments, {
-    'fp-tutorial-scout': 120,
+    'fp-starter-scout': 120,
   });
 
   const next = WorldExplorerService.startWorldMarch(gameState, {
@@ -682,10 +580,9 @@ test('returned-home idle world march with mission id redeploys saved formation t
 
 test('returned world march respects materialized home terrain when natural terrain is blocked', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
+  const gameState = createExploreState();
   // (-214,-14) is an open-ocean core tile ('full' template); the march walks the
-  // marchable shore tile (-214,-15) and ends on land at (-214,-16), where the
-  // tutorial empty-city guarantee can still plan its site.
+  // marchable shore tile (-214,-15) and ends on land at (-214,-16).
   gameState.territories[0] = {
     ...gameState.territories[0],
     x: -214,
@@ -727,9 +624,7 @@ test('returned world march respects materialized home terrain when natural terra
 
 test('startWorldMarch declines a manual march whose route crosses known water', () => {
   const now = new Date('2026-06-24T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
-  // Skip the tutorial empty-city guarantee so the route is not re-targeted.
-  gameState.tutorial = TutorialService.manualAdvance(gameState.tutorial, TutorialService.TUTORIAL_STEPS.completed);
+  const gameState = createExploreState();
   // Use a seed whose axis-aligned route crosses a natural river. Water-family
   // terrain is recomputed from the seed, so the fixture must use real generated water.
   gameState.worldMap = WorldMapService.createInitialWorldMap('test-water-3', now);
@@ -749,7 +644,7 @@ test('startWorldMarch declines a manual march whose route crosses known water', 
 
 test('world march client state does not expose retired ready reports', () => {
   const now = new Date('2026-06-06T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
+  const gameState = createExploreState();
   const started = WorldExplorerService.startWorldMarch(gameState, { targetQ: 2, targetR: 0, formationSlot: 1 }, now);
   const finishAt = new Date(now.getTime() + WorldExplorerService.EXPLORE_STEP_DURATION_MS * started.mission.route.length + 1);
 
@@ -763,7 +658,6 @@ test('world march client state does not expose retired ready reports', () => {
 test('world combat encounter is seeded near capital, engages on arrival, and force-settles on timeout', () => {
   const now = new Date('2026-06-22T00:00:00.000Z');
   const gameState = GameStateNormalizer.createInitialGameState('world-combat-chain-test', { now });
-  gameState.tutorial = TutorialService.manualAdvance(gameState.tutorial, TutorialService.TUTORIAL_STEPS.completed);
   gameState.famousPeople = [{
     id: 'fp-commander',
     name: 'Commander',
@@ -855,9 +749,8 @@ test('world combat encounter is seeded near capital, engages on arrival, and for
 
 test('world combat encounter rejects deployment when primary general has zero soldiers', () => {
   const now = new Date('2026-06-22T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
-  gameState.tutorial = TutorialService.manualAdvance(gameState.tutorial, TutorialService.TUTORIAL_STEPS.completed);
-  gameState.military.formations[0].soldierAssignments = { 'fp-tutorial-scout': 0 };
+  const gameState = createExploreState();
+  gameState.military.formations[0].soldierAssignments = { 'fp-starter-scout': 0 };
   gameState.cities.capital.military.formations = gameState.military.formations;
   const { db, encounter, worldContext } = createSharedCombatContext(gameState, now);
 
@@ -880,13 +773,12 @@ test('world combat encounter rejects deployment when primary general has zero so
 
 test('world combat encounter allows deployment when only a deputy has zero soldiers', () => {
   const now = new Date('2026-06-22T00:00:00.000Z');
-  const gameState = createTutorialExploreState();
-  gameState.tutorial = TutorialService.manualAdvance(gameState.tutorial, TutorialService.TUTORIAL_STEPS.completed);
+  const gameState = createExploreState();
   gameState.famousPeople.push({ id: 'fp-deputy', name: 'Deputy' });
   gameState.military.formations[0] = {
     slot: 1,
-    memberIds: ['fp-tutorial-scout', 'fp-deputy'],
-    soldierAssignments: { 'fp-tutorial-scout': 120, 'fp-deputy': 0 },
+    memberIds: ['fp-starter-scout', 'fp-deputy'],
+    soldierAssignments: { 'fp-starter-scout': 120, 'fp-deputy': 0 },
   };
   gameState.cities.capital.military.formations = gameState.military.formations;
   const { db, encounter, worldContext } = createSharedCombatContext(gameState, now);
@@ -911,9 +803,9 @@ test('world combat encounter allows deployment when only a deputy has zero soldi
 
 // ---------------------------------------------------------------------------
 // S4 — march-vision → pre-placed neutral city DISCOVERY (docs/design/10 §3.4).
-// A NON-tutorial march whose vision covers a pre-placed neutral city (fed via
+// A regular march whose vision covers a pre-placed neutral city (fed via
 // planningContext.sharedWorldTerritories, S3's shared store) flips that city to
-// discovered + on-map + persistently fog-revealed, without touching the tutorial path.
+// discovered + on-map + persistently fog-revealed.
 // ---------------------------------------------------------------------------
 
 function createDiscoveryExploreState(seed = 'discovery-seed') {
@@ -923,14 +815,6 @@ function createDiscoveryExploreState(seed = 'discovery-seed') {
     playerId: 'world-explorer-discovery-test',
     activeCityId: 'capital',
     currentEra: 3,
-    // Tutorial COMPLETED — this is the generic (non-tutorial) discovery path; the tutorial
-    // plannedSites/grant branch must be inert so we exercise only §3.4.
-    tutorial: {
-      ...TutorialService.manualAdvance(
-        TutorialService.createInitialTutorialState(),
-        TutorialService.TUTORIAL_STEPS.completed,
-      ),
-    },
     territories: [{
       id: 'capital', x: 0, y: 0, naturalName: 'Origin', cityName: 'Capital',
       type: 'capital', owner: 'player', status: 'occupied',

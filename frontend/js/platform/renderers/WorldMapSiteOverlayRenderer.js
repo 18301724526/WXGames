@@ -189,15 +189,6 @@
       return this.buildFallbackWorldSiteDialogViewState(territories, territoryState, uiState);
     }
 
-    buildWorldSitePresenterContext(state = {}, territoryState = {}) {
-      const tutorial = state.tutorial || this.host?.state?.tutorial || null;
-      if (!tutorial) return territoryState;
-      return {
-        ...territoryState,
-        tutorial,
-      };
-    }
-
     buildFallbackWorldSiteDialogViewState(territories = [], territoryState = {}, uiState = {}) {
       const selectedSiteId = uiState.selectedSiteId || '';
       const makeButton = (label, action, territoryId, options = {}) => ({
@@ -395,8 +386,7 @@
     }
 
     renderWorldSiteModal(state = {}, options = {}) {
-      const sourceTerritoryState = state.territoryState || {};
-      const territoryState = this.buildWorldSitePresenterContext(state, sourceTerritoryState);
+      const territoryState = state.territoryState || {};
       const territories = territoryState.territories || [];
       const uiState = options.territoryUiState || {};
       const view = this.buildWorldSiteDialogViewState(territories, territoryState, uiState);

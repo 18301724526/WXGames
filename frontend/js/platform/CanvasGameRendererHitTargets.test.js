@@ -8,9 +8,9 @@ const CanvasGameRenderer = require('./CanvasGameRenderer');
 // extracted and kept unchanged afterwards. They lock the externally observable behavior
 // of the hitTargets/famousSkillHitTargets/suppressHitTargets accessors and the
 // setHitTargets/addHitTarget/appendWorldMapRuntimeHitTargets/getHitTarget/
-// withSuppressedHitTargets/findHitTarget methods on BOTH dispatch paths:
-// - live composed path: real CanvasSurfaceRenderer/TutorialCanvasRenderer from the
-//   composition factory, all sharing the renderer's surfaceState container;
+// withSuppressedHitTargets methods on BOTH dispatch paths:
+// - live composed path: the real CanvasSurfaceRenderer from the composition factory,
+//   sharing the renderer's surfaceState container;
 // - local fallback path: child renderer absent, the renderer's own surfaceState-backed
 //   implementation handles the call.
 
@@ -21,7 +21,6 @@ function createRenderer() {
 function createBareRenderer() {
   const renderer = createRenderer();
   renderer.surfaceRenderer = null;
-  renderer.tutorialRenderer = null;
   return renderer;
 }
 
@@ -134,21 +133,6 @@ test('withSuppressedHitTargets suppresses adds and restores the previous flag (l
   assert.equal(renderer.suppressHitTargets, true);
 });
 
-test('findHitTarget scans hit targets topmost-first with type + predicate (live path)', () => {
-  const renderer = createRenderer();
-  const first = { x: 0, y: 0, width: 10, height: 10, action: { type: 'enterCity', cityId: 'a' } };
-  const other = { x: 0, y: 0, width: 5, height: 5, action: { type: 'other' } };
-  const second = { x: 20, y: 0, width: 10, height: 10, action: { type: 'enterCity', cityId: 'b' } };
-  renderer.setHitTargets([first, other, second]);
-
-  assert.equal(renderer.findHitTarget('enterCity'), second);
-  assert.equal(
-    renderer.findHitTarget('enterCity', (action) => action.cityId === 'a'),
-    first,
-  );
-  assert.equal(renderer.findHitTarget('missing'), null);
-});
-
 test('appendWorldMapRuntimeHitTargets appends through addHitTarget and reports input presence', () => {
   const renderer = createRenderer();
   assert.equal(renderer.appendWorldMapRuntimeHitTargets([]), false);
@@ -223,11 +207,10 @@ test('addHitTarget local fallback normalizes, honors suppression, ignores bad in
   assert.equal(renderer.hitTargets.length, 1);
 });
 
-test('getHitTarget/findHitTarget local fallbacks return null without child renderers', () => {
+test('getHitTarget local fallback returns null without a child renderer', () => {
   const renderer = createBareRenderer();
   renderer.setHitTargets([{ x: 0, y: 0, width: 10, height: 10, action: { type: 'enterCity' } }]);
   assert.equal(renderer.getHitTarget({ x: 5, y: 5 }), null);
-  assert.equal(renderer.findHitTarget('enterCity'), null);
 });
 
 test('withSuppressedHitTargets local fallback invokes the callback without toggling the flag', () => {

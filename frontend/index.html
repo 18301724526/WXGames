@@ -12,7 +12,6 @@
 
     <script src="js/shared/SignatureHash.js?v=signature-hash-v1"></script>
     <script src="shared/featureFlags.js?v=feature-flags-shared-v1"></script>
-    <script src="shared/tutorialFlowConfig.js?v=tutorial-flow-shared-v1"></script>
     <script src="js/config/GameConfig.js?v=army-formation-v1"></script>
     <script src="js/config/FeatureFlags.js?v=architecture-refactor-feature-flags-v1"></script>
     <script src="js/config/LocaleTextRegistry.js?v=locale-text-registry-v1-vetcamp-uiredo7"></script>
@@ -92,7 +91,7 @@
     <script src="js/api/ClientCommandSender.js?v=step3-phase2-client-command-sender-v1"></script>
     <script src="js/api/GameAPI.js?v=world-map-error-evidence-v1-vetcamp-uiredo6"></script>
     <script src="js/config/FamousPortraitLayout.js?v=army-formation-v1"></script>
-      <script src="js/platform/renderers/CanvasSurfaceHitTargets.js?v=tutorial-reward-flow-v1"></script>
+      <script src="js/platform/renderers/CanvasSurfaceHitTargets.js?v=canvas-modal-shield-v1"></script>
       <script src="js/platform/renderers/CanvasSurfaceTextLayout.js?v=architecture-refactor-surface-text-v1"></script>
       <script src="js/platform/renderers/CanvasSurfaceState.js?v=architecture-refactor-surface-state-v1"></script>
       <script src="js/platform/renderers/CanvasSurfaceFrameClock.js?v=architecture-refactor-surface-frame-clock-v1"></script>
@@ -100,6 +99,7 @@
     <script src="js/platform/renderers/ModalPlateRenderer.js?v=modal-plate-painter-v1-uiredo8"></script>
     <script src="js/platform/renderers/CanvasAssetRenderer.js?v=p2-system-guide-v1"></script>
     <script src="js/platform/renderers/CanvasPreloadAssetManifest.js?v=unit-sprite-manifest-v1-uiredo6"></script>
+    <script src="js/platform/renderers/WorldUnitSpriteRenderer.js?v=world-unit-sprite-v1"></script>
     <script src="js/platform/renderers/WorldTileWaterCanvasRenderer.js?v=p2-system-guide-v1"></script>
     <script src="js/platform/renderers/WorldActorCanvasRenderer.js?v=world-actor-spine-wiring-v2"></script>
     <script src="js/platform/renderers/WorldActorSpineRenderer.js?v=world-actor-spine-v2"></script>
@@ -142,15 +142,6 @@
     <script src="js/platform/renderers/BattleFloatingTextRenderer.js?v=architecture-refactor-battle-floating-v1"></script>
     <script src="js/platform/renderers/BattleEffectRenderer.js?v=architecture-refactor-battle-effects-v1"></script>
     <script src="js/platform/renderers/BattleCanvasRenderer.js?v=entity-battle-render-context-v1"></script>
-    <script src="js/platform/renderers/TutorialAdvisorSpineLayoutConfig.js?v=tutorial-advisor-tuned-v1"></script>
-    <script src="js/platform/renderers/TutorialAdvisorCanvasRenderer.js?v=tutorial-advisor-tuned-v1"></script>
-    <script src="js/platform/renderers/TutorialDialogueLayer.js?v=tutorial-dialogue-layer-v1"></script>
-    <script src="js/platform/renderers/TutorialHighlightLayer.js?v=step23-tutorial-highlight-layer-v1"></script>
-    <script src="js/platform/renderers/TutorialIntroDialogueLayout.js?v=tutorial-advisor-tuned-v1"></script>
-    <script src="js/platform/renderers/TutorialIntroMarchModel.js?v=architecture-refactor-tutorial-march-model-v1"></script>
-    <script src="js/platform/renderers/TutorialIntroUnitRenderer.js?v=architecture-refactor-tutorial-unit-renderer-v1"></script>
-    <script src="js/platform/renderers/TutorialAdvisorDialogueRenderer.js?v=tutorial-house-spine-advisor-v1"></script>
-    <script src="js/platform/renderers/TutorialCanvasRenderer.js?v=tutorial-advisor-preserve-v1"></script>
     <script src="js/platform/renderers/BuildingCanvasRenderer.js?v=p2-system-guide-v1"></script>
     <script src="js/platform/renderers/EventCanvasRenderer.js?v=p2-system-guide-v1"></script>
     <script src="js/platform/renderers/CaptureCanvasRenderer.js?v=pvpve-capture-panel-v1"></script>
@@ -188,19 +179,8 @@
     <script src="js/platform/CanvasModalSnapshotAdapter.js?v=modal-snapshot-owner-v1"></script>
     <script src="js/platform/MiniGameCanvasRenderer.js?v=architecture-refactor-mini-game-renderer-v1"></script>
     <script src="js/platform/H5CanvasGameRenderer.js?v=h5-spine-hostref-v1"></script>
-    <script src="js/vendor/spine-3.8/spine-webgl.js?v=tutorial-spine-20260604"></script>
-    <script src="js/platform/SpineWebglPlayer.js?v=tutorial-spine-layer-v2"></script>
-    <script src="js/tutorial/TutorialIntroOverlay.js?v=tutorial-walk-slower-v1"></script>
-    <script src="js/tutorial/TutorialGuideStepPolicy.js?v=architecture-refactor-tutorial-guide-step-policy-v1"></script>
-    <script src="js/tutorial/TutorialGuideTargetResolver.js?v=architecture-refactor-tutorial-guide-target-resolver-v1"></script>
-    <script src="js/tutorial/TutorialGuideFlowRegistry.js?v=architecture-refactor-tutorial-flow-registry-v1"></script>
-    <script src="js/tutorial/TutorialGuideEventRegistry.js?v=architecture-refactor-tutorial-event-registry-v1"></script>
-    <script src="js/tutorial/TutorialEngineQueryTable.js?v=northstar-s7-e1"></script>
-    <script src="js/tutorial-engine/StepScriptTypeRegistry.js?v=northstar-s7-e2"></script>
-    <script src="js/tutorial-engine/StepScriptRunner.js?v=northstar-s7-e2"></script>
-    <script src="js/tutorial-config/TaskPanelStepScripts.js?v=northstar-s7-e3"></script>
-    <script src="js/tutorial/TutorialHostContext.js?v=northstar-s3-v2"></script>
-    <script src="js/tutorial/TutorialGuideController.js?v=scout-guide-after-formation-save-v1"></script>
+    <script src="js/vendor/spine-3.8/spine-webgl.js?v=spine-webgl-20260604"></script>
+    <script src="js/platform/SpineWebglPlayer.js?v=spine-layer-v2"></script>
     <script src="js/platform/interactions/TechTreeInteractionModel.js?v=architecture-refactor-step-7"></script>
     <script src="js/platform/WorldMarchActionHandler.js?v=godfile-redecomp-slice11-v1"></script>
     <script src="js/platform/TargetPickerActionHandler.js?v=godfile-redecomp-slice11-v1"></script>
@@ -216,7 +196,6 @@
     <script src="js/platform/TileMapWaterAnimationTimer.js?v=godfile-redecomp-slice7-v1"></script>
     <script src="js/platform/EntityBattleController.js?v=godfile-redecomp-slice8-v1"></script>
     <script src="js/platform/BattleSceneController.js?v=godfile-redecomp-slice9-v1"></script>
-    <script src="js/platform/TutorialGuideUiController.js?v=godfile-redecomp-slice10-v1"></script>
     <script src="js/platform/panels/FamousPersonsPanel.js?v=panel-surface-manager-famous-v1"></script>
     <script src="js/platform/panels/CanvasPanelRegistry.js?v=panel-surface-manager-famous-v1"></script>
     <script src="js/platform/CanvasPanelSurfaceManager.js?v=panel-surface-manager-famous-v1"></script>
@@ -233,9 +212,9 @@
     <script src="js/ui/H5ActorPickingDiagnosticsAdapter.js?v=actor-picking-diagnostics-v1"></script>
     <script src="js/ui/H5GameApiTransportAdapter.js?v=game-api-transport-adapter-v1"></script>
     <script src="js/ui/H5AuthRuntimeAdapter.js?v=canvas-reset-confirm-v1"></script>
-    <script src="js/ui/H5AuthStorageAdapter.js?v=tutorial-spine-canvas-v4"></script>
+    <script src="js/ui/H5AuthStorageAdapter.js?v=auth-storage-v1"></script>
     <script src="js/ui/H5ShellAdapter.js?v=architecture-refactor-h5-shell-adapter-v1"></script>
-    <script src="js/controllers/BuildingController.js?v=tutorial-house-success-v1"></script>
+    <script src="js/controllers/BuildingController.js?v=building-controller-v1"></script>
     <script src="js/controllers/EventController.js?v=army-formation-v1"></script>
     <script src="js/controllers/CaptureController.js?v=pvpve-capture-panel-v1"></script>
     <script src="js/controllers/TerritoryController.js?v=army-formation-v1"></script>
@@ -248,7 +227,6 @@
     <script src="js/platform/CanvasActionDescriptorRegistry.js?v=step5-action-descriptor-building-v1"></script>
     <script src="js/platform/CanvasActionDispatchRegistry.js?v=architecture-refactor-canvas-action-dispatch-registry-v1"></script>
     <script src="js/platform/CanvasActionDispatcher.js?v=architecture-refactor-canvas-action-dispatcher-v2"></script>
-    <script src="js/platform/TutorialActionMatches.js?v=northstar-s5-y3"></script>
     <script src="js/platform/CanvasGameShell.js?v=shell-spine-wiring-v2-uiredo6"></script>
     <script src="app.js?v=codex-iab-auth-v1"></script>
     <script src="auth.js?v=canvas-reset-confirm-v1"></script>

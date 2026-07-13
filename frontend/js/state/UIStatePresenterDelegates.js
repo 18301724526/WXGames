@@ -27,7 +27,6 @@
       'formatNegativeRate',
       'buildAuthCredentialViewState',
       'buildAuthShellViewState',
-      'buildTutorialHighlightViewState',
       'buildTabNavigationViewState',
       'hasWorldTileMap',
       'canUseMapHome',
@@ -84,7 +83,6 @@
       'buildTalentPolicyViewState',
     ]),
     CivilizationPresenter: Object.freeze([
-      'canAdvanceEraByTutorial',
       'buildEraConditionViewState',
       'buildCivilizationViewState',
     ]),
@@ -256,9 +254,6 @@
     defineStaticMethod(UIStatePresenter, 'buildAuthShellViewState', function buildAuthShellViewState(...args) {
       return ShellPresenter.buildAuthShellViewState(...args);
     });
-    defineStaticMethod(UIStatePresenter, 'buildTutorialHighlightViewState', function buildTutorialHighlightViewState(...args) {
-      return ShellPresenter.buildTutorialHighlightViewState(...args);
-    });
     defineStaticMethod(UIStatePresenter, 'buildTabNavigationViewState', function buildTabNavigationViewState(...args) {
       return ShellPresenter.buildTabNavigationViewState(...args);
     });
@@ -402,9 +397,6 @@
       return TalentPolicyPresenter.buildTalentPolicyViewState(...args);
     });
     const CivilizationPresenter = dependencies.CivilizationPresenter;
-    defineStaticMethod(UIStatePresenter, 'canAdvanceEraByTutorial', function canAdvanceEraByTutorial(...args) {
-      return CivilizationPresenter.canAdvanceEraByTutorial(...args);
-    });
     defineStaticMethod(UIStatePresenter, 'buildEraConditionViewState', function buildEraConditionViewState(...args) {
       return CivilizationPresenter.buildEraConditionViewState(...args);
     });

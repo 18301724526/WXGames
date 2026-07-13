@@ -18,8 +18,7 @@ function hasPendingEvent(gameState, eventId) {
 }
 
 function isRegularEventEnabled(gameState) {
-  const tutorial = gameState?.tutorial || {};
-  return gameState?.currentEra >= 2 && Boolean(tutorial.completed || tutorial.phaseCompleted?.era2);
+  return gameState?.currentEra >= 2;
 }
 
 function normalizeRegularEventState(state, now = new Date()) {

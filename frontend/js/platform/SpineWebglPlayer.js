@@ -105,8 +105,8 @@
         this.stop();
         const base = String(options.assetBase || this.assetBase || '');
         this.assetBase = base ? base.replace(/\/?$/, '/') : '';
-        this.jsonFile = options.jsonFile || this.jsonFile || 'tutorial_advisor.json';
-        this.atlasFile = options.atlasFile || this.atlasFile || 'tutorial_advisor.atlas';
+        this.jsonFile = options.jsonFile || this.jsonFile || 'skeleton.json';
+        this.atlasFile = options.atlasFile || this.atlasFile || 'skeleton.atlas';
         this.animationName = options.animationName || this.animationName || 'animation';
         this.loop = options.loop !== false;
         this.premultipliedAlpha = Boolean(options.premultipliedAlpha ?? this.premultipliedAlpha);

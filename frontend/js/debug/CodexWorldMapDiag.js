@@ -77,10 +77,6 @@
         missions: toArray(state?.worldExplorerState?.missions).length,
         hasActiveMission: Boolean(state?.worldExplorerState?.activeMission),
       },
-      tutorial: {
-        currentStep: state?.tutorial?.currentStep ?? null,
-        completed: Boolean(state?.tutorial?.completed),
-      },
     };
   }
 

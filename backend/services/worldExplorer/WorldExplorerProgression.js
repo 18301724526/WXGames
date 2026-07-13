@@ -2,25 +2,17 @@ const WorldMapService = require('../WorldMapService');
 const WorldMarchCore = require('../../../shared/worldMarchCore');
 const {
   EXPLORE_REVEAL_RADIUS,
-  TUTORIAL_FIRST_SITE_GRANT_KEY,
   toInteger,
 } = require('./WorldExplorerShared');
 const {
   normalizeMissions,
 } = require('./WorldExplorerMissionNormalizer');
-const { manualAdvance } = require('../tutorial/TutorialProgression');
 const WorldExplorerTrace = require('./WorldExplorerTrace');
-const { TutorialFlowConfig } = require('../config/GameplayConfigRuntime');
-const SharedTutorialFlowConfig = require('../../../shared/tutorialFlowConfig');
 const MilitaryService = require('../MilitaryService');
 const FormationStrengthService = require('../military/FormationStrengthService');
 const WorldMarchVerification = require('./WorldMarchVerification');
 const WorldCombatEncounterService = require('../worldCombat/WorldCombatEncounterService');
 const { materializeDiscoveredNeutralCity } = require('../worldCity/WorldCityPlayerDiscovery');
-
-function getTutorialSteps() {
-  return TutorialFlowConfig.TUTORIAL_STEPS;
-}
 
 function getTileIdentity(tile = {}) {
   if (!tile || typeof tile !== 'object') return '';
@@ -104,16 +96,6 @@ function isDiscoverableNeutralCity(territory = {}) {
     && territory.owner === 'neutral'
     && !territory.ownerPlayerId,
   );
-}
-
-// Has the tutorial's referenced first city been materialized for this player? The companion city is a
-// regular world city, so discovery here means its tile carries the site id in the player's world map.
-function isTutorialFirstCityDiscovered(gameState = {}) {
-  const grant = gameState.tutorial?.grants?.[TUTORIAL_FIRST_SITE_GRANT_KEY];
-  const siteId = grant?.siteId || '';
-  if (!siteId) return false;
-  return (Array.isArray(gameState.worldMap?.tiles) ? gameState.worldMap.tiles : [])
-    .some((tile) => tile && tile.siteId === siteId);
 }
 
 // Generic march-vision → discovery pass (docs/design/10 §3.4). For every coord that JUST entered the
@@ -265,22 +247,7 @@ function revealStep(gameState, mission, step, now = new Date(), options = {}) {
   return [...byId.values()];
 }
 
-// The guided-explore tutorial advance fires firstCityDiscovered off the ACTUAL march-vision discovery of
-// the pre-placed tutorial city (S5) — its tile is now bound to the grant's siteId (the S4/S5 discovery
-// pass ran this tick). It must CONVERGE, not fire once: the completion tick's write can lose a revision
-// race, leaving the step stranded at scoutExploreStarted while the city is already discovered on the map.
-// Re-evaluating on every pass — mission active OR idle — with manualAdvance (monotonic + idempotent) makes
-// that stranded state self-heal on the next tick (§6-R-tutorial-convergence). No route-revealed gate: the
-// player marches to a target they picked, and the city can enter vision mid-route (before the final step),
-// so discovery — not "whole route revealed" — is the trigger.
-function advanceTutorialAfterGuidedExplore(gameState, TUTORIAL_STEPS) {
-  if (!SharedTutorialFlowConfig.stepEquals(gameState.tutorial?.currentStep, TUTORIAL_STEPS.scoutExploreStarted)) return;
-  if (!isTutorialFirstCityDiscovered(gameState)) return;
-  gameState.tutorial = manualAdvance(gameState.tutorial, TUTORIAL_STEPS.firstCityDiscovered);
-}
-
 function advanceExploreMissions(gameState, now = new Date(), options = {}) {
-  const TUTORIAL_STEPS = getTutorialSteps();
   gameState.exploreMissions = normalizeMissions(gameState.exploreMissions);
   const nowMs = now.getTime();
   const newlyRevealedTiles = [];
@@ -334,11 +301,6 @@ function advanceExploreMissions(gameState, now = new Date(), options = {}) {
       newlyRevealedIds: getTileIdentities(newlyRevealedTiles).slice(0, 12),
     });
   }
-  // Convergent tutorial advance: after every mission pass (active/idle/none), fire firstCityDiscovered
-  // iff the pre-placed tutorial city is now discovered on the map (§6-R-tutorial-convergence). Running it
-  // once per tick outside the per-mission loop makes it self-heal a stranded scoutExploreStarted step even
-  // if the mission has already been cleaned up.
-  advanceTutorialAfterGuidedExplore(gameState, TUTORIAL_STEPS);
   // Offline safety net: force-settle any mission that has sat 'engaged' on an enemy tile
   // longer than the fallback window (a player who never opened the interactive battle).
   // Runs every tick/heartbeat that advances missions; defers to an open interactive

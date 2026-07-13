@@ -117,7 +117,6 @@
       'building.action.build': '建造',
       'building.action.upgrading': '升级中',
       'building.action.building': '建造中',
-      'building.action.guideLocked': '引导中锁定',
       'building.action.insufficientResources': '资源不足',
       'building.category.all': '全部',
       'building.category.agriculture': '农业',
@@ -313,7 +312,6 @@
       'civilization.feature.default': '{era}：继续建设你的文明。',
       'civilization.advance.insufficient': '条件不足，无法进阶',
       'civilization.advance.subcity': '分城跟随主城时代',
-      'civilization.advance.guideLocked': '引导未解锁',
       'civilization.advance.ready': '满足条件，可进阶',
       'civilization.stat.population': '人口',
       'civilization.stat.buildings': '建筑',
@@ -487,71 +485,6 @@
       'talent.ui.emptyCustom': '暂无自定义方针',
       'talent.ui.applyDraft': '确认方针',
       'talent.ui.saveDraft': '保存微调',
-      'tutorial.highlight.openCivilization': '点击文明，查看族群迈向下一阶段所需的条件。',
-      'tutorial.highlight.advanceEra': '条件已经满足，点击进阶，让文明迈入农耕时代。',
-      'tutorial.highlight.openTaskCenter': '打开任务，领取第一份主线物资。',
-      'tutorial.highlight.claimFirstSupplies': '领取“安居的火种”，准备建造第一块农田。',
-      'tutorial.highlight.openBarracksTask': '打开任务，领取兵营物资。',
-      'tutorial.highlight.claimBarracksSupplies': '领取“兵营物资”，为建设兵营备齐粮草。',
-      'tutorial.highlight.openBuildingsForBarracks': '打开建筑，为城邦选址建设兵营。',
-      'tutorial.highlight.buildBarracks': '建设兵营，让城邦拥有自己的常备军。',
-      'tutorial.highlight.openFirstArmyTask': '打开任务，领取军费组建首支军队。',
-      'tutorial.highlight.claimFirstArmy': '领取“组建首支军队”，一支千人军队将进入城防储备。',
-      'tutorial.highlight.openScoutOfficerTask': '打开任务，招募一位先驱。',
-      'tutorial.highlight.claimScoutOfficer': '领取“先驱”，一位善于行军探路的名人将加入我们。',
-      'tutorial.highlight.replenishScoutFormation': '点击补兵，为编队补满士兵。',
-      'tutorial.highlight.chooseFirstCitySite': '在候选里选择这座空城，进入据点视图。',
-      'tutorial.highlight.chooseCapitalSite': '在候选里选择主城，进入城内配置编队。',
-      'tutorial.highlight.switchTalentTab': '切到人才标签，之后的人才调整都在这里完成。',
-      'tutorial.highlight.switchTalentTabAdjust': '切到人才标签，手动调整一次岗位分配。',
-      'tutorial.highlight.adjustTalentDetail':
-        '现在在城池人才页手动调整一次人才分配，之后你就能按城市需要微调岗位。',
-      'tutorial.highlight.adjustTalentShort': '在人才标签里手动调整一次岗位分配。',
-      'tutorial.highlight.openFamousSeek': '打开名人，试一次寻访，看看新的候选人如何出现。',
-      'tutorial.highlight.openFamousPanel': '打开名人面板，进行一次寻访。',
-      'tutorial.highlight.seekFamous': '点击寻访名人，新的候选人会进入名人馆等待你后续处理。',
-      'tutorial.highlight.buildFirstHouse': '建造第一处民居，让族人有稳定的居所。',
-      'tutorial.guide.openScoutFamous': '打开名人，查看刚加入的开拓型英杰。',
-      'tutorial.guide.openScoutFamousDetail': '点开这张先驱名人卡，记住他会带队出城探路。',
-      'tutorial.guide.pickScoutLeader': '选中这位先驱名人，他将成为首支探索队伍的主将。',
-      'tutorial.guide.saveScoutFormation': '保存编队，接下来就可以出城行军探索了。',
-      'tutorial.guide.conquerEmptyCity': '这是一座无主空城，点击占领，派人建立新据点。',
-      'tutorial.guide.renameNewCity': '给{name}取一个名字，让它成为真正的城市。',
-      'tutorial.guide.renameNewCity.fallbackName': '这座新城',
-      'tutorial.guide.focusCityNameInput': '先点击输入框，为新城填入一个名字。',
-      'tutorial.guide.submitCityName': '确认城市名称，接下来为我们的文明命名。',
-      'tutorial.guide.namePolityTitle': '为文明命名',
-      'tutorial.guide.namePolityMessage': '新城已经并入我们的版图，现在给这个新生文明一个名字。',
-      'tutorial.guide.focusPolityNameInput': '输入文明名称，这个名字会记录在势力档案里。',
-      'tutorial.guide.submitPolityName': '确认文明名称，这条强引导就只剩最后的科技说明了。',
-      'tutorial.guide.buildFirstFarm': '建造第一块农田，让食物供应先稳定下来。',
-      'tutorial.guide.openCivilizationForEra2': '回到文明，把聚落推向下一个时代。',
-      'tutorial.guide.advanceToEra2': '条件已经准备好，点击进阶进入聚落时代。',
-      'tutorial.guide.openEventsForForest': '打开事件，处理森林里的木材线索。',
-      'tutorial.guide.openForestEvent': '点开森林低语事件，先把可用的木材收下。',
-      'tutorial.guide.claimForestWood': '领取这批木材，我们马上建起伐木场。',
-      'tutorial.guide.buildLumbermill': '建造伐木场，让木材开始持续流入仓库。',
-      'tutorial.guide.openLumbermillTask': '打开任务，领取伐木场完成后的主线奖励。',
-      'tutorial.guide.claimLumbermillReward': '领取“让木材流入仓房”，下一次进阶的物资就到位了。',
-      'tutorial.guide.openCivilizationForEra3': '打开文明，用伐木场的物资推进到城邦时代。',
-      'tutorial.guide.advanceToEra3': '进阶到城邦时代，行军探索与名人编队就会正式开放。',
-      'tutorial.guide.closeScoutFamousDetail': '卡片已经看过，先返回名人列表。',
-      'tutorial.guide.closeFamousPanel': '关闭名人面板，接下来回主城配置第一支探索编队。',
-      'tutorial.guide.switchCityMilitaryTab': '切到城内军事，我们要把这位名人放进探索编队。',
-      'tutorial.guide.openFirstFormation': '点击第一张编队卡片，把先驱名人放进队伍。',
-      'tutorial.guide.selectScoutTarget': '点选大地图上的一块目标地，我们会把探索队伍派往那里。',
-      'tutorial.guide.openMarchFormationPicker': '目标已经标出，点击行军，选择本次出城的队伍。',
-      'tutorial.guide.startScoutMarch': '选择第一支探索队伍出城，路线会留在大地图上。',
-      'tutorial.guide.claimFirstCityConquest': '队伍已经到达，点击完成占领，把这里纳入我们的版图。',
-      'tutorial.guide.openTechFinal': '打开科技，看看文明未来的发展路线。',
-      'tutorial.guide.techSoftGuide':
-        '科技点会影响文明的发展进程，不同路线会把聚落带向农业、军事或工业等不同侧重。接下来由你来决定第一项研究。',
-      'tutorial.guide.openDiscoveredEmptyCity': '点开探索队伍发现的空城，准备建立第二处据点。',
-      'tutorial.guide.openCapitalForScout': '点开主城，去城内军事页配置第一支探索编队。',
-      'tutorial.guide.enterCapitalForScout': '进入主城，在城内军事页配置探索编队。',
-      'tutorial.guide.scoutFamousJoined':
-        '城邦的道路已经打开，一位善于行军探路的名人加入了我们。先去名人里看看他的卡片。',
-      'tutorial.guide.forestEventHint': '森林边缘传来了动静。先去事件里看一看，把木材带回来。',
       'battle.scene.status.fighting': '交战中…',
       'battle.scene.status.settling': '结算中…',
       'battle.scene.result.win': '胜利',
@@ -660,8 +593,6 @@
       'battle.entity.survivorLine.ally': '我方剩余: {survivors}',
       'battle.entity.survivorLine.enemy': '敌方剩余: {survivors}',
       'battle.entity.result.audit': '用时 {ticks} tick · 指令 {commands} 条 (后端权威重算)',
-      'tutorial.advisorName': '谋士',
-      'tutorial.continue': '点击继续',
       'shell.topBar.eraFallback': '原始时代',
       'shell.topBar.population': '人口：{population}',
       'shell.topBar.advisor': '顾问',
@@ -779,8 +710,6 @@
       'command.reward.detail': '奖励：{message}',
       'territory.updated': '疆域已更新',
       'era.primitiveName': '原始时代',
-      'guide.buildFirstHouseFirst': '请先按照引导建造第一处民居',
-      'guide.completeCurrentStep': '请先完成当前引导步骤',
       'formation.maxMembersToast': '每个编队最多 5 名名人',
       'formation.slotPending': '编队 {slot} 功能待开放',
       'opsLog.saved': '操作日志已保存：{fileName}',
@@ -789,13 +718,6 @@
       'common.inputTitle': '输入',
       'city.capitalName': '首都',
       'worldSite.emptyCity': '空城',
-      'tutorial.softGuide.claimSupplies':
-        '火种已经越过最初的夜色。去任务里领取这份物资，我们就能准备第一块农田。',
-      'tutorial.softGuide.claimBarracksSupplies':
-        '城邦时代已经到来。先去任务里领取兵营物资，组建军队的第一步从这里开始。',
-      'tutorial.intro.city':
-        '前方的雾散开了。这里背山临水，土地平整，是个建立据点的好地方。点一下首都看看。',
-      'tutorial.intro.enter': '让队伍入城整备。只要根基扎稳，这座首都会慢慢长成我们的核心。',
       'world.map.command.tech': '科技',
       'world.map.command.civilization': '文明',
       'world.map.command.famousPersons': '名人',
@@ -1071,7 +993,6 @@
       'building.action.build': 'Build',
       'building.action.upgrading': 'Upgrading',
       'building.action.building': 'Building',
-      'building.action.guideLocked': 'Locked by guide',
       'building.action.insufficientResources': 'Not enough resources',
       'building.category.all': 'All',
       'building.category.agriculture': 'Agriculture',
@@ -1273,7 +1194,6 @@
       'civilization.feature.default': '{era}: keep building your civilization.',
       'civilization.advance.insufficient': 'Conditions unmet',
       'civilization.advance.subcity': 'Subcities follow the capital era',
-      'civilization.advance.guideLocked': 'Locked by guide',
       'civilization.advance.ready': 'Ready to advance',
       'civilization.stat.population': 'Population',
       'civilization.stat.buildings': 'Buildings',
@@ -1453,118 +1373,6 @@
       'talent.ui.emptyCustom': 'No custom policies',
       'talent.ui.applyDraft': 'Apply Policy',
       'talent.ui.saveDraft': 'Save Tweak',
-      'tutorial.highlight.openCivilization':
-        'Tap Civilization to see what your people need to reach the next stage.',
-      'tutorial.highlight.advanceEra': 'Conditions are met — tap Advance to enter the Farming era.',
-      'tutorial.highlight.openTaskCenter': 'Open Tasks and claim your first main-line supplies.',
-      'tutorial.highlight.claimFirstSupplies':
-        'Claim “Spark of Settlement” and get ready to build your first farm.',
-      'tutorial.highlight.openBarracksTask': 'Open Tasks and claim the barracks supplies.',
-      'tutorial.highlight.claimBarracksSupplies':
-        'Claim “Barracks Supplies” to stock up for the barracks build.',
-      'tutorial.highlight.openBuildingsForBarracks':
-        'Open Buildings and pick a spot for the barracks.',
-      'tutorial.highlight.buildBarracks':
-        'Build the barracks so the city-state has a standing army.',
-      'tutorial.highlight.openFirstArmyTask':
-        'Open Tasks and claim the funds to raise your first army.',
-      'tutorial.highlight.claimFirstArmy':
-        'Claim “Raise Your First Army” — a thousand soldiers join the city reserve.',
-      'tutorial.highlight.openScoutOfficerTask': 'Open Tasks and recruit a Pathfinder.',
-      'tutorial.highlight.claimScoutOfficer':
-        'Claim “Pathfinder” — a famous person skilled in marching and trailblazing joins you.',
-      'tutorial.highlight.replenishScoutFormation':
-        'Tap Replenish to fill the formation with soldiers.',
-      'tutorial.highlight.chooseFirstCitySite':
-        'Choose this empty city from the candidates to open its outpost view.',
-      'tutorial.highlight.chooseCapitalSite':
-        'Choose the capital from the candidates to set up the formation inside.',
-      'tutorial.highlight.switchTalentTab':
-        'Switch to the Talent tab — all talent tuning happens here.',
-      'tutorial.highlight.switchTalentTabAdjust':
-        'Switch to the Talent tab and adjust a job assignment once.',
-      'tutorial.highlight.adjustTalentDetail':
-        'Adjust talent allocation once on the city Talent page; later you can fine-tune jobs per city.',
-      'tutorial.highlight.adjustTalentShort': 'Adjust a job assignment once on the Talent tab.',
-      'tutorial.highlight.openFamousSeek':
-        'Open Famous and try a search to see how new candidates appear.',
-      'tutorial.highlight.openFamousPanel': 'Open the Famous panel and run a search.',
-      'tutorial.highlight.seekFamous':
-        'Tap Seek — new candidates enter the hall for you to handle.',
-      'tutorial.highlight.buildFirstHouse':
-        'Build your first house so your people have a stable home.',
-      'tutorial.guide.openScoutFamous': 'Open Famous to meet the pathfinding hero who just joined.',
-      'tutorial.guide.openScoutFamousDetail':
-        'Open this Pathfinder card — he will lead the team that marches beyond the city.',
-      'tutorial.guide.pickScoutLeader':
-        'Select this Pathfinder — he becomes the leader of your first exploration party.',
-      'tutorial.guide.saveScoutFormation':
-        'Save the formation, and you can march out to explore the land.',
-      'tutorial.guide.conquerEmptyCity':
-        'This empty city is unclaimed — tap Conquer and send people to found a new outpost.',
-      'tutorial.guide.renameNewCity': 'Give {name} a name and make it a true city.',
-      'tutorial.guide.renameNewCity.fallbackName': 'this new city',
-      'tutorial.guide.focusCityNameInput':
-        'Tap the input box first and enter a name for the new city.',
-      'tutorial.guide.submitCityName':
-        'Confirm the city name — next we will name our civilization.',
-      'tutorial.guide.namePolityTitle': 'Name Your Civilization',
-      'tutorial.guide.namePolityMessage':
-        'The new city has joined our realm. Now give this newborn civilization a name.',
-      'tutorial.guide.focusPolityNameInput':
-        'Enter the civilization name — it will be recorded in the polity archives.',
-      'tutorial.guide.submitPolityName':
-        'Confirm the civilization name — only the final tech briefing remains in this guide.',
-      'tutorial.guide.buildFirstFarm': 'Build your first farm to stabilize the food supply.',
-      'tutorial.guide.openCivilizationForEra2':
-        'Return to Civilization and push the settlement into the next era.',
-      'tutorial.guide.advanceToEra2':
-        'Conditions are ready — tap Advance to enter the Settlement era.',
-      'tutorial.guide.openEventsForForest':
-        'Open Events and follow up on the timber lead in the forest.',
-      'tutorial.guide.openForestEvent':
-        'Open the forest whispers event and collect the available wood first.',
-      'tutorial.guide.claimForestWood':
-        'Claim this batch of wood — we will build a lumbermill right away.',
-      'tutorial.guide.buildLumbermill':
-        'Build the lumbermill so wood keeps flowing into the warehouse.',
-      'tutorial.guide.openLumbermillTask':
-        'Open Tasks and claim the main-line reward for finishing the lumbermill.',
-      'tutorial.guide.claimLumbermillReward':
-        'Claim “Wood into the Storehouse” — the supplies for the next advance are in place.',
-      'tutorial.guide.openCivilizationForEra3':
-        'Open Civilization and use the lumbermill supplies to advance to the City-State era.',
-      'tutorial.guide.advanceToEra3':
-        'Advance to the City-State era to unlock exploration marches and famous-person formations.',
-      'tutorial.guide.closeScoutFamousDetail':
-        'You have seen the card — return to the famous list first.',
-      'tutorial.guide.closeFamousPanel':
-        'Close the Famous panel, then return to the capital to set up the first exploration formation.',
-      'tutorial.guide.switchCityMilitaryTab':
-        'Switch to the city Military tab — we will put this famous person into the exploration formation.',
-      'tutorial.guide.openFirstFormation':
-        'Tap the first formation card and add the Pathfinder to the team.',
-      'tutorial.guide.selectScoutTarget':
-        'Tap a target tile on the world map — we will send the exploration party there.',
-      'tutorial.guide.openMarchFormationPicker':
-        'The target is marked — tap March and choose the team for this trip.',
-      'tutorial.guide.startScoutMarch':
-        'Send the first exploration party out — the route stays on the world map.',
-      'tutorial.guide.claimFirstCityConquest':
-        'The team has arrived — tap Finish Conquest to bring this place into our realm.',
-      'tutorial.guide.openTechFinal': 'Open Tech and see the future routes of your civilization.',
-      'tutorial.guide.techSoftGuide':
-        'Tech points shape how your civilization develops; different routes lead the settlement toward agriculture, military, industry, and more. Now the first research is yours to choose.',
-      'tutorial.guide.openDiscoveredEmptyCity':
-        'Open the empty city your exploration party discovered and prepare a second outpost.',
-      'tutorial.guide.openCapitalForScout':
-        'Open the capital and set up the first exploration formation on the city Military page.',
-      'tutorial.guide.enterCapitalForScout':
-        'Enter the capital and configure the exploration formation on the city Military page.',
-      'tutorial.guide.scoutFamousJoined':
-        'The road of the city-state is open, and a famous person skilled in marching and trailblazing has joined us. Check the card in Famous first.',
-      'tutorial.guide.forestEventHint':
-        'Something stirs at the forest edge. Check Events first and bring the wood back.',
       'battle.scene.status.fighting': 'In battle…',
       'battle.scene.status.settling': 'Resolving…',
       'battle.scene.result.win': 'Victory',
@@ -1674,8 +1482,6 @@
       'battle.entity.survivorLine.enemy': 'Enemies remaining: {survivors}',
       'battle.entity.result.audit':
         'Time {ticks} ticks · Commands {commands} (server authoritative resim)',
-      'tutorial.advisorName': 'Advisor',
-      'tutorial.continue': 'Tap to continue',
       'shell.topBar.eraFallback': 'Primitive Era',
       'shell.topBar.population': 'Population: {population}',
       'shell.topBar.advisor': 'Advisor',
@@ -1795,8 +1601,6 @@
       'command.reward.detail': 'Reward: {message}',
       'territory.updated': 'Territory updated',
       'era.primitiveName': 'Primitive Era',
-      'guide.buildFirstHouseFirst': 'Follow the guide and build your first house first',
-      'guide.completeCurrentStep': 'Please finish the current guide step first',
       'formation.maxMembersToast': 'Each formation holds at most 5 famous persons',
       'formation.slotPending': 'Formation {slot} is not available yet',
       'opsLog.saved': 'Operation log saved: {fileName}',
@@ -1805,14 +1609,6 @@
       'common.inputTitle': 'Input',
       'city.capitalName': 'Capital',
       'worldSite.emptyCity': 'Empty City',
-      'tutorial.softGuide.claimSupplies':
-        'The spark has survived its first night. Claim these supplies in Tasks and we can prepare the first farm.',
-      'tutorial.softGuide.claimBarracksSupplies':
-        'The city-state era has arrived. Claim the barracks supplies in Tasks — raising an army starts there.',
-      'tutorial.intro.city':
-        'The fog ahead has lifted. Mountains behind, water in front, level ground — a fine place for a base. Tap the capital to take a look.',
-      'tutorial.intro.enter':
-        'Bring the troops into the city to regroup. With firm foundations, this capital will grow into our heartland.',
       'world.map.command.tech': 'Tech',
       'world.map.command.civilization': 'Civilization',
       'world.map.command.famousPersons': 'Famous',

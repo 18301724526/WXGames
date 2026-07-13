@@ -32,8 +32,8 @@ const {
 } = require('./famousPerson/FamousPersonProgression');
 const {
   createFamousPersonCandidate: buildFamousPersonCandidate,
-  createTutorialScoutFamousPerson: buildTutorialScoutFamousPerson,
-  isTutorialStarterFamousPerson, makeSkillName,
+  createStarterScoutFamousPerson: buildStarterScoutFamousPerson,
+  isStarterRewardFamousPerson, makeSkillName,
   normalizeAppearance,
 } = require('./famousPerson/FamousPersonGenerator');
 const { normalizeSkill } = require('./famousPerson/FamousPersonSkillNormalizer');
@@ -304,18 +304,18 @@ function createFamousPersonCandidate(gameState, payload = {}, now = new Date(), 
   return attachRandomAuthorityMetadata(candidate, source);
 }
 
-function createTutorialScoutFamousPerson(gameState = {}, now = new Date()) {
-  return normalizePerson(buildTutorialScoutFamousPerson(gameState, now));
+function createStarterScoutFamousPerson(gameState = {}, now = new Date()) {
+  return normalizePerson(buildStarterScoutFamousPerson(gameState, now));
 }
 
-function grantTutorialScoutFamousPerson(gameState, now = new Date()) {
+function grantStarterScoutFamousPerson(gameState, now = new Date()) {
   if (!gameState || typeof gameState !== 'object') return null;
   gameState.famousPeople = normalizeFamousPeople(gameState.famousPeople);
-  const existing = gameState.famousPeople.find(isTutorialStarterFamousPerson);
+  const existing = gameState.famousPeople.find(isStarterRewardFamousPerson);
   if (existing) {
     return { person: clone(existing), grantedAt: existing.joinedAt || existing.createdAt || now.toISOString(), created: false };
   }
-  const person = createTutorialScoutFamousPerson(gameState, now);
+  const person = createStarterScoutFamousPerson(gameState, now);
   gameState.famousPeople = [person, ...gameState.famousPeople];
   ensureFamousPersonState(gameState);
   return { person: clone(person), grantedAt: person.joinedAt || now.toISOString(), created: true };
@@ -466,8 +466,8 @@ module.exports = {
   normalizeFamousPersonState,
   ensureFamousPersonState,
   createFamousPersonCandidate,
-  createTutorialScoutFamousPerson,
-  grantTutorialScoutFamousPerson,
+  createStarterScoutFamousPerson,
+  grantStarterScoutFamousPerson,
   makeSkillName,
   getSeekAvailabilityFromState,
   getClientState,

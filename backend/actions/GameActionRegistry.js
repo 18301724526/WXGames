@@ -7,8 +7,6 @@ const TalentPolicyService = require('../services/TalentPolicyService');
 const TechTreeService = require('../services/TechTreeService');
 const FamousPersonService = require('../services/FamousPersonService');
 const MilitaryService = require('../services/MilitaryService');
-const TutorialService = require('../services/TutorialService');
-const SharedTutorialFlowConfig = require('../../shared/tutorialFlowConfig');
 
 const TERRITORY_ACTIONS = new Set([
   'startConquest',
@@ -32,7 +30,6 @@ const defaultDeps = {
   TechTreeService,
   FamousPersonService,
   MilitaryService,
-  TutorialService,
 };
 
 function buildTerritoryPayload(body = {}, actionOverride = '') {
@@ -86,29 +83,26 @@ function createGameActionRegistry(overrides = {}) {
     handlers.set(action, handler);
   }
 
-  register('build', ({ action, gameState, tutorial, body }) => (
-    deps.BuildBuildingAction.execute(action, gameState, tutorial, body.buildingId || body.target)
+  register('build', ({ action, gameState, body }) => (
+    deps.BuildBuildingAction.execute(action, gameState, body.buildingId || body.target)
   ));
-  register('upgrade', ({ action, gameState, tutorial, body }) => (
-    deps.BuildBuildingAction.execute(action, gameState, tutorial, body.buildingId || body.target)
+  register('upgrade', ({ action, gameState, body }) => (
+    deps.BuildBuildingAction.execute(action, gameState, body.buildingId || body.target)
   ));
-  register('advanceEra', ({ gameState, tutorial }) => (
-    deps.AdvanceEraAction.execute(gameState, tutorial)
+  register('advanceEra', ({ gameState }) => (
+    deps.AdvanceEraAction.execute(gameState)
   ));
-  register('claimEvent', ({ gameState, tutorial, body }) => (
-    deps.ClaimEventAction.execute(gameState, tutorial, { eventId: body.eventId, optionId: body.optionId })
+  register('claimEvent', ({ gameState, body }) => (
+    deps.ClaimEventAction.execute(gameState, { eventId: body.eventId, optionId: body.optionId })
   ));
-  register('assign', ({ gameState, tutorial, body }) => (
-    deps.AssignPopulationAction.execute(gameState, tutorial, {
+  register('assign', ({ gameState, body }) => (
+    deps.AssignPopulationAction.execute(gameState, {
       target: body.job || body.target,
       count: body.count,
     })
   ));
-  register('tutorialAdvance', ({ tutorial, body }) => ({
-    ...deps.TutorialService.advanceClientStep(tutorial, body.step),
-  }));
-  register('applyTalentPolicy', ({ gameState, tutorial, body }) => (
-    deps.TalentPolicyService.applyPolicy(gameState, tutorial, {
+  register('applyTalentPolicy', ({ gameState, body }) => (
+    deps.TalentPolicyService.applyPolicy(gameState, {
       policyId: body.policyId,
       basePolicyId: body.basePolicyId,
       tiers: body.tiers,
@@ -148,19 +142,9 @@ function createGameActionRegistry(overrides = {}) {
   register('research', ({ gameState, body }) => (
     deps.TechTreeService.research(gameState, body.techId || body.target || body.tech)
   ));
-  register('seekFamousPerson', ({ gameState, tutorial, body }) => {
-    const result = deps.FamousPersonService.seekFamousPerson(gameState, { source: body.source || body.target });
-    if (result?.success) {
-      const normalizedTutorial = deps.TutorialService.normalizeTutorialState(tutorial || gameState.tutorial);
-      if (SharedTutorialFlowConfig.stepEquals(normalizedTutorial.currentStep, deps.TutorialService.TUTORIAL_STEPS.famousSeekOpened)) {
-        return {
-          ...result,
-          tutorial: deps.TutorialService.advanceTutorial(normalizedTutorial, 'famousSeekCompleted'),
-        };
-      }
-    }
-    return result;
-  });
+  register('seekFamousPerson', ({ gameState, body }) => (
+    deps.FamousPersonService.seekFamousPerson(gameState, { source: body.source || body.target })
+  ));
   register('acceptFamousPerson', ({ gameState, body }) => (
     deps.FamousPersonService.acceptFamousPerson(gameState, body.candidateId || body.target)
   ));

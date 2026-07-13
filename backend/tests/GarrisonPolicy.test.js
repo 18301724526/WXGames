@@ -18,7 +18,7 @@ test('resolveBand maps a ring distance to its garrison band', () => {
 });
 
 test('isNeutralCityDefended: safe spawn band + capital + non-neutral are undefended', () => {
-  // safe band (<=3): frictionless settlement, protects the spawn area/tutorial.
+  // safe band (<=3): frictionless settlement protects the spawn area.
   assert.equal(GarrisonPolicy.isNeutralCityDefended({ owner: 'neutral' }, 2), false);
   // near/frontier/deep neutral cities are defended.
   assert.equal(GarrisonPolicy.isNeutralCityDefended({ owner: 'neutral' }, 5), true);

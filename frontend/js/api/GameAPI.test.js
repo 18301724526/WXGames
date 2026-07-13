@@ -317,7 +317,6 @@ test('GameAPI routes every inventoried write helper through ClientCommandSender'
     ['renameCity', 'renameCity', () => api.renameCity('territory-1', 'River')],
     ['renamePolity', 'renamePolity', () => api.renamePolity('River League')],
     ['switchCity', 'switchCity', () => api.switchCity('territory-1')],
-    ['advanceTutorial', 'tutorialAdvance', () => api.advanceTutorial(2)],
     ['heartbeat', 'heartbeat', () => api.heartbeat({ worldMarchClientReport: report })],
   ];
 

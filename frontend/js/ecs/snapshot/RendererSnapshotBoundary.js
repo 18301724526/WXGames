@@ -54,7 +54,6 @@ const MODE_DEFAULTS = Object.freeze({
   baseModeKey: 'city',
   modalMask: 0,
   modalKeys: Object.freeze([]),
-  tutorialActive: false,
   debugActive: false,
   blockingOverlayActive: false,
   techTreeBlockingOverlayActive: false,

@@ -153,7 +153,7 @@ test('SkillGeneratorService facade preserves ability kit API for battle, civil, 
   const scoutKit = SkillGeneratorService.createAbilityKit({
     abilityArchetype: 'scout',
     quality: 'great',
-    source: 'tutorial',
+    source: 'starter-reward',
     seed: 'scout-kit',
   }, () => 0.2);
   assert.equal(scoutKit.category, 'hybrid');

@@ -4,15 +4,14 @@ const assert = require('node:assert/strict');
 const TechTreeInteractionModel = require('./TechTreeInteractionModel');
 const CanvasActionController = require('../CanvasActionController');
 const GameAPI = require('../../api/GameAPI');
-const ModalStore = require('../../state/ModalStore');
 const { makeModalOwnerHost } = require('../../../test-support/CanvasOwnerTestHarness');
 
 const makeModalHost = makeModalOwnerHost;
 
-function makeTutorialEventBus(calls, handlers = {}) {
+function makeChangeEventBus(calls, handlers = {}) {
   return {
     emit(eventName, payload = {}) {
-      calls.push(['tutorialEvent', eventName, payload.panelId || payload.view || '']);
+      calls.push(['changeEvent', eventName, payload.panelId || payload.view || '']);
       return { results: [handlers[eventName]?.(payload)] };
     },
   };
@@ -316,51 +315,10 @@ test('CanvasActionController and GameAPI keep the same input id on failed world 
   assert.equal(JSON.stringify(apiError.clientInput).includes('rendererPayload'), false);
 });
 
-test('CanvasActionController defers tutorial enter-city action until the intro transition completes', () => {
-  const calls = [];
-  const game = {
-    state: {},
-    enterCity(cityId, options) {
-      calls.push(['enterCity', cityId, options.tab]);
-      return true;
-    },
-  };
-  const host = {
-    tutorialIntro: { active: true, step: 'enter', capitalCityId: 'capital' },
-    tutorialIntroOverlay: {
-      beginEnterCityTransition(action, onComplete) {
-        calls.push(['beginEnterCityTransition', action.type, action.cityId]);
-        this.onComplete = onComplete;
-        return true;
-      },
-      getViewState() {
-        return host.tutorialIntro;
-      },
-    },
-    getCanvasGameHost() {
-      return game;
-    },
-    render() {
-      calls.push(['render']);
-      return true;
-    },
-  };
-  const controller = new CanvasActionController({ host });
-
-  assert.equal(controller.handle({ type: 'enterCity', cityId: 'capital', tab: 'buildings' }), true);
-  assert.deepEqual(calls, [['beginEnterCityTransition', 'enterCity', 'capital']]);
-
-  host.tutorialIntroOverlay.onComplete();
-  assert.deepEqual(calls, [
-    ['beginEnterCityTransition', 'enterCity', 'capital'],
-    ['enterCity', 'capital', 'buildings'],
-  ]);
-});
-
-test('CanvasActionController notifies tutorial when opening civilization command panel', async () => {
+test('CanvasActionController publishes command panel event when opening civilization panel', async () => {
   const calls = [];
   const game = makeModalHost();
-  const changeEventBus = makeTutorialEventBus(calls, {
+  const changeEventBus = makeChangeEventBus(calls, {
     commandPanelOpened: async () => true,
   });
   const host = makeModalHost({
@@ -378,182 +336,7 @@ test('CanvasActionController notifies tutorial when opening civilization command
 
   assert.equal(host.getCommandPanelValue(), 'civilization');
   assert.deepEqual(calls, [
-    ['tutorialEvent', 'commandPanelOpened', 'civilization'],
-    ['render'],
-  ]);
-});
-
-// UI-REDO ⑦a characterization: a tutorial-locked dock tap must be a pure no-op on the
-// modal owner. The regression this locks: an eagerly-opened ghost 'tech' panel flipped
-// deriveModeFacts.techTreeActive on, routed every drag to the invisible tech tree
-// (resolveInputIntent -> 'tech-tree') and froze the world map.
-test('CanvasActionController vetoes tutorial-locked command panel without mutating the modal owner', () => {
-  ModalStore.closeAll();
-  const calls = [];
-  const game = makeModalHost({
-    tutorialController: {
-      canOpenTab(tabId) {
-        calls.push(['canOpenTab', tabId]);
-        return false;
-      },
-      normalizePanelTab(panelId) {
-        return panelId === 'capital' ? 'buildings' : panelId;
-      },
-    },
-  });
-  const changeEventBus = makeTutorialEventBus(calls, {
-    commandPanelOpened: async () => false,
-  });
-  const host = makeModalHost({
-    getCanvasGameHost() {
-      return game;
-    },
-    showFloatingText(message) {
-      calls.push(['showFloatingText', message]);
-      return true;
-    },
-    render() {
-      calls.push(['render']);
-      return true;
-    },
-  });
-  const controller = new CanvasActionController({ host, awaitAsync: true, changeEventBus });
-
-  assert.equal(controller.handle_openCommandPanel({ type: 'openCommandPanel', panel: 'tech' }), false);
-
-  // No ghost panel on the modal owner...
-  assert.equal(host.getCommandPanelValue(), '');
-  // ...so world-map input routing stays alive (the freeze proxy).
-  const facts = host.deriveModeFacts();
-  assert.equal(facts.techTreeActive, false);
-  assert.equal(facts.blockingOverlayActive, false);
-  // The veto is decided by the sync gate with player feedback; the async registry
-  // never runs and no render is forced (nothing changed).
-  assert.equal(calls.length, 2);
-  assert.deepEqual(calls[0], ['canOpenTab', 'tech']);
-  assert.equal(calls[1][0], 'showFloatingText');
-  assert.ok(String(calls[1][1] || '').length > 0);
-});
-
-test('CanvasActionController rolls back the command panel when the tutorial registry vetoes late', async () => {
-  ModalStore.closeAll();
-  const calls = [];
-  const game = makeModalHost({
-    tutorialController: {
-      // Sync gate passes (step raced forward), but the async registry still vetoes:
-      // the eager open must be rolled back so the owner never keeps a panel the mode
-      // system refuses to render.
-      canOpenTab() {
-        return true;
-      },
-      normalizePanelTab(panelId) {
-        return panelId;
-      },
-    },
-  });
-  const changeEventBus = makeTutorialEventBus(calls, {
-    commandPanelOpened: async () => false,
-  });
-  const host = makeModalHost({
-    getCanvasGameHost() {
-      return game;
-    },
-    render() {
-      calls.push(['render']);
-      return true;
-    },
-  });
-  const controller = new CanvasActionController({ host, awaitAsync: true, changeEventBus });
-
-  assert.equal(await controller.handle_openCommandPanel({ type: 'openCommandPanel', panel: 'tech' }), false);
-
-  assert.equal(host.getCommandPanelValue(), '');
-  assert.equal(host.deriveModeFacts().techTreeActive, false);
-  assert.deepEqual(calls, [
-    ['tutorialEvent', 'commandPanelOpened', 'tech'],
-    ['render'],
-  ]);
-});
-
-test('CanvasActionController opens the tech command panel when the tutorial gate allows it', async () => {
-  ModalStore.closeAll();
-  const calls = [];
-  const game = makeModalHost({
-    tutorialController: {
-      canOpenTab(tabId) {
-        calls.push(['canOpenTab', tabId]);
-        return true;
-      },
-      normalizePanelTab(panelId) {
-        return panelId;
-      },
-    },
-  });
-  const changeEventBus = makeTutorialEventBus(calls, {
-    commandPanelOpened: async () => true,
-  });
-  const host = makeModalHost({
-    getCanvasGameHost() {
-      return game;
-    },
-    render() {
-      calls.push(['render']);
-      return true;
-    },
-  });
-  const controller = new CanvasActionController({ host, awaitAsync: true, changeEventBus });
-
-  assert.equal(await controller.handle_openCommandPanel({ type: 'openCommandPanel', panel: 'tech' }), true);
-
-  assert.equal(host.getCommandPanelValue(), 'tech');
-  assert.equal(host.deriveModeFacts().techTreeActive, true);
-  assert.deepEqual(calls.slice(0, 3), [
-    ['canOpenTab', 'tech'],
-    ['tutorialEvent', 'commandPanelOpened', 'tech'],
-    ['render'],
-  ]);
-});
-
-test('CanvasActionController lets tutorial finish asynchronously when closing advisor', async () => {
-  const calls = [];
-  const game = {
-    showAdvisor: true,
-    tutorialAdvisorDialogue: { source: 'houseBuilt' },
-  };
-  const changeEventBus = makeTutorialEventBus(calls, {
-    advisorClosed: async () => {
-      await Promise.resolve();
-      calls.push(['advisorClosedDone']);
-      return true;
-    },
-  });
-  const host = makeModalHost({
-    tutorialAdvisorDialogue: { source: 'houseBuilt' },
-    renderer: {
-      clearTutorialAdvisorDialogue() {
-        calls.push(['clearTutorialAdvisorDialogue']);
-      },
-    },
-    getCanvasGameHost() {
-      return game;
-    },
-    render() {
-      calls.push(['render']);
-      return true;
-    },
-  });
-  host.openBlockingPanelSnapshot('showAdvisor', true);
-  const controller = new CanvasActionController({ host, awaitAsync: true, changeEventBus });
-
-  assert.equal(await controller.handle_closeAdvisor({ type: 'closeAdvisor' }), true);
-
-  assert.equal(host.isBlockingPanelSnapshotOpen('showAdvisor'), false);
-  assert.equal(host.tutorialAdvisorDialogue, null);
-  assert.equal(game.tutorialAdvisorDialogue, null);
-  assert.deepEqual(calls, [
-    ['clearTutorialAdvisorDialogue'],
-    ['tutorialEvent', 'advisorClosed', ''],
-    ['advisorClosedDone'],
+    ['changeEvent', 'commandPanelOpened', 'civilization'],
     ['render'],
   ]);
 });
@@ -617,95 +400,6 @@ test('CanvasActionController syncs opened event id across shell and game hosts',
   assert.equal(game.isEventSnapshotOpen(), false);
   assert.equal(game.canvasShell.isEventSnapshotOpen(), false);
   assert.deepEqual(ownerCalls, [['openEventSnapshot', 'event-1'], ['closeEventSnapshot']]);
-});
-
-test('CanvasActionController refreshes lumbermill guide after event reward claim', async () => {
-  const calls = [];
-  const tutorial = { completed: false, currentStep: 13 };
-  const eventStore = { snapshot: { eventId: 'evt_settlement_forest_001', visible: true } };
-  const shell = {
-    activeCommandPanel: 'events',
-    state: { eventQueue: [{ id: 'evt_settlement_forest_001' }] },
-    closeEventSnapshot() {
-      eventStore.snapshot = null;
-    },
-    isEventSnapshotOpen() {
-      return Boolean(eventStore.snapshot);
-    },
-    eventController: {
-      open(eventId) {
-        calls.push(['openEvent', eventId]);
-      },
-      close() {
-        calls.push(['closeEvent']);
-      },
-      async claimActive(optionId) {
-        calls.push(['claimActive', optionId]);
-        return {
-          tutorial,
-          gameState: {
-            currentTab: 'events',
-            eventQueue: [],
-          },
-        };
-      },
-    },
-    hideTutorialHighlight() {
-      calls.push(['hideTutorialHighlight']);
-    },
-    getCanvasGameHost() {
-      return game;
-    },
-    render() {
-      calls.push(['render']);
-      return true;
-    },
-  };
-  const game = {
-    canvasShell: shell,
-    closeEventSnapshot() {
-      eventStore.snapshot = null;
-    },
-    isEventSnapshotOpen() {
-      return Boolean(eventStore.snapshot);
-    },
-    tutorialController: {
-      sync(nextTutorial) {
-        calls.push(['syncTutorial', nextTutorial.currentStep]);
-      },
-      refreshCurrentHighlight() {
-        calls.push(['refreshCurrentHighlight']);
-      },
-    },
-    getTutorialController() {
-      return this.tutorialController;
-    },
-    applyApiState(result) {
-      calls.push(['applyApiState', result.tutorial.currentStep]);
-      this.tutorial = result.tutorial;
-      this.state = result.gameState;
-    },
-  };
-  const controller = new CanvasActionController({ host: shell, awaitAsync: true });
-
-  assert.equal(await controller.handle_claimEvent({
-    type: 'claimEvent',
-    eventId: 'evt_settlement_forest_001',
-    optionId: 'opt_collect_wood',
-  }), true);
-
-  assert.equal(shell.isEventSnapshotOpen(), false);
-  assert.equal(game.isEventSnapshotOpen(), false);
-  assert.deepEqual(calls, [
-    ['closeEvent'],
-    ['openEvent', 'evt_settlement_forest_001'],
-    ['claimActive', 'opt_collect_wood'],
-    ['syncTutorial', 13],
-    ['closeEvent'],
-    ['hideTutorialHighlight'],
-    ['refreshCurrentHighlight'],
-    ['render'],
-  ]);
 });
 
 test('CanvasActionController opens task center above city management after lumbermill guide', () => {
@@ -779,14 +473,6 @@ test('CanvasActionController mirrors city management open to the game host', () 
   const game = makeModalHost({
     activeCityManagementTab: '',
     canvasShell: shell,
-    tutorialController: {
-      onCityManagementOpened(tab) {
-        calls.push(['onCityManagementOpened', tab]);
-      },
-      refreshCurrentHighlight() {
-        calls.push(['refreshCurrentHighlight']);
-      },
-    },
   });
   const controller = new CanvasActionController({ host: shell });
 
@@ -819,7 +505,7 @@ test('CanvasActionController closes command panel after switching military view'
       return true;
     },
   });
-  const changeEventBus = makeTutorialEventBus(calls, {
+  const changeEventBus = makeChangeEventBus(calls, {
     militaryViewSwitched: () => true,
   });
   shell.openBlockingPanelSnapshot('activeCommandPanel', 'military');
@@ -831,7 +517,7 @@ test('CanvasActionController closes command panel after switching military view'
   assert.equal(game.getCommandPanelValue(), '');
   assert.deepEqual(calls, [
     ['switchMilitaryView', 'world'],
-    ['tutorialEvent', 'militaryViewSwitched', 'world'],
+    ['changeEvent', 'militaryViewSwitched', 'world'],
     ['render'],
   ]);
 });
@@ -908,72 +594,6 @@ test('CanvasActionController centers far guided world sites inside the map viewp
   assert.equal(Math.round(projectedY), Math.round(visibleMapY + visibleMapH * 0.46));
 });
 
-test('CanvasActionController advances tutorial after selecting a world march target', async () => {
-  const calls = [];
-  const game = {
-    territoryUiState: {},
-    territoryController: {
-      closeSiteDialog(options) {
-        calls.push(['closeSiteDialog', options]);
-      },
-    },
-    emitTutorialEvent(eventName) {
-      calls.push(['tutorialEvent', eventName]);
-      return Promise.resolve(true);
-    },
-    changeEventBus: {
-      emit(eventName) {
-        calls.push([eventName]);
-      },
-    },
-    runtime: {
-      setTimeout(callback) {
-        calls.push(['setTimeout']);
-        callback?.();
-      },
-    },
-  };
-  const host = makeModalHost({
-    territoryUiState: game.territoryUiState,
-    lastGame: game,
-    renderCanvasAction(action) {
-      calls.push(['renderCanvasAction', action.type]);
-      return true;
-    },
-    requestWorldMapRenderAnimationFrame(options) {
-      calls.push(['requestWorldMapRenderAnimationFrame', options]);
-      return true;
-    },
-  });
-  const controller = new CanvasActionController({ host, awaitAsync: true });
-
-  const handled = await controller.handle_selectWorldMarchTarget({
-    type: 'selectWorldMarchTarget',
-    targetQ: 3,
-    targetR: -2,
-    tileId: 'tile_3_-2',
-  });
-
-  assert.equal(handled, true);
-  assert.deepEqual(host.territoryUiState.worldMarchTarget, {
-    q: 3,
-    r: -2,
-    tileId: 'tile_3_-2',
-  });
-  assert.equal(host.isTargetPickerSnapshotOpen(), false);
-  assert.equal(host.territoryUiState.selectedWorldActorId, '');
-  assert.equal(host.territoryUiState.selectedSiteId, '');
-  assert.deepEqual(calls, [
-    ['closeSiteDialog', { render: false }],
-    ['tutorialEvent', 'worldMarchTargetSelected'],
-    ['renderCanvasAction', 'selectWorldMarchTarget'],
-    ['requestWorldMapRenderAnimationFrame', { force: true, invalidateWorldTileView: false }],
-    ['state.changed'],
-    ['setTimeout'],
-    ['state.changed'],
-  ]);
-});
-
 test('CanvasActionController refreshes world map layer after world march HUD changes', async () => {
   const calls = [];
   const shell = makeModalHost({
@@ -994,17 +614,6 @@ test('CanvasActionController refreshes world map layer after world march HUD cha
     canvasShell: shell,
     territoryUiState: shell.territoryUiState,
     state: { activeCityId: 'capital' },
-    changeEventBus: {
-      emit(eventName) {
-        calls.push([eventName]);
-      },
-    },
-    runtime: {
-      setTimeout(callback) {
-        calls.push(['setTimeout']);
-        callback?.();
-      },
-    },
     startWorldMarch(options) {
       calls.push(['startWorldMarch', options]);
       return true;
@@ -1081,8 +690,6 @@ test('CanvasActionController refreshes world map layer after world march HUD cha
     'returnWorldMarch',
     'stopWorldMarch',
   ]);
-  assert.equal(calls.filter((call) => call[0] === 'state.changed').length, 12);
-  assert.equal(calls.filter((call) => call[0] === 'setTimeout').length, 6);
 });
 
 test('CanvasActionController writes world march selection into the shared territory UI owner', async () => {

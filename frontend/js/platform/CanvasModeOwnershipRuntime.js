@@ -112,11 +112,7 @@
     return 'city';
   }
 
-  // Batch 8F: each blocking panel is its own owned modal subtype. The two non-panel
-  // signals the retired 'modal:blockingPanel' umbrella also folded in --
-  // tutorialAdvisorDialogue and armyFormationEditor.open -- are NOT panel subtypes;
-  // they are preserved as explicit terms in deriveModeFacts.blockingOverlayActive and
-  // hasBlockingOverlayExceptTechTree so blocking detection is unchanged.
+  // Batch 8F: each blocking panel is its own owned modal subtype.
   function collectModalKeys(host) {
     const keys = [];
     if (isAnyModalOpen(host, 'modal:naming')) keys.push('modal:naming');
@@ -140,7 +136,6 @@
   }
 
   function hasBlockingOverlayExceptTechTree(host) {
-    const game = getStateHost(host);
     const battleSnapshot = readBattleSnapshot();
     const formationEditor = getUiRuntimeStateStore()?.getFormationEditor?.(host) || null;
     // commandPanel blocks tech-tree routing only when it is NOT the tech panel (the
@@ -156,8 +151,6 @@
       isAnyModalOpen(host, 'modal:subcityList') ||
       isAnyModalOpen(host, 'modal:cityManagement') ||
       isAnyModalOpen(host, 'modal:advisor') ||
-      isTruthy(host?.tutorialAdvisorDialogue) ||
-      isTruthy(game?.tutorialAdvisorDialogue) ||
       isAnyModalOpen(host, 'modal:taskCenter') ||
       isAnyModalOpen(host, 'modal:guidebook') ||
       isAnyModalOpen(host, 'modal:famousPersons') ||
@@ -180,23 +173,14 @@
     // single source of truth for the live battle session -- not host/game mirrors.
     const entityBattle = readBattleSnapshot()?.entityBattle || null;
     const formationEditor = getUiRuntimeStateStore()?.getFormationEditor?.(host) || null;
-    const tutorialIntro = game?.tutorialIntro || host?.tutorialIntro || null;
-    const tutorialHighlight = host?.tutorialHighlight || game?.tutorialHighlight || null;
     const baseModeKey = resolveBaseModeKey(host);
     return {
       baseModeKey,
       modalKeys,
-      tutorialActive: isTruthy(tutorialIntro?.active) || isTruthy(tutorialHighlight),
       debugActive: isTruthy(global.__actorPickingDiag) || isTruthy(global.__wxgameDebugMode),
-      // Batch 8F: modalKeys now carries the 12 panel subtypes individually. The two
-      // non-panel signals the old umbrella also covered (tutorialAdvisorDialogue,
-      // armyFormationEditor.open) are ORed back in here so blockingOverlayActive is
-      // unchanged.
       blockingOverlayActive:
         modalKeys.length > 0 ||
         isTruthy(entityBattle?.visible) ||
-        isTruthy(host?.tutorialAdvisorDialogue) ||
-        isTruthy(game?.tutorialAdvisorDialogue) ||
         isTruthy(formationEditor?.open),
       techTreeBlockingOverlayActive: hasBlockingOverlayExceptTechTree(host),
       entityBattleActive: isTruthy(entityBattle?.visible),

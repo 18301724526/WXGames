@@ -117,7 +117,7 @@ test('CanvasSurfaceRenderer gradients fall back to a solid color on non-finite c
   assert.equal(renderer.createRadialGradient(0, 0, 1, Infinity, 1, 1, [[0, '#000']], '#solid'), '#solid');
 });
 
-test('CanvasSurfaceRenderer preserves hit target priority and tutorial shield rules', () => {
+test('CanvasSurfaceRenderer preserves hit target priority and modal shield rules', () => {
   const host = createHost();
   const surfaceState = createCanvasSurfaceState();
   const renderer = new CanvasSurfaceRenderer({ host, surfaceState });
@@ -181,7 +181,10 @@ test('CanvasSurfaceRenderer preserves hit target priority and tutorial shield ru
     type: 'blockCanvasModal',
     allowedAction: { type: 'buildBuilding', buildingId: 'farm' },
   });
-  assert.deepEqual(renderer.getHitTarget({ x: 20, y: 20 }), { type: 'closeRewardReveal' });
+  assert.deepEqual(renderer.getHitTarget({ x: 20, y: 20 }), {
+    type: 'blockCanvasModal',
+    allowedAction: { type: 'buildBuilding', buildingId: 'farm' },
+  });
 
   renderer.withSuppressedHitTargets(() => {
     renderer.addHitTarget({ x: 0, y: 0, width: 10, height: 10 }, { type: 'suppressed' });
@@ -302,7 +305,7 @@ test('CanvasSurfaceRenderer preserves text measuring and truncation font restore
   assert.equal(host.ctx.font, '12px serif');
 });
 
-test('CanvasSurfaceHitTargets owns hit target and tutorial shield contracts', () => {
+test('CanvasSurfaceHitTargets owns hit target and modal shield contracts', () => {
   const hitTargets = [
     CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 100, height: 100 }, { type: 'background', background: true }),
     CanvasSurfaceHitTargets.normalizeHitTarget({ x: 10, y: 10, width: 80, height: 80 }, { type: 'blockedAction' }),
@@ -313,34 +316,14 @@ test('CanvasSurfaceHitTargets owns hit target and tutorial shield contracts', ()
   ];
 
   assert.equal(CanvasSurfaceHitTargets.containsPoint(hitTargets[0], { x: 20, y: 20 }), true);
-  assert.equal(CanvasSurfaceHitTargets.isAllowedUnderTutorialShield({ type: 'openTaskCenter' }), true);
-  assert.equal(CanvasSurfaceHitTargets.isAllowedUnderTutorialShield({ type: 'openTaskCenter', disabled: true }), false);
-  assert.equal(CanvasSurfaceHitTargets.isAllowedUnderTutorialShield({ type: 'closeRewardReveal' }), true);
-  assert.equal(CanvasSurfaceHitTargets.isAllowedUnderTutorialShield({ type: 'closeAdvisor', source: 'houseBuilt' }), true);
-  assert.equal(CanvasSurfaceHitTargets.isAllowedUnderTutorialShield({ type: 'closeAdvisor' }), false);
-  assert.equal(CanvasSurfaceHitTargets.matchesTutorialShieldAllowedAction(
+  assert.equal(CanvasSurfaceHitTargets.matchesAllowedAction(
     { type: 'openWorldSite', cityId: 'capital' },
     { type: 'openWorldSite', cityId: 'capital' },
-  ), true);
-  assert.equal(CanvasSurfaceHitTargets.matchesCurrentTutorialIntroAction(
-    { type: 'enterCity', cityId: 'capital' },
-    { active: true, step: 'enter', capitalCityId: 'capital' },
   ), true);
   assert.deepEqual(CanvasSurfaceHitTargets.resolveHitTarget(hitTargets, { x: 20, y: 20 }), {
     type: 'blockCanvasModal',
     allowedAction: { type: 'openWorldSite', cityId: 'capital' },
   });
-  assert.deepEqual(CanvasSurfaceHitTargets.resolveHitTarget([
-    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 100, height: 100 }, { type: 'closeAdvisor', source: 'houseBuilt' }),
-    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 100, height: 100 }, { type: 'blockCanvasModal' }),
-  ], { x: 20, y: 20 }), { type: 'closeAdvisor', source: 'houseBuilt' });
-  assert.deepEqual(CanvasSurfaceHitTargets.resolveHitTarget([
-    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 100, height: 100 }, { type: 'buildBuilding', buildingId: 'farm' }),
-    CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 100, height: 100 }, {
-      type: 'blockCanvasModal',
-      allowedAction: { type: 'buildBuilding', buildingId: 'house' },
-    }),
-  ], { x: 20, y: 20 }), { type: 'buildBuilding', buildingId: 'farm' });
   const picker = CanvasSurfaceHitTargets.resolveHitTarget([
     CanvasSurfaceHitTargets.normalizeHitTarget({ x: 10, y: 10, width: 42, height: 42 }, { type: 'selectWorldActor', missionId: 'march-1' }),
     CanvasSurfaceHitTargets.normalizeHitTarget({ x: 0, y: 0, width: 80, height: 80 }, { type: 'openWorldSite', siteId: 'capital' }),
@@ -420,12 +403,11 @@ test('CanvasSurfaceRenderer preserves frame timing and FPS overlay contract', ()
   });
   const renderer = new CanvasSurfaceRenderer({ host, surfaceState });
 
-  assert.equal(renderer.beginFrame({ now: 1000, tutorialIntro: { active: true, step: 'city' } }), 1000);
+  assert.equal(renderer.beginFrame({ now: 1000 }), 1000);
   assert.equal(surfaceState.frameNow, 1000);
   assert.equal(host.frameNow, 0);
   assert.deepEqual(surfaceState.famousSkillHitTargets, []);
   assert.equal(surfaceState.activeFamousSkillTooltip, null);
-  assert.equal(renderer.matchesCurrentTutorialIntroAction({ type: 'openWorldSite', cityId: 'capital' }), true);
 
   assert.equal(renderer.updateFps(1016), 60);
   renderer.renderFpsOverlay({ fps: 60 });

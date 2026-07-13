@@ -6,10 +6,6 @@ window.mountAuthMethods = function(game, deps = {}) {
   const authStorage = deps.authStorage || game.authStorage;
   const authRuntime = deps.authRuntime || game.authRuntime;
 
-  function clearTutorialStorage() {
-    authStorage?.clearTutorialStorage?.();
-  }
-
   function setLoginMessage(message) {
     game.canvasShell?.setLoginMessage?.(message);
   }
@@ -210,11 +206,6 @@ window.mountAuthMethods = function(game, deps = {}) {
         authRuntime?.alertMessage?.(result.message || '重置失败');
         return false;
       }
-      clearTutorialStorage();
-      this.tutorialIntroOverlay?.resetSeen?.();
-      this.tutorialIntroOverlay?.finish?.({ markSeen: false, completed: false });
-      this.tutorialIntro = null;
-      if (this.canvasShell) this.canvasShell.tutorialIntro = null;
       this.resetLocalViewToResources?.({ skipRender: true });
       this.canvasShell?.resetLocalViewToResources?.({ skipGame: true, skipRender: true });
       const actionController = this.actionController || this.canvasShell?.actionController || null;

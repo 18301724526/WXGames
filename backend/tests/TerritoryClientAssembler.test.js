@@ -88,11 +88,11 @@ test('client territory projection includes shared sites without using them for l
 test('client territory projection lets shared occupied sites win coordinate conflicts', () => {
   const state = GameStateNormalizer.createInitialGameState('territory-client-shared-conflict');
   const now = new Date('2026-06-15T00:00:00.000Z');
-  const staleTutorialSite = {
+  const staleLocalSite = {
     id: 'site_2_0',
     x: 2,
     y: 0,
-    naturalName: 'Stale Tutorial City',
+    naturalName: 'Stale Local City',
     type: 'town',
     owner: 'neutral',
     status: 'discovered',
@@ -111,15 +111,15 @@ test('client territory projection lets shared occupied sites win coordinate conf
   };
 
   TerritoryService.normalizeTerritoryState(state, now);
-  state.territories = [...state.territories, staleTutorialSite];
-  WorldMapService.bindSiteToTile(state, 2, 0, staleTutorialSite.id, now, { visibility: 'scouted' });
+  state.territories = [...state.territories, staleLocalSite];
+  WorldMapService.bindSiteToTile(state, 2, 0, staleLocalSite.id, now, { visibility: 'scouted' });
 
   const clientState = TerritoryService.getClientTerritoryState(clone(state), now, {
     sharedWorldTerritories: [sharedOccupiedSite],
   });
   const conflictTile = clientState.worldMap.tiles.find((tile) => tile.q === 2 && tile.r === 0);
 
-  assert.equal(clientState.territories.some((site) => site.id === staleTutorialSite.id), false);
+  assert.equal(clientState.territories.some((site) => site.id === staleLocalSite.id), false);
   assert.equal(clientState.territories.some((site) => site.id === sharedOccupiedSite.id), true);
   assert.equal(conflictTile.siteId, sharedOccupiedSite.id);
 });
@@ -213,9 +213,11 @@ test('client territory projection reveals a shared neutral city once its tile is
 function createDefendedNeutralCityState(seed, extraTerritory = {}) {
   const state = GameStateNormalizer.createInitialGameState(seed);
   const now = new Date('2026-07-06T00:00:00.000Z');
-  // Tutorial forces settlement mode on every neutral city (getOccupationMode short-circuit); complete
-  // it so the distance band actually decides conquest-vs-settlement, exercising the defended path.
-  state.tutorial = { ...(state.tutorial || {}), completed: true };
+  // Add one occupied expansion city so the distance band decides conquest-vs-settlement.
+  state.territories.push({
+    id: 'site_1_0', x: 1, y: 0, naturalName: '近郊据点', type: 'city',
+    owner: 'player', ownerPlayerId: state.playerId, status: 'occupied', scale: 1,
+  });
   state.territories.push({
     id: 'site_40_0', x: 40, y: 0, naturalName: '远疆城邦', type: 'city',
     owner: 'neutral', status: 'discovered', scale: 3, ...extraTerritory,

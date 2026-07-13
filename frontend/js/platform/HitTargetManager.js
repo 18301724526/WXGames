@@ -2,10 +2,7 @@
 // re-decomposition slice 12). Wraps the host's CanvasSurfaceState container: accessor
 // bodies (hitTargets/famousSkillHitTargets/suppressHitTargets) and the
 // setHitTargets/addHitTarget/appendWorldMapRuntimeHitTargets/getHitTarget/
-// withSuppressedHitTargets/findHitTarget methods are verbatim relocations from
-// CanvasGameRenderer. Sub-renderer forward-probes (surfaceRenderer/tutorialRenderer)
-// live INSIDE this manager, resolved through the host, so the renderer keeps 1-line
-// delegators and no call site changes.
+// withSuppressedHitTargets methods are verbatim relocations from CanvasGameRenderer.
 (function (global) {
   const SharedCanvasSurfaceState = (() => {
     if (global.CanvasSurfaceState) return global.CanvasSurfaceState;
@@ -149,13 +146,6 @@
         SharedCanvasSurfaceState.setActiveHitTargetPool(this.surfaceState, previous);
         SharedCanvasSurfaceState.syncMergedHitTargets(this.surfaceState);
       }
-    }
-
-    findHitTarget(...args) {
-      const renderer = this.host?.tutorialRenderer;
-      const result =
-        typeof renderer?.findHitTarget === 'function' ? renderer.findHitTarget(...args) : undefined;
-      return result === undefined ? null : result;
     }
   }
 

@@ -1,20 +1,4 @@
 (function (global) {
-
-  const LocaleText = (() => {
-    if (global.LocaleText) return global.LocaleText;
-    if (typeof module !== 'undefined' && module.exports) {
-      try {
-        return require('../../ecs/resource/LocaleText');
-      } catch (_error) {
-        return null;
-      }
-    }
-    return null;
-  })();
-
-  function t(key, params = {}) {
-    return LocaleText ? LocaleText.t(key, params) : key;
-  }
   const SharedWorldMarchSystem = (() => {
     if (global.WorldMarchSystem) return global.WorldMarchSystem;
     if (typeof module !== 'undefined' && module.exports) {
@@ -50,8 +34,6 @@
     renderMapHomeExplorerHud(...args) { return this.host?.renderMapHomeExplorerHud?.(...args) || false; }
     renderTabs(...args) { return this.host?.renderTabs?.(...args); }
     renderMapHomeOverlays(...args) { return this.mapHomeOverlayRenderer?.renderMapHomeOverlays?.(...args); }
-    renderTutorialIntro(...args) { return this.host?.renderTutorialIntro?.(...args); }
-    renderTutorialHighlight(...args) { return this.host?.renderTutorialHighlight?.(...args); }
     renderFloatingTexts(...args) { return this.host?.renderFloatingTexts?.(...args); }
     renderRewardReveal(...args) { return this.host?.renderRewardReveal?.(...args); }
     renderNetworkOverlay(...args) { return this.host?.renderNetworkOverlay?.(...args); }
@@ -74,7 +56,6 @@
     renderSettingsPanel(...args) { return this.host?.renderSettingsPanel?.(...args); }
     renderLogsPanel(...args) { return this.host?.renderLogsPanel?.(...args); }
     renderCitySwitcherMenu(...args) { return this.host?.renderCitySwitcherMenu?.(...args); }
-    renderTutorialAdvisorDialogue(...args) { return this.host?.renderTutorialAdvisorDialogue?.(...args); }
     renderAdvisorPanel(...args) { return this.host?.renderAdvisorPanel?.(...args); }
     renderTaskCenterPanel(...args) { return this.host?.renderTaskCenterPanel?.(...args); }
     renderGuidebookPanel(...args) { return this.host?.renderGuidebookPanel?.(...args); }
@@ -131,19 +112,6 @@
       return this.renderWorldMarchHud(options.state || state, uiState, actors, viewport, geometry, frame, options.targetPicker || null);
     }
 
-    isCanvasDebugResetBlocked(options = {}) {
-      return Boolean(
-        options.tutorialAdvisorDialogue
-        || options.tutorialIntro?.active
-        || options.tutorialHighlight,
-      );
-    }
-
-    renderCanvasDebugResetIfAllowed(options = {}) {
-      if (this.isCanvasDebugResetBlocked(options)) return false;
-      return this.renderCanvasDebugResetButton?.(options) || false;
-    }
-
     renderHudOverlay(state = {}, options = {}) {
       const activeTab = options.activeTab || 'resources';
       this.beginFrame(options);
@@ -151,28 +119,24 @@
       if (!options.preserveCanvas) this.clear();
       if (options.auth?.view?.loginPanelVisible) {
         if (options.preserveCanvas) this.clear();
-        this.renderTutorialHighlight(null);
         this.renderLoginPanel(options.auth);
         this.endFrame(options);
         return;
       }
       if (options.loading?.visible) {
         if (options.preserveCanvas) this.clear();
-        this.renderTutorialHighlight(null);
         this.renderLoadingScreen(options.loading);
         this.endFrame(options);
         return;
       }
       if (options.entityBattle?.visible) {
         if (options.preserveCanvas) this.clear();
-        this.renderTutorialHighlight(null);
         this.renderEntityBattleOverlay(state, options);
         this.endFrame(options);
         return;
       }
       if (options.battleScene?.visible) {
         if (options.preserveCanvas) this.clear();
-        this.renderTutorialHighlight(null);
         this.renderBattleSceneOverlay(state, options);
         this.endFrame(options);
         return;
@@ -193,12 +157,10 @@
       this.renderTabs(activeTab, state, options);
       if (options.isMapHome && activeTab === 'military') {
         this.renderMapHomeOverlays(state, options);
-        this.renderTutorialIntro(state, options);
-        this.renderTutorialHighlight(options.tutorialHighlight || null);
         this.renderFloatingTexts(options.floatingTexts || []);
         this.renderRewardReveal(options.rewardReveal || null);
         this.renderNetworkOverlay(options.network || null);
-        this.renderCanvasDebugResetIfAllowed(options);
+        this.renderCanvasDebugResetButton?.(options);
         this.renderConfirmDialog?.(options.confirmDialog || null);
         this.endFrame(options);
         return;
@@ -215,13 +177,7 @@
       if (options.showCitySwitcher) {
         this.renderCitySwitcherMenu(state);
       }
-      if (options.tutorialAdvisorDialogue) {
-        this.renderTutorialAdvisorDialogue(
-          options.tutorialAdvisorDialogue.message,
-          options.tutorialAdvisorDialogue.advisorName || t('tutorial.advisorName'),
-          { action: { type: 'closeAdvisor', source: options.tutorialAdvisorDialogue.source || 'tutorialAdvisorDialogue' } },
-        );
-      } else if (options.showAdvisor) {
+      if (options.showAdvisor) {
         this.renderAdvisorPanel(state);
       }
       if (options.showTaskCenter) {
@@ -253,11 +209,10 @@
       if (options.naming) {
         this.renderNamingModal(options.naming);
       }
-      this.renderTutorialHighlight(options.tutorialHighlight || null);
       this.renderFloatingTexts(options.floatingTexts || []);
       this.renderRewardReveal(options.rewardReveal || null);
       this.renderNetworkOverlay(options.network || null);
-      this.renderCanvasDebugResetIfAllowed(options);
+      this.renderCanvasDebugResetButton?.(options);
       this.renderConfirmDialog?.(options.confirmDialog || null);
       this.endFrame(options);
     }

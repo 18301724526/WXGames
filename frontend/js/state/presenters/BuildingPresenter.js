@@ -11,18 +11,6 @@
     return null;
   })();
 
-  const TutorialFlowShared = (() => {
-    if (global.TutorialFlowShared) return global.TutorialFlowShared;
-    if (typeof module !== 'undefined' && module.exports) {
-      try {
-        return require('../../../../shared/tutorialFlowConfig');
-      } catch (_error) {
-        return null;
-      }
-    }
-    return null;
-  })();
-
   class BuildingPresenter {
     static POPULATION_PER_OFFICIAL = 100;
 
@@ -381,7 +369,7 @@
         .every((resource) => this.toNumber(resources?.[resource]) >= this.toNumber(cost?.[resource]));
     }
 
-    static buildBuildingCardViewState(state = {}, tutorial = {}, buildingConfig = {}, id) {
+    static buildBuildingCardViewState(state = {}, buildingConfig = {}, id) {
       const config = this.getBuildingConfig(state, buildingConfig, id);
       if (!config) return null;
       const level = this.getBuildingLevel(state.buildings, id);
@@ -389,28 +377,11 @@
         ? state.buildingCosts[id]
         : undefined;
       const actionLabel = this.getBuildingActionLabel(cost, level);
-      const guideTarget = state.softGuide?.mode === 'strong' ? state.softGuide.target : null;
-      const guidedBuildingId = {
-        'card-farm': 'farm',
-        'card-house': 'house',
-        'card-lumbermill': 'lumbermill',
-        'card-barracks': 'barracks',
-        'card-watchtower': 'watchtower',
-        'card-barracks-upgrade': 'barracks',
-      }[guideTarget] || null;
-      const tutorialSteps = TutorialFlowShared.TUTORIAL_STEPS;
-      const step = TutorialFlowShared.stepName(tutorial?.currentStep) || tutorialSteps.initial;
-      const { stepAtLeast, stepAtMost, stepBefore } = TutorialFlowShared;
-      const disabledByTutorial = Boolean(tutorial && !tutorial.completed && guidedBuildingId !== id && (
-        (stepAtLeast(step, tutorialSteps.cityEntered) && stepBefore(step, tutorialSteps.houseBuilt) && id !== 'house')
-        || (stepAtLeast(step, tutorialSteps.buildingsTabOpened) && stepBefore(step, tutorialSteps.farmBuilt) && id !== 'farm')
-        || (stepAtLeast(step, tutorialSteps.buildingsTabOpenedForLumbermill) && stepAtMost(step, tutorialSteps.lumbermillBuilt) && id !== 'lumbermill')
-      ));
       const maxLevelLabel = this.t('building.action.maxLevel', {});
       const isMax = cost === null || actionLabel === maxLevelLabel || actionLabel === 'max';
       const canAfford = this.canAffordCost(state.resources, cost);
       const disabledByCost = !isMax && !canAfford;
-      const disabled = disabledByTutorial || isMax || disabledByCost;
+      const disabled = isMax || disabledByCost;
       const maxLevel = this.toInteger(config.maxLevel);
       const nextLevel = isMax ? null : level + 1;
       const currentEffectSummary = state.buildingEffects?.byBuilding?.[id] || this.getBuildingEffectSummary(config, level);
@@ -439,7 +410,7 @@
         metaText: this.t(
           'building.meta',
           { level, scale: this.formatBuildingScale(level) }),
-        isMuted: disabledByTutorial,
+        isMuted: false,
         effectText,
         currentEffectText: this.t('building.effect.current', { effect: currentEffectText }),
         nextEffectText: this.t('building.effect.next', { label: nextEffectLabel, effect: nextEffectValue }),
@@ -451,9 +422,7 @@
         button: {
           action: level ? 'upgrade' : 'build',
           disabled,
-          label: disabledByTutorial
-            ? this.t('building.action.guideLocked', {})
-            : disabledByCost
+          label: disabledByCost
               ? this.t('building.action.insufficientResources', {})
               : actionLabel,
         },
@@ -467,10 +436,10 @@
       };
     }
 
-    static buildBuildingViewState(state = {}, tutorial = {}, buildingConfig = {}, options = {}) {
+    static buildBuildingViewState(state = {}, buildingConfig = {}, options = {}) {
       const ids = this.getVisibleBuildingIds(state);
       const allCards = ids
-        .map((id) => this.buildBuildingCardViewState(state, tutorial, buildingConfig, id))
+        .map((id) => this.buildBuildingCardViewState(state, buildingConfig, id))
         .filter(Boolean);
       const activeCategory = options.activeCategory || 'all';
       const categoryDefinitions = this.getBuildingCategoryDefinitions(state, buildingConfig);

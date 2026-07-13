@@ -21,9 +21,7 @@
     }
     return null;
   })();
-  const TUTORIAL_MARCH_UNIT_ID = 'tutorial_intro_soldier';
   const WORLD_SCOUT_UNIT_ID = 'scout_squad_default';
-  const TUTORIAL_MARCH_UNIT_ANIMATION = 'move';
   const BASE_PRELOAD_ASSET_KEYS = Object.freeze([
     'background:civilization',
     'ui:icon:home',
@@ -97,13 +95,8 @@
     'world-site:outpost',
     'world-site:ruins',
     'world-site:town',
-    'spine:tutorial-advisor:texture',
     'battle:background:forest-camp',
   ]);
-
-  function getTutorialMarchUnitFramePaths() {
-    return SharedUnitSpriteManifest?.getFramePaths?.(TUTORIAL_MARCH_UNIT_ID, TUTORIAL_MARCH_UNIT_ANIMATION) || [];
-  }
 
   function getWorldScoutUnitFramePaths() {
     return SharedUnitSpriteManifest?.getFramePaths?.(WORLD_SCOUT_UNIT_ID, 'move') || [];
@@ -181,7 +174,6 @@
     'assets/art/world-site-outpost-cutout.png',
     'assets/art/world-site-ruins-cutout.png',
     'assets/art/world-site-town-cutout.png',
-    'assets/art/spine/tutorial/advisor/tutorial_advisor.png',
     'assets/art/battle/battlefield-forest-camp.png',
   ]);
 
@@ -199,10 +191,6 @@
       return [...BASE_PRELOAD_ASSET_KEYS];
     }
 
-    static getTutorialMarchUnitFramePaths() {
-      return getTutorialMarchUnitFramePaths();
-    }
-
     static getWorldScoutUnitFramePaths() {
       return getWorldScoutUnitFramePaths();
     }
@@ -210,7 +198,6 @@
     static getBasePreloadAssetPaths() {
       return uniquePaths([
         ...getBaseStaticPreloadAssetPaths(),
-        ...getTutorialMarchUnitFramePaths(),
         ...getWorldScoutUnitFramePaths(),
       ]);
     }

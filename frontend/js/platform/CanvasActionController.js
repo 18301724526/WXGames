@@ -210,9 +210,8 @@
       return this.host?.getCanvasGameHost?.() || this.host?.lastGame || this.host;
     }
 
-    emitTutorialEvent(eventName, payload = {}) {
-      const report = this.changeEventBus?.emit?.(eventName, payload);
-      return report?.results?.find((result) => result !== undefined);
+    emitGameEvent(eventName, payload = {}) {
+      return this.changeEventBus?.emit?.(eventName, payload) || null;
     }
 
     getState() {
@@ -251,11 +250,6 @@
 
     getEventController() {
       return this.host?.eventController || this.getGameHost()?.eventController || null;
-    }
-
-    notifyTutorialAfterEventAction() {
-      const game = this.getGameHost();
-      return game?.getTutorialController?.()?.refreshCurrentHighlight?.();
     }
 
     getBuildingController() {
@@ -300,7 +294,6 @@
 
     render(action = {}) {
       if (typeof this.host?.renderCanvasAction === 'function') return this.host.renderCanvasAction(action);
-      if (typeof this.host?.renderGuideFrame === 'function') return this.host.renderGuideFrame();
       if (typeof this.host?.render === 'function') return this.host.render();
       return false;
     }
@@ -317,7 +310,7 @@
     }
 
     afterHandled(action = {}) {
-      if (action.type !== 'switchTab' && action.type !== 'goToGuideTaskTarget') this.render(action);
+      if (action.type !== 'switchTab') this.render(action);
       return true;
     }
 
@@ -461,7 +454,6 @@
         case 'openAdvisor': return this.handle_openAdvisor;
         case 'closeAdvisor': return this.handle_closeAdvisor;
         case 'goToAdvisorTarget': return this.handle_goToAdvisorTarget;
-        case 'goToGuideTaskTarget': return this.handle_goToGuideTaskTarget;
         case 'openGuidebook': return this.handle_openGuidebook;
         case 'closeGuidebook': return this.handle_closeGuidebook;
         case 'switchGuidebookTab': return this.handle_switchGuidebookTab;
@@ -493,7 +485,6 @@
         case 'closeTechDetail': return this.handle_closeTechDetail;
         case 'claimEvent': return this.handle_claimEvent;
         case 'resolveCapture': return this.handle_resolveCapture;
-        case 'claimGuideTaskReward': return this.handle_claimGuideTaskReward;
         case 'claimTaskReward': return this.handle_claimTaskReward;
         case 'scrollBuildings': return this.handle_scrollBuildings;
         case 'selectBuildingCategory': return this.handle_selectBuildingCategory;
@@ -822,18 +813,17 @@
               const switched = game.switchMilitaryView(action.view) !== false;
               if (switched) {
                 CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this.host, 'activeCommandPanel');
-                const result = this.emitTutorialEvent('militaryViewSwitched', {
+                this.emitGameEvent('militaryViewSwitched', {
                   view: action.view || 'army',
                 });
                 this.afterHandled(action);
-                if (result?.catch) result.catch((error) => this.log?.(error));
               }
               return switched;
             }
             const view = action.view || 'army';
             CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this.host, 'activeCommandPanel');
             CanvasModeOwnershipRuntime?.setMilitaryView?.(this.host, view);
-            this.emitTutorialEvent('militaryViewSwitched', { view });
+            this.emitGameEvent('militaryViewSwitched', { view });
             return this.afterHandled(action);
           }
 
@@ -1093,16 +1083,7 @@
             CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this.host, 'showCityManagement', true);
             this.closePanels(['showCityManagement']);
             const handled = this.afterHandled(action);
-            const result = this.emitTutorialEvent('cityManagementOpened', { tab });
-            const refreshAfterTutorialAdvance = () => {
-              owner.activeCityManagementTab = tab;
-              CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this.host, 'showCityManagement', true);
-            };
-            if (result && typeof result.then === 'function') {
-              result.then(refreshAfterTutorialAdvance).catch((error) => this.log?.(error));
-            } else {
-              refreshAfterTutorialAdvance();
-            }
+            this.emitGameEvent('cityManagementOpened', { tab });
             return handled;
           }
 
@@ -1118,7 +1099,7 @@
             const owner = game || this.host;
             owner.activeCityManagementTab = tab;
             const handled = this.afterHandled(action);
-            this.emitTutorialEvent('cityManagementOpened', { tab });
+            this.emitGameEvent('cityManagementOpened', { tab });
             return handled;
           }
 
@@ -1131,7 +1112,7 @@
             const eventId = this.host.openEventSnapshot?.(action.eventId) || action.eventId;
             const controller = this.getEventController();
             controller?.open?.(eventId);
-            this.notifyTutorialAfterEventAction();
+            this.emitGameEvent('eventOpened', { eventId });
             return this.afterHandled(action);
           }
 
@@ -1139,7 +1120,7 @@
             this.host.closeEventSnapshot?.();
             const controller = this.getEventController();
             controller?.close?.();
-            this.notifyTutorialAfterEventAction();
+            this.emitGameEvent('eventClosed', { eventId: action.eventId || '' });
             return this.afterHandled(action);
           }
 
@@ -1214,36 +1195,7 @@
           }
 
     handle_enterCity(action) {
-            if (this.beginTutorialEnterCityTransition(action)) return true;
             return this.performEnterCity(action);
-          }
-
-    beginTutorialEnterCityTransition(action = {}) {
-            const controller = this.getTutorialIntroController();
-            if (!controller || typeof controller.beginEnterCityTransition !== 'function') return false;
-            const intro = this.getTutorialIntroView(controller);
-            if (intro?.step !== 'enter') return false;
-            const capitalCityId = intro.capitalCityId || controller.getCapitalCityId?.() || 'capital';
-            const actionCityId = action.cityId || action.territoryId || action.siteId || '';
-            if (action?.type !== 'enterCity' || (actionCityId && actionCityId !== capitalCityId)) return false;
-            return controller.beginEnterCityTransition(action, () => this.performEnterCity(action)) === true;
-          }
-
-    getTutorialIntroController() {
-            const game = this.getGameHost();
-            return this.host?.tutorialIntroOverlay
-              || this.host?.lastGame?.tutorialIntroOverlay
-              || game?.tutorialIntroOverlay
-              || null;
-          }
-
-    getTutorialIntroView(controller = this.getTutorialIntroController()) {
-            const game = this.getGameHost();
-            return controller?.getViewState?.()
-              || this.host?.tutorialIntro
-              || this.host?.lastGame?.tutorialIntro
-              || game?.tutorialIntro
-              || null;
           }
 
     performEnterCity(action) {
@@ -1267,7 +1219,7 @@
                 CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this.host, 'showCityManagement', true);
                 this.afterHandled(action);
                 const tab = action.tab || 'buildings';
-                this.emitTutorialEvent('cityManagementOpened', { tab });
+                this.emitGameEvent('cityManagementOpened', { tab });
               }
               return allowed !== false;
             }));
@@ -1279,12 +1231,16 @@
             const game = this.getGameHost();
             if (typeof game?.assignJob === 'function') {
               return this.finalize(Promise.resolve(game.assignJob(action.job, action.delta)).then((result) => {
-                this.emitTutorialEvent('tutorialStateChanged', { result: result || {} });
+                if (result !== false && result?.success !== false) {
+                  this.emitGameEvent('populationAssigned', { job: action.job, delta: action.delta, result: result || {} });
+                }
                 return result;
               }));
             }
             return this.finalize(this.runAction(() => this.host.api.assignJob(action.job, action.delta)).then((result) => {
-              this.emitTutorialEvent('tutorialStateChanged', { result: result || {} });
+              if (result !== false && result?.success !== false) {
+                this.emitGameEvent('populationAssigned', { job: action.job, delta: action.delta, result: result || {} });
+              }
               return result;
             }));
           }
@@ -1352,7 +1308,10 @@
     handle_claimEvent(action) {
             return this.finalize(this.claimEvent(action).then((handled) => {
               if (handled === false) return false;
-              this.notifyTutorialAfterEventAction();
+              this.emitGameEvent('eventClaimed', {
+                eventId: action.eventId || '',
+                optionId: action.optionId || '',
+              });
               return this.afterHandled(action);
             }));
           }
@@ -1388,8 +1347,6 @@
             if (forwarded !== undefined) {
               const allowed = await forwarded;
               if (allowed === false) return false;
-              const game = this.getGameHost();
-              game?.tutorialController?.sync?.(game?.tutorial || game?.state?.tutorial || {});
               return true;
             }
             if (controller?.claim || controller?.claimActive) {
@@ -1416,20 +1373,12 @@
                 currentTab: prev.currentTab || nextState.currentTab,
               }), { source: 'cityHandlers:afterEventClaimed' });
             }
-            const nextTutorial = result?.tutorial || game?.tutorial || game?.state?.tutorial || null;
-            if (nextTutorial) game?.tutorialController?.sync?.(nextTutorial);
             this.host.closeEventSnapshot?.();
             this.getEventController()?.close?.();
             if (result?.rewardReveal) {
               if (!this.host.showRewardReveal?.(result.rewardReveal)) this.host.openRewardRevealSnapshot?.(result.rewardReveal);
             }
-            if (typeof this.host.hideGuideHighlight === 'function') this.host.hideGuideHighlight();
-            else this.host.hideTutorialHighlight?.();
             return true;
-          }
-
-    handle_claimGuideTaskReward() {
-            return false;
           }
 
     handle_claimTaskReward(action) {
@@ -1437,16 +1386,12 @@
             const forwarded = this.forward(action);
             if (forwarded !== undefined) {
               return this.finalizeForwarded(forwarded, () => {
-                this.notifyTutorialAfterEventAction();
                 this.afterHandled(action);
               });
             }
             const game = this.getGameHost();
             if (typeof game?.claimTaskReward === 'function') {
-              return this.finalizeForwarded(
-                game.claimTaskReward(action.taskId, action.category),
-                () => this.notifyTutorialAfterEventAction(),
-              );
+              return this.finalizeForwarded(game.claimTaskReward(action.taskId, action.category));
             }
             return this.finalize(this.claimTaskRewardDirect(action, false));
           }
@@ -1460,7 +1405,13 @@
             });
             if (result?.rewardReveal) this.host.openRewardRevealSnapshot?.(result.rewardReveal);
             else this.host.closeRewardRevealSnapshot?.();
-            if (result && result.success !== false) this.notifyTutorialAfterEventAction();
+            if (result && result.success !== false) {
+              this.emitGameEvent('taskRewardClaimed', {
+                taskId: action.taskId || '',
+                category: action.category || 'main',
+                result,
+              });
+            }
             return true;
           }
 
@@ -1491,12 +1442,16 @@
             const game = this.getGameHost();
             if (typeof game?.seekFamousPerson === 'function') {
               return this.finalize(Promise.resolve(game.seekFamousPerson(action.source || 'seek')).then((result) => {
-                this.emitTutorialEvent('tutorialStateChanged', { result: result || {} });
+                if (result !== false && result?.success !== false) {
+                  this.emitGameEvent('famousSeekCompleted', { source: action.source || 'seek', result: result || {} });
+                }
                 return result;
               }));
             }
             return this.finalize(this.runAction(() => this.host.api.seekFamousPerson(action.source || 'seek')).then((result) => {
-              this.emitTutorialEvent('tutorialStateChanged', { result: result || {} });
+              if (result !== false && result?.success !== false) {
+                this.emitGameEvent('famousSeekCompleted', { source: action.source || 'seek', result: result || {} });
+              }
               return result;
             }));
           }
@@ -1531,7 +1486,7 @@
             return this.finalize(this.runAction(() => this.host.api.assignFamousAttributePoint(action.personId, action.attribute)));
           }
 
-    // Shell, modal, guide, login, settings, and system actions.
+    // Shell, modal, login, settings, and system actions.
     finalizeNamingSubmit(result) {
             const closeAfterSuccess = (value) => {
               if (value !== false) {
@@ -1597,46 +1552,11 @@
             const panel = String(action.panel || '');
             if (!panel) return false;
             const nextPanel = getCommandPanelValue(this.host) === panel ? '' : panel;
-            const game = this.getGameHost();
-            const tutorialController = game?.tutorialController;
-            // UI-REDO ⑦a: consult the tutorial tab gate BEFORE mutating the modal owner.
-            // The old order opened modal:commandPanel eagerly; when the tutorial vetoed
-            // (onCommandPanelOpened -> canOpenTab false) nothing rolled back, so an
-            // unrendered "ghost" panel stayed open. For panel:'tech' that flipped
-            // deriveModeFacts.techTreeActive on, routed every drag/gesture to the
-            // invisible tech tree (resolveInputIntent -> 'tech-tree') and froze the
-            // world map. The gate below is the same sync policy the event registry
-            // consults (canOpenTab), so a veto is now a pure no-op + player feedback,
-            // and the allowed path keeps its exact previous order.
-            if (nextPanel && typeof tutorialController?.canOpenTab === 'function') {
-              const gateTab = tutorialController.normalizePanelTab?.(nextPanel) || nextPanel;
-              if (!tutorialController.canOpenTab(gateTab)) {
-                const message = t('guide.completeCurrentStep');
-                if (typeof this.host?.showFloatingText === 'function') this.host.showFloatingText(message);
-                else if (typeof game?.showFloatingText === 'function') game.showFloatingText(message);
-                else this.log?.(message);
-                return false;
-              }
-            }
             CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this.host, 'activeCommandPanel', nextPanel);
             this.closePanels(nextPanel ? ['activeCommandPanel'] : []);
-            const openedPanel = nextPanel;
-            const tutorialResult = openedPanel
-              ? this.emitTutorialEvent('commandPanelOpened', { panelId: openedPanel })
-              : true;
-            return this.finalize(Promise.resolve(tutorialResult).then((allowed) => {
-              if (allowed === false) {
-                // Late veto (step changed between gate and async registry): never leave
-                // the modal owner holding a panel the mode system refuses to render.
-                if (getCommandPanelValue(this.host) === openedPanel) {
-                  CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this.host, 'activeCommandPanel');
-                }
-                this.afterHandled(action);
-                return false;
-              }
-              this.afterHandled(action);
-              return true;
-            }));
+            if (nextPanel) this.emitGameEvent('commandPanelOpened', { panelId: nextPanel });
+            this.afterHandled(action);
+            return true;
           }
 
     handle_closeCommandPanel(action) {
@@ -1654,7 +1574,7 @@
               closed = hadReveal && this.host?.isRewardRevealSnapshotOpen?.() !== true;
             }
             if (closed) {
-              this.notifyTutorialAfterEventAction();
+              this.emitGameEvent('rewardRevealClosed', {});
               this.afterHandled(action);
             }
             return closed !== false;
@@ -1867,20 +1787,8 @@
 
     handle_closeAdvisor(action) {
             CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this.host, 'showAdvisor');
-            this.host.tutorialAdvisorDialogue = null;
-            this.host.renderer?.clearTutorialAdvisorDialogue?.();
-            const game = this.getGameHost();
-            if (game && typeof game === 'object') {
-              game.tutorialAdvisorDialogue = null;
-              if (game.canvasShell) game.canvasShell.tutorialAdvisorDialogue = null;
-            }
-            const closeResult = this.emitTutorialEvent('advisorClosed', {}) ?? true;
-            return this.finalize(Promise.resolve(closeResult).then((result) => {
-              if (result !== false) {
-                this.afterHandled(action);
-              }
-              return result !== false;
-            }));
+            this.emitGameEvent('advisorClosed', {});
+            return this.afterHandled(action);
           }
 
     handle_goToAdvisorTarget(action, meta = {}) {
@@ -1899,10 +1807,6 @@
             }
             if (result !== false) afterAllowed();
             return result !== false;
-          }
-
-    handle_goToGuideTaskTarget() {
-            return false;
           }
 
     handle_openGuidebook(action) {

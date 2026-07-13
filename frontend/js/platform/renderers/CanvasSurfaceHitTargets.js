@@ -45,38 +45,14 @@
     };
   }
 
-  function isVisuallyDisabled(action = {}) {
-    return ClientCommandSemantics?.isVisuallyDisabled?.(action)
-      ?? Boolean(action?.visualDisabled ?? action?.disabled);
-  }
-
-  function isAllowedUnderTutorialShield(action = {}) {
-    if (action.type === 'closeRewardReveal') return true;
-    if (action.type === 'closeAdvisor' && action.source) return true;
-    if (action.type === 'goToGuideTaskTarget') return true;
-    if (action.type === 'openTaskCenter') return !isVisuallyDisabled(action);
-    if (action.type === 'claimTaskReward' || action.type === 'claimGuideTaskReward') {
-      return (action.category || 'main') === 'main';
-    }
-    return false;
-  }
-
-  function matchesTutorialShieldAllowedAction(action = {}, allowed = null) {
-    if (isVisuallyDisabled(action)) return false;
+  function matchesAllowedAction(action = {}, allowed = null) {
+    if (ClientCommandSemantics?.isVisuallyDisabled?.(action)
+      ?? Boolean(action?.visualDisabled ?? action?.disabled)) return false;
     if (!action?.type || !allowed?.type || action.type !== allowed.type) return false;
     const getId = (item = {}) => item.cityId || item.territoryId || item.siteId || item.targetId || '';
     const allowedId = getId(allowed);
     const actionId = getId(action);
     return !allowedId || !actionId || allowedId === actionId;
-  }
-
-  function matchesCurrentTutorialIntroAction(action = {}, intro = null) {
-    if (!intro?.active || !action?.type) return false;
-    const capitalCityId = intro.capitalCityId || 'capital';
-    const actionId = action.cityId || action.territoryId || action.siteId || '';
-    if (intro.step === 'city') return action.type === 'openWorldSite' && (!actionId || actionId === capitalCityId);
-    if (intro.step === 'enter') return action.type === 'enterCity' && (!actionId || actionId === capitalCityId);
-    return false;
   }
 
   const DEFAULT_PRIORITY_ACTIONS = Object.freeze([
@@ -132,41 +108,40 @@
       : WorldMapSelectionResolver.resolveCandidates(normalized, { point });
   }
 
-  function hasTutorialShieldAtPoint(hitTargets = [], point = {}) {
+  function hasCanvasModalShieldAtPoint(hitTargets = [], point = {}) {
     return (Array.isArray(hitTargets) ? hitTargets : []).some((target) => (
       target?.action?.type === 'blockCanvasModal' && containsPoint(target, point)
     ));
   }
 
-  function isAllowedByTutorialShield(action = {}, allowedActions = [], intro = null) {
-    return ClientCommandSemantics?.isCommandAction?.(action)
-      || isAllowedUnderTutorialShield(action)
-      || allowedActions.some((allowed) => matchesTutorialShieldAllowedAction(action, allowed))
-      || matchesCurrentTutorialIntroAction(action, intro);
+  function isAllowedByCanvasModalShield(action = {}, allowedActions = []) {
+    return allowedActions.some((allowed) => matchesAllowedAction(action, allowed));
   }
 
-  function resolveTutorialShieldedHitTarget(hitTargets = [], point = {}, intro = null) {
+  function resolveCanvasModalShieldedHitTarget(hitTargets = [], point = {}) {
     let backgroundAction = null;
     for (let index = hitTargets.length - 1; index >= 0; index -= 1) {
       const target = hitTargets[index];
       if (!containsPoint(target, point)) continue;
       if (target.action?.type === 'blockCanvasModal') {
         const shieldAction = target.action;
-        const tutorialAllowedActions = [];
-        if (shieldAction.allowedAction) tutorialAllowedActions.push(shieldAction.allowedAction);
+        const allowedActions = [];
+        if (shieldAction.allowedAction) allowedActions.push(shieldAction.allowedAction);
+        if (Array.isArray(shieldAction.allowedActions)) allowedActions.push(...shieldAction.allowedActions);
         for (let shieldedIndex = index - 1; shieldedIndex >= 0; shieldedIndex -= 1) {
           const shieldedTarget = hitTargets[shieldedIndex];
           const shieldedAction = shieldedTarget?.action || {};
           if (!containsPoint(shieldedTarget, point)) continue;
           if (shieldedAction.type === 'blockCanvasModal') {
-            if (shieldedAction.allowedAction) tutorialAllowedActions.push(shieldedAction.allowedAction);
+            if (shieldedAction.allowedAction) allowedActions.push(shieldedAction.allowedAction);
+            if (Array.isArray(shieldedAction.allowedActions)) allowedActions.push(...shieldedAction.allowedActions);
             continue;
           }
           if (shieldedAction.background) {
             if (!backgroundAction) backgroundAction = shieldedAction;
             continue;
           }
-          if (isAllowedByTutorialShield(shieldedAction, tutorialAllowedActions, intro)) return shieldedAction;
+          if (isAllowedByCanvasModalShield(shieldedAction, allowedActions)) return shieldedAction;
         }
         return shieldAction;
       } else if (target.action?.background) {
@@ -178,9 +153,9 @@
     return backgroundAction;
   }
 
-  function resolveHitTarget(hitTargets = [], point = {}, intro = null) {
-    if (hasTutorialShieldAtPoint(hitTargets, point)) {
-      return resolveTutorialShieldedHitTarget(hitTargets, point, intro);
+  function resolveHitTarget(hitTargets = [], point = {}) {
+    if (hasCanvasModalShieldAtPoint(hitTargets, point)) {
+      return resolveCanvasModalShieldedHitTarget(hitTargets, point);
     }
     const priorityAction = getPriorityHitTarget(hitTargets, point);
     if (priorityAction) return priorityAction;
@@ -199,10 +174,10 @@
     return backgroundAction;
   }
 
-  function resolveHitTargetPools(hitTargetPools = {}, point = {}, intro = null) {
+  function resolveHitTargetPools(hitTargetPools = {}, point = {}) {
     const pools = hitTargetPools && typeof hitTargetPools === 'object' ? hitTargetPools : {};
     for (const pool of ['guide', 'modal', 'base']) {
-      const action = resolveHitTarget(Array.isArray(pools[pool]) ? pools[pool] : [], point, intro);
+      const action = resolveHitTarget(Array.isArray(pools[pool]) ? pools[pool] : [], point);
       if (action) return action;
     }
     return null;
@@ -213,14 +188,12 @@
     DEFAULT_PRIORITY_ACTIONS,
     getTopmostForegroundAction,
     getPriorityHitTarget,
-    hasTutorialShieldAtPoint,
-    isAllowedUnderTutorialShield,
-    isAllowedByTutorialShield,
+    hasCanvasModalShieldAtPoint,
+    isAllowedByCanvasModalShield,
     isWorldSiteAction,
-    matchesCurrentTutorialIntroAction,
-    matchesTutorialShieldAllowedAction,
+    matchesAllowedAction,
     normalizeHitTarget,
-    resolveTutorialShieldedHitTarget,
+    resolveCanvasModalShieldedHitTarget,
     resolveWorldEntityCandidates,
     resolveHitTarget,
     resolveHitTargetPools,
