@@ -3,6 +3,11 @@ const path = require('path');
 const { chromium } = require('playwright');
 const { PNG } = require('pngjs');
 const { writeTutorialTranscript } = require('./playtest-tutorial-transcript');
+const { createSqliteCheckpoint } = require('./tutorial-playtest-checkpoint');
+const {
+  DEFAULT_SOFT_LOOP_THRESHOLD,
+  TutorialPlaytestSoftLoopGuard,
+} = require('./tutorial-playtest-soft-loop');
 
 function getArgValue(name, fallback = '') {
   const exact = `--${name}`;
@@ -70,6 +75,19 @@ const CONFIG = {
   transcriptOutput: transcriptArg && transcriptArg !== '1'
     ? path.resolve(transcriptArg)
     : '',
+  checkpointStep: getArgValue('checkpoint-step', process.env.PLAYTEST_CHECKPOINT_STEP || ''),
+  checkpointDbPath: getArgValue(
+    'db-path',
+    process.env.PLAYTEST_DB_PATH || process.env.DB_PATH || '',
+  ),
+  checkpointRoot: getArgValue(
+    'checkpoint-root',
+    process.env.PLAYTEST_CHECKPOINT_ROOT || path.join('tmp', 'checkpoints'),
+  ),
+  checkpointName: getArgValue('checkpoint-name', process.env.PLAYTEST_CHECKPOINT_NAME || ''),
+  softLoopThreshold: Number(
+    process.env.PLAYTEST_SOFT_LOOP_THRESHOLD || DEFAULT_SOFT_LOOP_THRESHOLD,
+  ),
 };
 
 // Single source: shared/tutorialFlowConfig.js (index -> step name).
@@ -82,6 +100,16 @@ const stepIndexOf = (name) => TutorialFlowShared.stepIndex(name);
 const COMPLETED_STEP_INDEX = TutorialFlowShared.stepIndex(
   TutorialFlowShared.TUTORIAL_STEPS.completed,
 );
+
+function resolveCheckpointStep(rawStep) {
+  const value = String(rawStep || '').trim();
+  if (!value) return -1;
+  const step = TutorialFlowShared.stepIndex(value);
+  if (step < 0) throw new Error(`Unknown checkpoint step: ${value}`);
+  return step;
+}
+
+const CHECKPOINT_STEP_INDEX = resolveCheckpointStep(CONFIG.checkpointStep);
 
 const runId = new Date().toISOString().replace(/[:.]/g, '-');
 const outDir = path.resolve(CONFIG.outputRoot, runId);
@@ -98,6 +126,35 @@ const verificationFailures = [];
 
 function fileNameSafe(value) {
   return String(value || 'item').replace(/[^a-z0-9._-]+/gi, '-').slice(0, 96);
+}
+
+function getCheckpointPath(step) {
+  const stepName = STEP_NAMES[step] || `step-${step}`;
+  const baseName = CONFIG.checkpointName
+    ? fileNameSafe(CONFIG.checkpointName)
+    : fileNameSafe(`${CONFIG.username}-step-${String(step).padStart(2, '0')}-${stepName}-${runId}`);
+  return path.resolve(CONFIG.checkpointRoot, `${baseName}.db`);
+}
+
+async function saveCheckpoint(state, trigger) {
+  if (CHECKPOINT_STEP_INDEX < 0 || state.tutorialStep < CHECKPOINT_STEP_INDEX) return null;
+  if (!CONFIG.checkpointDbPath) {
+    throw new Error('PLAYTEST_DB_PATH or --db-path is required when checkpoint-step is set');
+  }
+  return createSqliteCheckpoint({
+    sourcePath: CONFIG.checkpointDbPath,
+    checkpointPath: getCheckpointPath(state.tutorialStep),
+    metadata: {
+      runId,
+      username: CONFIG.username,
+      trigger,
+      requestedStep: CHECKPOINT_STEP_INDEX,
+      requestedStepName: STEP_NAMES[CHECKPOINT_STEP_INDEX] || '',
+      savedStep: state.tutorialStep,
+      savedStepName: STEP_NAMES[state.tutorialStep] || '',
+      tutorialCompleted: state.tutorialCompleted,
+    },
+  });
 }
 
 function sanitize(value, depth = 0) {
@@ -1987,11 +2044,23 @@ async function main() {
     );
   }
   await page.waitForTimeout(9000);
-  await writeSnapshot(page, '00-start');
+  const startSnapshot = await writeSnapshot(page, '00-start');
 
   const actions = [];
   let stopReason = '';
-  for (let index = 1; index <= CONFIG.maxActions; index += 1) {
+  let checkpoint = null;
+  let softLoop = null;
+  const softLoopGuard = new TutorialPlaytestSoftLoopGuard({
+    threshold: CONFIG.softLoopThreshold,
+  });
+  if (
+    CHECKPOINT_STEP_INDEX >= 0
+    && startSnapshot.state.tutorialStep >= CHECKPOINT_STEP_INDEX
+  ) {
+    checkpoint = await saveCheckpoint(startSnapshot.state, 'initial-state');
+    stopReason = 'checkpoint-saved';
+  }
+  for (let index = 1; !stopReason && index <= CONFIG.maxActions; index += 1) {
     const state = await getState(page);
     if (state.tutorialCompleted || state.tutorialStep >= COMPLETED_STEP_INDEX) {
       stopReason = 'tutorial-completed';
@@ -2003,6 +2072,32 @@ async function main() {
       const after = await getState(page);
       if (after.tutorialStep !== state.tutorialStep || index === 1 || index % 5 === 0) {
         await writeSnapshot(page, `state-after-${String(index).padStart(2, '0')}-step-${after.tutorialStep}`, after, { actions });
+      }
+      if (CHECKPOINT_STEP_INDEX >= 0 && after.tutorialStep >= CHECKPOINT_STEP_INDEX) {
+        checkpoint = await saveCheckpoint(after, 'action-loop');
+        stopReason = 'checkpoint-saved';
+        await writeSnapshot(page, `checkpoint-saved-step-${after.tutorialStep}`, after, {
+          actions,
+          checkpoint,
+        });
+        break;
+      }
+      const actionLabel = String(result?.label || result?.action?.type || 'unknown-action');
+      const observation = softLoopGuard.observe({
+        label: actionLabel,
+        beforeStep: state.tutorialStep,
+        afterStep: after.tutorialStep,
+        highlight: sanitize(after.tutorialHighlight),
+      });
+      if (observation.triggered) {
+        softLoop = observation;
+        stopReason = 'soft-loop';
+        await writeSnapshot(page, `soft-loop-step-${after.tutorialStep}-${actionLabel}`, after, {
+          actions,
+          softLoop,
+          highlight: sanitize(after.tutorialHighlight),
+        });
+        break;
       }
     } catch (error) {
       stopReason = error.message;
@@ -2021,6 +2116,8 @@ async function main() {
   await writeSnapshot(page, 'zz-final', finalState, {
     actions,
     stopReason,
+    checkpoint,
+    softLoop,
     actionEvidence,
     visualFindings,
     verificationReports,
@@ -2034,6 +2131,8 @@ async function main() {
     apiBase: CONFIG.apiBase,
     strictVisual: CONFIG.strictVisual,
     stopReason,
+    checkpoint,
+    softLoop,
     finalStep: finalState.tutorialStep,
     finalStepName: STEP_NAMES[finalState.tutorialStep] || '',
     tutorialCompleted: finalState.tutorialCompleted,
@@ -2061,8 +2160,9 @@ async function main() {
     summary.transcriptPath = transcriptPath;
     summary.transcriptEntryCount = transcript.length;
   }
-  const failed = stopReason !== 'tutorial-completed'
-    || !finalState.tutorialCompleted
+  const successfulStop = stopReason === 'tutorial-completed' || stopReason === 'checkpoint-saved';
+  const failed = !successfulStop
+    || (stopReason === 'tutorial-completed' && !finalState.tutorialCompleted)
     || visualFindings.some((finding) => finding.severity === 'error')
     || verificationFailures.length > 0
     || badResponses.length > 0

@@ -13,6 +13,7 @@
     "security:production": "node scripts/verify-production-security-config.js",
     "config:validate": "node scripts/validate-config-pipeline.js",
     "playtest:online-tutorial": "node scripts/playtest-online-tutorial.js",
+    "playtest:tutorial-checkpoint": "node scripts/tutorial-playtest-checkpoint.js",
     "playtest:online-reset-spawn": "node scripts/playtest-online-reset-spawn.js",
     "playtest:online-spawn-readonly": "node scripts/playtest-online-spawn-readonly.js",
     "playtest:online-manual-march": "node scripts/playtest-online-manual-march-return.js",
