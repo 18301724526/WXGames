@@ -28,6 +28,7 @@ function makeTempFrontend() {
   fs.mkdirSync(path.join(root, 'js', 'state'), { recursive: true });
   fs.mkdirSync(path.join(root, 'js', 'ecs', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(root, 'js', 'platform'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'js', 'platform', 'renderers'), { recursive: true });
   [
     'style.css',
     'js/config/GameConfig.js',
@@ -51,6 +52,7 @@ function makeTempFrontend() {
     'js/platform/CanvasActionDispatchRegistry.js',
     'js/platform/CanvasActionDispatcher.js',
     'js/platform/TutorialActionMatches.js',
+    'js/platform/renderers/TutorialHighlightLayer.js',
     'js/platform/CanvasModeOwnershipRuntime.js',
     'js/platform/CanvasModalSnapshotAdapter.js',
     'js/platform/CanvasGameShell.js',
@@ -99,6 +101,7 @@ function writeIndex(root, overrides = {}) {
   <script src="js/platform/CanvasActionDispatchRegistry.js?v=${version}"></script>
   <script src="js/platform/CanvasActionDispatcher.js?v=${version}"></script>
   <script src="js/platform/TutorialActionMatches.js?v=${version}"></script>
+  <script src="js/platform/renderers/TutorialHighlightLayer.js?v=${version}"></script>
   <script src="js/platform/CanvasModeOwnershipRuntime.js?v=${version}"></script>
   <script src="js/platform/CanvasModalSnapshotAdapter.js?v=${version}"></script>
   <script src="js/platform/CanvasGameShell.js?v=${version}"></script>
@@ -143,7 +146,7 @@ test('rewriteFrontendIndex and manifest guard require one deploy asset version',
     frontendDir,
     version: 'deploy-0123456789ab',
   });
-  assert.equal(result.updated, 30);
+  assert.equal(result.updated, 31);
 
   const html = fs.readFileSync(path.join(frontendDir, 'index.html'), 'utf8');
   assert.match(html, /style\.css\?v=deploy-0123456789ab/);
@@ -155,7 +158,7 @@ test('rewriteFrontendIndex and manifest guard require one deploy asset version',
     frontendDir,
     requireVersion: 'deploy-0123456789ab',
   });
-  assert.equal(manifest.localScriptCount, 29);
+  assert.equal(manifest.localScriptCount, 30);
   assert.equal(manifest.stylesheetCount, 1);
 });
 
@@ -188,5 +191,5 @@ test('manifest guard resolves deployed shared assets from repo shared directory'
     repoRoot,
     frontendDir,
   });
-  assert.equal(manifest.localScriptCount, 31);
+  assert.equal(manifest.localScriptCount, 32);
 });

@@ -27,7 +27,7 @@
     },
     {
       "file": "frontend/js/platform/CanvasActionController.js",
-      "sha256": "5e795e06071ea8c73df53c9d0ccb7c9d35717a8ca900fea0702a19224aa1ca69"
+      "sha256": "bfeeabbad46c7fbf0c69b17e453a06be587aef12ce4e79fee508f44a53ac94aa"
     },
     {
       "file": "frontend/js/platform/CanvasActionDescriptorRegistry.js",
@@ -35,7 +35,7 @@
     },
     {
       "file": "frontend/js/platform/CanvasActionDispatchRegistry.js",
-      "sha256": "24df83327feccfd37df0b204637752003364e31840ef074fed379f9b213d71b4"
+      "sha256": "1134e9769385653075e9cb8b12dd6240e650c56bdd22d3c3ec54740a593638a7"
     },
     {
       "file": "frontend/js/platform/CanvasActionDispatcher.js",
@@ -67,7 +67,7 @@
     },
     {
       "file": "frontend/js/platform/CanvasLayerRegistry.js",
-      "sha256": "529fecd5a071feba3e84c69ef26200ea14844c3c303e433fa898f7dc9eb40808"
+      "sha256": "c0b60fe3ba14af20e40f2b04d409dc5ad2f7aee13a5b29aa08ba0a483eb82a8e"
     },
     {
       "file": "frontend/js/platform/CanvasLayoutService.js",
@@ -287,7 +287,7 @@
     },
     {
       "file": "frontend/js/platform/renderers/CanvasFrameRenderer.js",
-      "sha256": "ae78b13be77e21a6d43d022706d834fdc93d6ba2f6b1b05beb7f3e87cdef0cff"
+      "sha256": "93c399891438a08630587f741e4d9ebc53b238ab77fc6e03231821977057f9a9"
     },
     {
       "file": "frontend/js/platform/renderers/CanvasPreloadAssetManifest.js",
@@ -359,7 +359,7 @@
     },
     {
       "file": "frontend/js/platform/renderers/HudOverlayCanvasRenderer.js",
-      "sha256": "2c7df83e34d9286c03782f55dc702e1bae79ff077796f2cf3b7063c97c9c1569"
+      "sha256": "37bf4a13deef24915bfd5ed8ab295ac16b185075f3cf8c9012fb42fd61d7ed6a"
     },
     {
       "file": "frontend/js/platform/renderers/HudTabPageCanvasRenderer.js",
@@ -419,11 +419,15 @@
     },
     {
       "file": "frontend/js/platform/renderers/TutorialCanvasRenderer.js",
-      "sha256": "47ea8546784e0a3dddf38b354c59a34ebd8103e2f06b23f457eabc7476676f24"
+      "sha256": "f7ad28fda2ec8cf22c1c9e54e79f21fdcc5e82cc848847b0e6f1f1fab19fb9b3"
     },
     {
       "file": "frontend/js/platform/renderers/TutorialDialogueLayer.js",
       "sha256": "3c32dc0fea0fde3b3ec648fd4efc530276bfa68cd0a274d640dfb2a3f5acd8ee"
+    },
+    {
+      "file": "frontend/js/platform/renderers/TutorialHighlightLayer.js",
+      "sha256": "2eb5bb12562382fac5d92da8a4da20599b1bf013e1b044ce31a0c3e10c06932c"
     },
     {
       "file": "frontend/js/platform/renderers/TutorialIntroDialogueLayout.js",
@@ -655,7 +659,7 @@
     }
   ],
   "counts": {
-    "rendererFiles": 151,
+    "rendererFiles": 152,
     "tutorialFiles": 8,
     "tutorialConfigFiles": 1,
     "registrationSites": 204,
@@ -1133,7 +1137,7 @@
         },
         {
           "type": "openWorldSite",
-          "location": "frontend/js/platform/renderers/TutorialCanvasRenderer.js:145"
+          "location": "frontend/js/platform/renderers/TutorialCanvasRenderer.js:142"
         },
         {
           "type": "openWorldSite",

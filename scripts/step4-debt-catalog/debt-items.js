@@ -231,8 +231,8 @@ const DEBT_ITEMS = Object.freeze([
     targetPhase: 4,
     contracts: ['COP-CLIENT-001', 'COP-AUTHORITY-001', 'COP-TIME-001'],
     sourceRefs: [
-      sourceRef('frontend/js/platform/CanvasGameApp.js', 1238, 1246, 'canAdvanceEraNow builds visual civilization view state only', 'frontend:canvas-game-app-advance-era-local-block'),
-      sourceRef('frontend/js/platform/CanvasGameApp.js', 2826, 2840, 'advanceEra directly calls GameAPI.advanceEra without canAdvanceEraNow guard', 'frontend:canvas-game-app-advance-era-local-block'),
+      sourceRef('frontend/js/platform/CanvasGameApp.js', 1247, 1255, 'canAdvanceEraNow builds visual civilization view state only', 'frontend:canvas-game-app-advance-era-local-block'),
+      sourceRef('frontend/js/platform/CanvasGameApp.js', 2835, 2849, 'advanceEra directly calls GameAPI.advanceEra without canAdvanceEraNow guard', 'frontend:canvas-game-app-advance-era-local-block'),
       sourceRef('scripts/command-owner-step1/inventories.js', 608, 625, 'FRONTEND_COMMAND_PATHS retired-step4 advanceEra entry', 'frontend:canvas-game-app-advance-era-local-block'),
       sourceRef('scripts/command-owner-step1/inventories.js', 677, 692, 'CLIENT_LOCAL_BLOCKS retired-step4 advanceEra entry', 'frontend:canvas-game-app-advance-era-local-block'),
     ],
@@ -245,7 +245,7 @@ const DEBT_ITEMS = Object.freeze([
       'STEP4-T13',
       'scripts/check-frontend-command-semantics.js',
       'Reintroduce if (!this.canAdvanceEraNow()) return false before GameAPI.advanceEra -> exit 1',
-      [sourceRef('frontend/js/platform/CanvasGameApp.js', 2826, 2840, 'advanceEra direct GameAPI call', 'frontend:canvas-game-app-advance-era-local-block')],
+      [sourceRef('frontend/js/platform/CanvasGameApp.js', 2835, 2849, 'advanceEra direct GameAPI call', 'frontend:canvas-game-app-advance-era-local-block')],
       ['COP-CLIENT-001', 'COP-AUTHORITY-001', 'COP-TIME-001'],
     ),
   },
@@ -337,7 +337,7 @@ const DEBT_ITEMS = Object.freeze([
     targetPhase: 4,
     contracts: ['COP-TIME-001'],
     sourceRefs: [
-      sourceRef('frontend/js/platform/CanvasActionController.js', 1038, 1040, 'confirmWorldMarchDeployment routes after warning confirmation', 'frontend:world-march-passability'),
+      sourceRef('frontend/js/platform/CanvasActionController.js', 1043, 1045, 'confirmWorldMarchDeployment routes after warning confirmation', 'frontend:world-march-passability'),
       sourceRef('frontend/js/api/GameAPI.js', 821, 829, 'GameAPI startWorldMarch submits command', 'frontend:world-march-passability'),
       sourceRef('scripts/command-owner-step1/inventories.js', 762, 777, 'CLIENT_LOCAL_BLOCKS world-march-passability', 'frontend:world-march-passability'),
     ],
