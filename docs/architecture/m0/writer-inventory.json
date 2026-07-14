@@ -701,9 +701,9 @@
           "category": "repair_script",
           "id": "repair-script:scripts/restore-runtime-state.sh",
           "file": "scripts/restore-runtime-state.sh",
-          "line": 150,
+          "line": 161,
           "evidence": [
-            "scripts/restore-runtime-state.sh:150"
+            "scripts/restore-runtime-state.sh:161"
           ],
           "summary": "修复或恢复脚本 scripts/restore-runtime-state.sh"
         }

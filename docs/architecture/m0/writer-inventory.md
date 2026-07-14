@@ -100,7 +100,7 @@
 | repair-script:backend/scripts/cleanup-world-explorer-ready-state.js | backend/scripts/cleanup-world-explorer-ready-state.js:162 | 修复或恢复脚本 backend/scripts/cleanup-world-explorer-ready-state.js |
 | repair-script:scripts/repair-legacy-spawn-account.js | scripts/repair-legacy-spawn-account.js:221 | 修复或恢复脚本 scripts/repair-legacy-spawn-account.js |
 | repair-script:scripts/repair-legacy-spawn-batch.js | scripts/repair-legacy-spawn-batch.js:128 | 修复或恢复脚本 scripts/repair-legacy-spawn-batch.js |
-| repair-script:scripts/restore-runtime-state.sh | scripts/restore-runtime-state.sh:150 | 修复或恢复脚本 scripts/restore-runtime-state.sh |
+| repair-script:scripts/restore-runtime-state.sh | scripts/restore-runtime-state.sh:161 | 修复或恢复脚本 scripts/restore-runtime-state.sh |
 
 ## consumer
 

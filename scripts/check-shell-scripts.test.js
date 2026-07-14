@@ -91,6 +91,24 @@ test('deploy rollback entrypoints keep ref and commit deployment support', () =>
   assert.match(deployScript, /restart_ops_agent_if_configured/);
   assert.match(deployScript, /ENABLE_OPS_AGENT:-0/);
   assert.match(deployScript, /bash "\$WORK_TREE\/scripts\/install-ops-agent-pm2\.sh"/);
+  const snapshotSection = deployScript.slice(
+    deployScript.indexOf('snapshot_backend_for_rollback()'),
+    deployScript.indexOf('rollback_backend_and_restart()'),
+  );
+  const rollbackSection = deployScript.slice(
+    deployScript.indexOf('rollback_backend_and_restart()'),
+    deployScript.indexOf('run_deploy_gate()'),
+  );
+  const snapshotCopyIndex = snapshotSection.indexOf('cp -al');
+  const snapshotReadOnlyIndex = snapshotSection.indexOf('chmod -R a-w');
+  const rollbackWriteRestoreIndex = rollbackSection.indexOf('restore_snapshot_write_permissions');
+  const rollbackRsyncIndex = rollbackSection.indexOf('rsync -a --delete');
+  assert.notEqual(snapshotCopyIndex, -1);
+  assert.notEqual(snapshotReadOnlyIndex, -1);
+  assert.notEqual(rollbackWriteRestoreIndex, -1);
+  assert.notEqual(rollbackRsyncIndex, -1);
+  assert.equal(snapshotCopyIndex < snapshotReadOnlyIndex, true);
+  assert.equal(rollbackWriteRestoreIndex < rollbackRsyncIndex, true);
   assert.match(rollbackScript, /rev-parse --verify "\$TARGET_REF\^\{commit\}"/);
   assert.match(rollbackScript, /bash "\$DEPLOY_SCRIPT" "\$TARGET_COMMIT"/);
   assert.match(verifyHookScript, /bash -n "\$HOOK_PATH"/);
