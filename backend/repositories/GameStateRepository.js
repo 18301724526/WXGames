@@ -11,48 +11,13 @@ const { WorldEncounterRepository } = require('./WorldEncounterRepository');
 const { DEFAULT_WORLD_SEED } = require('../services/worldMap/WorldMapConstants');
 const WorldExplorerVision = require('../services/worldExplorer/WorldExplorerVision');
 const WorldMapService = require('../services/WorldMapService');
-
-const GAME_STATE_COMPAT_COLUMNS = Object.freeze([
-  ['revision', 'revision INTEGER DEFAULT 0'],
-  ['saveMetadata', 'saveMetadata TEXT'],
-  ['talentPolicies', 'talentPolicies TEXT'],
-  ['famousPeople', 'famousPeople TEXT'],
-  ['famousPersonState', 'famousPersonState TEXT'],
-  ['taskProgress', 'taskProgress TEXT'],
-  ['military', 'military TEXT'],
-  ['regularEventState', 'regularEventState TEXT'],
-  ['activeBuffs', 'activeBuffs TEXT'],
-  ['threatEventState', 'threatEventState TEXT'],
-  ['polity', 'polity TEXT'],
-  ['territories', 'territories TEXT'],
-  ['worldMap', 'worldMap TEXT'],
-  ['worldCombat', 'worldCombat TEXT'],
-  ['activeCityId', 'activeCityId TEXT'],
-  ['cities', 'cities TEXT'],
-  ['scoutedCoordinates', 'scoutedCoordinates TEXT'],
-  ['scoutState', 'scoutState TEXT'],
-  ['exploreMissions', 'exploreMissions TEXT'],
-  ['worldMarchClientReports', 'worldMarchClientReports TEXT'],
-  ['worldMarchVerification', 'worldMarchVerification TEXT'],
-  ['worldAi', 'worldAi TEXT'],
-  ['warMissions', 'warMissions TEXT'],
-  ['scoutReports', 'scoutReports TEXT'],
-]);
+const {
+  GAME_STATE_BASELINE_MIGRATION,
+  TASK_REWARD_GRANTS_MIGRATION,
+} = require('../migrations/immutableGameStateMigrations');
 
 function createGameStateSchemaMigrations() {
-  return [{
-    id: '001-game-states-compat-columns',
-    description: 'Backfill compatibility columns that predate the schema_migrations ledger.',
-    statements: GAME_STATE_COMPAT_COLUMNS.map(([, definition]) => `ALTER TABLE game_states ADD COLUMN ${definition}`),
-    apply(db) {
-      const columns = new Set(db.prepare('PRAGMA table_info(game_states)').all().map((column) => column.name));
-      for (const [name, definition] of GAME_STATE_COMPAT_COLUMNS) {
-        if (!columns.has(name)) {
-          db.prepare(`ALTER TABLE game_states ADD COLUMN ${definition}`).run();
-        }
-      }
-    },
-  }, {
+  return [GAME_STATE_BASELINE_MIGRATION, {
     // ②b: pending captured-general decisions (斩杀/招降/放生). A new column (not a compat backfill),
     // so it needs its own migration to land on existing DBs; fresh DBs get it from CREATE TABLE.
     id: '002-capture-decisions-column',
@@ -131,17 +96,7 @@ function createGameStateSchemaMigrations() {
           ON command_idempotency(commandId);
       `);
     },
-  }, {
-    id: '005-task-reward-grants-column',
-    description: 'Add task reward grant ledger column for reward claims.',
-    statements: ['ALTER TABLE game_states ADD COLUMN taskRewardGrants TEXT'],
-    apply(db) {
-      const columns = new Set(db.prepare('PRAGMA table_info(game_states)').all().map((column) => column.name));
-      if (!columns.has('taskRewardGrants')) {
-        db.prepare('ALTER TABLE game_states ADD COLUMN taskRewardGrants TEXT').run();
-      }
-    },
-  }];
+  }, TASK_REWARD_GRANTS_MIGRATION];
 }
 
 function parseJsonField(value, fallback) {

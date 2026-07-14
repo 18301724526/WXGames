@@ -17,10 +17,11 @@ function write(repoRoot, relativePath, source) {
   fs.writeFileSync(absolute, source);
 }
 
-test('game tutorial awareness gate scans production JS and skips tests and engine boundaries', () => {
+test('game tutorial awareness gate scans production JS and skips tests and declared boundaries', () => {
   assert.equal(isProductionSource('backend/services/GameService.js'), true);
   assert.equal(isProductionSource('frontend/js/platform/GameShell.js'), true);
   assert.equal(isProductionSource('backend/tests/TutorialService.test.js'), false);
+  assert.equal(isProductionSource('backend/migrations/immutableGameStateMigrations.js'), false);
   assert.equal(isProductionSource('frontend/js/lib/tutorial-engine/Runtime.js'), false);
   assert.equal(isProductionSource('frontend/js/integrations/tutorial/WxGameAdapter.js'), false);
 });

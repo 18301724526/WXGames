@@ -7,6 +7,10 @@ const DEFAULT_REPO_ROOT = path.resolve(__dirname, '..');
 const SOURCE_ROOTS = Object.freeze(['backend', 'frontend']);
 const EXEMPT_ROOTS = Object.freeze([
   Object.freeze({
+    path: 'backend/migrations',
+    reason: 'immutable published schema history with no gameplay behavior',
+  }),
+  Object.freeze({
     path: 'frontend/js/lib/tutorial-engine',
     reason: 'portable tutorial engine library',
   }),
