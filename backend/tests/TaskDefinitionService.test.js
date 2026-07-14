@@ -32,7 +32,7 @@ test('TaskDefinitionService loads live definitions only from the active release 
 
   assert.equal(definitions.errors.length, 0);
   assert.equal(definitions.source.startsWith('active-release-bundle:'), true);
-  assert.equal(definitions.version, '1.1.0');
+  assert.equal(definitions.version, '1.2.0');
   assert.equal(task.category, 'main');
   assert.deepEqual(task.reward.resources, { food: 120, knowledge: 5 });
   assert.match(task.rewardText, /food\+120/);
