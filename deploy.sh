@@ -553,6 +553,16 @@ get_listener_pids() {
         | sort -u
 }
 
+print_pm2_recent_logs() {
+    local app_name="$1"
+    pm2 jlist \
+        | node -e "const name=process.argv[1]; let input=''; process.stdin.on('data', (chunk) => input += chunk); process.stdin.on('end', () => { const list = JSON.parse(input || '[]'); const proc = list.find((item) => item && item.name === name); const env = proc?.pm2_env || {}; [env.pm_err_log_path, env.pm_out_log_path].filter(Boolean).forEach((file) => process.stdout.write(file + '\n')); });" "$app_name" \
+        | while IFS= read -r log_path; do
+            echo "[Deploy] PM2 log tail: $log_path" >&2
+            tail -n 80 "$log_path" >&2 || true
+        done
+}
+
 verify_pm2_listener() {
     local app_name="${1:-$PM2_APP_NAME}"
     local require_listener="${2:-1}"
@@ -591,7 +601,7 @@ verify_pm2_listener() {
     pm2 show "$app_name" >&2 || true
     ss -ltnp >&2 || true
     echo "[Deploy] Recent PM2 application logs: app=$app_name" >&2
-    pm2 logs "$app_name" --lines 80 --nostream >&2 || true
+    print_pm2_recent_logs "$app_name" || true
     exit 1
 }
 
