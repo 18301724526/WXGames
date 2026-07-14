@@ -650,6 +650,16 @@
             "backend/migrations/currentGameStateSchemaMigration.js:59"
           ],
           "summary": "SchemaMigrationService 迁移 006-rebuild-game-states-current-schema"
+        },
+        {
+          "category": "migration",
+          "id": "migration:007-create-release-manifests",
+          "file": "backend/migrations/releaseManifestMigration.js",
+          "line": 6,
+          "evidence": [
+            "backend/migrations/releaseManifestMigration.js:6"
+          ],
+          "summary": "SchemaMigrationService 迁移 007-create-release-manifests"
         }
       ]
     },
@@ -724,15 +734,15 @@
   "findings": [],
   "summary": {
     "categoryCount": 8,
-    "declaredWriterCount": 67,
-    "discoveredWriterCount": 67,
+    "declaredWriterCount": 68,
+    "discoveredWriterCount": 68,
     "driftFindingCount": 0,
     "writersByCategory": {
       "route": 9,
       "command": 35,
       "worker": 5,
       "admin": 10,
-      "migration": 3,
+      "migration": 4,
       "repair_script": 4,
       "consumer": 0,
       "client_state_writer": 1

@@ -18,6 +18,9 @@ const {
 const {
   CURRENT_GAME_STATE_SCHEMA_MIGRATION,
 } = require('../migrations/currentGameStateSchemaMigration');
+const {
+  RELEASE_MANIFESTS_MIGRATION,
+} = require('../migrations/releaseManifestMigration');
 
 function createGameStateSchemaMigrations() {
   return [GAME_STATE_BASELINE_MIGRATION, {
@@ -99,7 +102,7 @@ function createGameStateSchemaMigrations() {
           ON command_idempotency(commandId);
       `);
     },
-  }, TASK_REWARD_GRANTS_MIGRATION, CURRENT_GAME_STATE_SCHEMA_MIGRATION];
+  }, TASK_REWARD_GRANTS_MIGRATION, CURRENT_GAME_STATE_SCHEMA_MIGRATION, RELEASE_MANIFESTS_MIGRATION];
 }
 
 function parseJsonField(value, fallback) {

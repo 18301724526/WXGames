@@ -11,8 +11,8 @@
 
 | 集合 | 数量 |
 | --- | ---: |
-| 静态发现 | 67 |
-| 清单声明 | 67 |
+| 静态发现 | 68 |
+| 清单声明 | 68 |
 | 运行时命中 | 5 |
 
 ## 两两双向差集
@@ -74,6 +74,7 @@
 - migration:001-game-states-compat-columns
 - migration:005-task-reward-grants-column
 - migration:006-rebuild-game-states-current-schema
+- migration:007-create-release-manifests
 - repair-script:backend/scripts/cleanup-world-explorer-ready-state.js
 - repair-script:scripts/repair-legacy-spawn-account.js
 - repair-script:scripts/repair-legacy-spawn-batch.js
@@ -143,6 +144,7 @@
 - migration:001-game-states-compat-columns
 - migration:005-task-reward-grants-column
 - migration:006-rebuild-game-states-current-schema
+- migration:007-create-release-manifests
 - repair-script:backend/scripts/cleanup-world-explorer-ready-state.js
 - repair-script:scripts/repair-legacy-spawn-account.js
 - repair-script:scripts/repair-legacy-spawn-batch.js

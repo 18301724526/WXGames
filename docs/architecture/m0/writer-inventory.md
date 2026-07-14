@@ -1,8 +1,8 @@
 # M0 Writer Inventory
 
 - 扫描类别：8
-- 源码发现：67
-- 清单声明：67
+- 源码发现：68
+- 清单声明：68
 - drift finding：0
 
 ## route
@@ -91,6 +91,7 @@
 | migration:001-game-states-compat-columns | backend/migrations/immutableGameStateMigrations.js:35 | SchemaMigrationService 迁移 001-game-states-compat-columns |
 | migration:005-task-reward-grants-column | backend/migrations/immutableGameStateMigrations.js:49 | SchemaMigrationService 迁移 005-task-reward-grants-column |
 | migration:006-rebuild-game-states-current-schema | backend/migrations/currentGameStateSchemaMigration.js:59 | SchemaMigrationService 迁移 006-rebuild-game-states-current-schema |
+| migration:007-create-release-manifests | backend/migrations/releaseManifestMigration.js:6 | SchemaMigrationService 迁移 007-create-release-manifests |
 
 ## repair_script
 

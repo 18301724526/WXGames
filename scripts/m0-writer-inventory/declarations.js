@@ -99,6 +99,7 @@ const WRITER_DECLARATIONS = Object.freeze({
     'migration:001-game-states-compat-columns',
     'migration:005-task-reward-grants-column',
     'migration:006-rebuild-game-states-current-schema',
+    'migration:007-create-release-manifests',
   ]),
   repair_script: declare([
     'repair-script:backend/scripts/cleanup-world-explorer-ready-state.js',
