@@ -180,6 +180,7 @@ class CommandExecutionPipeline {
             ownerKeys: ownerResolution.ownerKeys,
             scope: lockContext.scope,
             commandId: envelope.commandId,
+            commandType: envelope.type,
             lock: lockContext,
           }, () => {
             executionStartedAt = Number(this.monotonicNow());

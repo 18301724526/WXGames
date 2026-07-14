@@ -23,6 +23,7 @@ function runWithOwnerContext(context = {}, callback) {
     ownerKeys: Object.freeze(ownerKeys),
     scope: String(context.scope || '').trim(),
     commandId: String(context.commandId || '').trim(),
+    commandType: String(context.commandType || '').trim(),
     lock: context.lock || null,
   });
   if (!value.ownerKey || !value.ownerKeys.includes(value.ownerKey)) {
