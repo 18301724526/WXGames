@@ -111,6 +111,34 @@ test('runtime writer hit set maps command and route evidence into both static se
   assert.deepEqual(validateHitSet(hitSet, triDiff), []);
 });
 
+test('runtime writer hit set maps the asynchronous API log writer through server middleware', () => {
+  const hitSet = buildRuntimeHitSet([{
+    schema: TRACE_SCHEMA,
+    category: 'unknown',
+    table: 'api_logs',
+    commandType: '',
+    operation: 'insert',
+    databasePath: '/tmp/observability.db',
+    stack: [{
+      file: 'backend/services/logService.js',
+      line: 70,
+      column: 1,
+      function: 'LogService.logApi',
+    }, {
+      file: 'backend/server.js',
+      line: 133,
+      column: 1,
+      function: 'ServerResponse.<anonymous>',
+    }],
+  }]);
+
+  assert.deepEqual(hitSet.runtimeWriters.map((entry) => entry.id), [
+    'route:middleware:api-log',
+  ]);
+  assert.equal(hitSet.summary.unknownWriterCount, 0);
+  assert.deepEqual(validateHitSet(hitSet), []);
+});
+
 test('runtime writer hit set requires explicit ownership for an unknown writer', () => {
   const hitSet = buildRuntimeHitSet([{
     schema: TRACE_SCHEMA,

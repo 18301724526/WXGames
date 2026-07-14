@@ -115,7 +115,7 @@ function scanCommandWriters(repoRoot) {
 }
 
 function scanRouteWriters(repoRoot) {
-  return scanRepository(repoRoot).serverWriteRoutes.map((route) => {
+  const routeWriters = scanRepository(repoRoot).serverWriteRoutes.map((route) => {
     if (route.method === 'BACKGROUND') {
       return writer(
         'worker',
@@ -136,6 +136,19 @@ function scanRouteWriters(repoRoot) {
     }
     return writer('route', `route:${route.key}`, route.file, route.line, `写路由 ${route.key}`);
   });
+  const serverFile = 'backend/server.js';
+  const serverText = fs.readFileSync(path.join(repoRoot, serverFile), 'utf8');
+  const apiLogMatch = /\blogService\.logApi\s*\(/.exec(serverText);
+  if (apiLogMatch) {
+    routeWriters.push(writer(
+      'route',
+      'route:middleware:api-log',
+      serverFile,
+      lineNumberAt(serverText, apiLogMatch.index),
+      '跨路由响应审计日志写入口',
+    ));
+  }
+  return routeWriters;
 }
 
 function scanMigrationWriters(repoRoot) {

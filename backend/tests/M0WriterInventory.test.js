@@ -28,6 +28,11 @@ test('M0 writer inventory scans all eight categories without declaration drift',
       assert.match(entry.evidence[0], /:\d+$/);
     });
   });
+  const apiLogWriter = report.categories
+    .find((category) => category.category === 'route')
+    .entries.find((entry) => entry.id === 'route:middleware:api-log');
+  assert.equal(apiLogWriter.file, 'backend/server.js');
+  assert.match(apiLogWriter.evidence[0], /^backend\/server\.js:\d+$/);
 });
 
 test('M0 writer inventory reports both undeclared source and missing declared source', () => {

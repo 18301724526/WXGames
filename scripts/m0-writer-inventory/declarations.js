@@ -20,6 +20,7 @@ const ROUTE_WRITERS = Object.freeze([
   'route:POST /api/game/tasks/claim',
   'route:POST /api/player/login',
   'route:POST /api/player/reset',
+  'route:middleware:api-log',
 ]);
 
 const COMMAND_TYPES = Object.freeze([

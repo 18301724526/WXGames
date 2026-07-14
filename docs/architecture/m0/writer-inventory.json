@@ -9,6 +9,16 @@
       "entries": [
         {
           "category": "route",
+          "id": "route:middleware:api-log",
+          "file": "backend/server.js",
+          "line": 133,
+          "evidence": [
+            "backend/server.js:133"
+          ],
+          "summary": "跨路由响应审计日志写入口"
+        },
+        {
+          "category": "route",
           "id": "route:POST /api/buildings/build",
           "file": "backend/routes/buildingRoutes.js",
           "line": 42,
@@ -714,11 +724,11 @@
   "findings": [],
   "summary": {
     "categoryCount": 8,
-    "declaredWriterCount": 66,
-    "discoveredWriterCount": 66,
+    "declaredWriterCount": 67,
+    "discoveredWriterCount": 67,
     "driftFindingCount": 0,
     "writersByCategory": {
-      "route": 8,
+      "route": 9,
       "command": 35,
       "worker": 5,
       "admin": 10,
