@@ -65,6 +65,9 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-command-pipeline-foundation.test.js',
   'scripts/check-command-route-migration.js',
   'scripts/check-command-route-migration.test.js',
+  'scripts/m0-writer-inventory/declarations.js',
+  'scripts/m0-writer-inventory/scanner.js',
+  'scripts/m0-writer-inventory/index.js',
   'scripts/step4-debt-catalog/boundary-utils.js',
   'scripts/step4-debt-catalog/decisions.js',
   'scripts/step4-debt-catalog/debt-items.js',
@@ -417,6 +420,7 @@ const CHECK_FILES = Object.freeze([
   'backend/tests/WorldExplorerReadyStateCleanup.test.js',
   'backend/tests/GameStateServiceSplit.test.js',
   'backend/tests/GameStateProjectionArchitecture.test.js',
+  'backend/tests/M0WriterInventory.test.js',
   'scripts/check-backend-security-audit.js',
   'scripts/check-backend-security-audit.test.js',
   'scripts/verify-production-security-config.js',
@@ -616,6 +620,7 @@ const TEST_FILES = Object.freeze([
   'backend/tests/GameStateMigrationPipeline.test.js',
   'backend/tests/GameStateServiceSplit.test.js',
   'backend/tests/GameStateProjectionArchitecture.test.js',
+  'backend/tests/M0WriterInventory.test.js',
   'backend/tests/ConfigRegistryContract.test.js',
   'backend/tests/SecurityConfig.test.js',
   'backend/tests/ServerRandomAuthorityContract.test.js',
@@ -811,6 +816,10 @@ function main() {
   ]);
   run('command route migration blocking guard', process.execPath, [
     'scripts/check-command-route-migration.js',
+  ]);
+  run('M0 writer inventory blocking guard', process.execPath, [
+    'scripts/m0-writer-inventory/index.js',
+    '--check',
   ]);
   run('Step4 debt catalog blocking guard', process.execPath, [
     'scripts/check-step4-debt-catalog.js',
