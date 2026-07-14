@@ -61,6 +61,10 @@ test('shell script guard keeps Git for Windows fallback paths documented', () =>
 test('deploy rollback entrypoints keep ref and commit deployment support', () => {
   const repoRoot = path.join(__dirname, '..');
   const deployScript = fs.readFileSync(path.join(repoRoot, 'deploy.sh'), 'utf8');
+  const retirementManifest = JSON.parse(fs.readFileSync(
+    path.join(repoRoot, 'config', 'configRegistryRetirements.json'),
+    'utf8',
+  ));
   const rollbackScript = fs.readFileSync(path.join(repoRoot, 'scripts', 'rollback-deploy.sh'), 'utf8');
   const verifyHookScript = fs.readFileSync(path.join(repoRoot, 'scripts', 'verify-deploy-hook.sh'), 'utf8');
 
@@ -77,6 +81,19 @@ test('deploy rollback entrypoints keep ref and commit deployment support', () =>
   assert.match(deployScript, /run_post_backend_sync_script/);
   assert.match(deployScript, /publish_runtime_config_release\(\)/);
   assert.match(deployScript, /ConfigReleaseService\.publishRelease/);
+  assert.match(deployScript, /WXGAME_CONFIG_REGISTRY_RETIREMENTS_PATH=/);
+  assert.match(deployScript, /declaredRegistryRetirements/);
+  assert.equal(retirementManifest.schema, 'config-registry-retirements-v1');
+  assert.equal(Array.isArray(retirementManifest.retirements), true);
+  assert.equal(retirementManifest.retirements.length > 0, true);
+  assert.equal(
+    retirementManifest.retirements.every((entry) => Boolean(entry.id && entry.reason)),
+    true,
+  );
+  assert.equal(
+    new Set(retirementManifest.retirements.map((entry) => entry.id)).size,
+    retirementManifest.retirements.length,
+  );
   assert.match(deployScript, /cleanup-world-explorer-ready-state\.js"\s+set_deploy_stage "config-release"\s+publish_runtime_config_release\s+set_deploy_stage "pm2-restart"/s);
   assert.match(deployScript, /DEPLOY_STATUS_PATH="\$DEPLOY_STATE_DIR\/deploy-status\.json"/);
   assert.match(deployScript, /WXGAME_DEPLOY_STATUS_PATH="\$DEPLOY_STATUS_PATH"/);

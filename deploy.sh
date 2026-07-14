@@ -444,15 +444,28 @@ verify_runtime_config() {
 
 publish_runtime_config_release() {
     local release_source
+    local retirement_manifest_path
 
     release_source="deploy:${DEPLOY_COMMIT:-$(git_repo rev-parse HEAD)}"
+    retirement_manifest_path="$WORK_TREE/config/configRegistryRetirements.json"
     echo "[Deploy] Publishing runtime config release: $release_source"
-    WXGAME_CONFIG_RELEASE_SOURCE="$release_source" node <<'NODE'
+    WXGAME_CONFIG_RELEASE_SOURCE="$release_source" \
+    WXGAME_CONFIG_REGISTRY_RETIREMENTS_PATH="$retirement_manifest_path" \
+    node <<'NODE'
 process.env.DOTENV_CONFIG_QUIET = 'true';
 require('dotenv').config({ quiet: true });
+const fs = require('node:fs');
 const ConfigReleaseService = require('./services/config/ConfigReleaseService');
 
 const source = process.env.WXGAME_CONFIG_RELEASE_SOURCE || 'deploy';
+const retirementManifestPath = process.env.WXGAME_CONFIG_REGISTRY_RETIREMENTS_PATH;
+const retirementManifest = JSON.parse(fs.readFileSync(retirementManifestPath, 'utf8'));
+if (retirementManifest.schema !== 'config-registry-retirements-v1') {
+  throw new Error(`invalid config registry retirement manifest: ${retirementManifestPath}`);
+}
+const declaredRegistryRetirements = Array.isArray(retirementManifest.retirements)
+  ? retirementManifest.retirements
+  : [];
 const before = ConfigReleaseService.getRuntimeStatus({ env: process.env });
 if (before.status === 'matched') {
   console.log(JSON.stringify({
@@ -466,7 +479,11 @@ if (before.status === 'matched') {
 
 const result = ConfigReleaseService.publishRelease(
   { source },
-  { operator: process.env.DEPLOY_OPERATOR || 'deploy-hook', env: process.env },
+  {
+    operator: process.env.DEPLOY_OPERATOR || 'deploy-hook',
+    env: process.env,
+    declaredRegistryRetirements,
+  },
 );
 if (!result.success) {
   console.error(JSON.stringify({
