@@ -4,7 +4,9 @@ const path = require('node:path');
 const ConfigRegistryContract = require('./ConfigRegistryContract');
 
 const SNAPSHOT_SCHEMA = 'config-pipeline-snapshot-v1';
+const REGISTRY_RETIREMENTS_SCHEMA = 'config-registry-retirements-v1';
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
+const DEFAULT_REGISTRY_RETIREMENTS_PATH = path.join(REPO_ROOT, 'config', 'configRegistryRetirements.json');
 
 function toRepoPath(filePath, repoRoot = REPO_ROOT) {
   if (!filePath) return '';
@@ -170,6 +172,35 @@ function getDeclaredRegistryRetirementMap(options = {}) {
     .map((entry) => [entry.id, entry]));
 }
 
+function resolveRegistryRetirementsPath(options = {}) {
+  if (options.registryRetirementsPath) return options.registryRetirementsPath;
+  const env = options.env || process.env;
+  return env.WXGAME_CONFIG_REGISTRY_RETIREMENTS_PATH || DEFAULT_REGISTRY_RETIREMENTS_PATH;
+}
+
+// Load the declared registry retirements from the convention-path manifest
+// (config/configRegistryRetirements.json). This is the safety valve that lets a
+// legitimately deleted config registry produce a deploy warning instead of a hard
+// `registry removed` error for environments whose active.json still lists it.
+// An explicit options.declaredRegistryRetirements array always wins (callers/tests).
+// A missing manifest, unreadable JSON, or wrong schema all fail closed to an empty
+// declaration set — the existing `registry removed` error then surfaces loudly.
+function loadDeclaredRegistryRetirements(options = {}) {
+  if (Array.isArray(options.declaredRegistryRetirements)) {
+    return options.declaredRegistryRetirements;
+  }
+  const filePath = resolveRegistryRetirementsPath(options);
+  if (!filePath || !fs.existsSync(filePath)) return [];
+  let parsed;
+  try {
+    parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    return [];
+  }
+  if (!parsed || parsed.schema !== REGISTRY_RETIREMENTS_SCHEMA) return [];
+  return Array.isArray(parsed.retirements) ? parsed.retirements : [];
+}
+
 function compareSnapshots(baseline = {}, current = {}, options = {}) {
   const beforeMap = getSnapshotRegistryMap(baseline);
   const afterMap = getSnapshotRegistryMap(current);
@@ -246,7 +277,10 @@ function compareSnapshots(baseline = {}, current = {}, options = {}) {
 function buildPipelineReport(options = {}) {
   const current = options.currentSnapshot || buildCurrentSnapshot(options);
   const baseline = options.baselineSnapshot || (options.baselinePath ? readSnapshot(options.baselinePath) : null);
-  const comparison = baseline ? compareSnapshots(baseline, current, options) : null;
+  const declaredRegistryRetirements = loadDeclaredRegistryRetirements(options);
+  const comparison = baseline
+    ? compareSnapshots(baseline, current, { ...options, declaredRegistryRetirements })
+    : null;
   const errors = [
     ...(current.validation.errors || []),
     ...(comparison?.errors || []),
@@ -278,6 +312,7 @@ module.exports = {
   collectRegistryReports,
   compareSnapshots,
   getDeclaredRegistryRetirementMap,
+  loadDeclaredRegistryRetirements,
   createSnapshot,
   getDefaultRegistryLoaders,
   readSnapshot,

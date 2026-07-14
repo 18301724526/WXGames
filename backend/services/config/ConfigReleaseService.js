@@ -320,7 +320,9 @@ function getRuntimeStatus(options = {}) {
     const activeSnapshot = activeRecord.snapshot || null;
     const activeValidation = validateSnapshot(activeSnapshot);
     const comparison = activeSnapshot && currentValidation.success && activeValidation.success
-      ? ConfigPipeline.compareSnapshots(activeSnapshot, current)
+      ? ConfigPipeline.compareSnapshots(activeSnapshot, current, {
+        declaredRegistryRetirements: ConfigPipeline.loadDeclaredRegistryRetirements(options),
+      })
       : null;
     const comparisonSummary = summarizeComparison(comparison);
     const hasDiff = Boolean(comparisonSummary && (
