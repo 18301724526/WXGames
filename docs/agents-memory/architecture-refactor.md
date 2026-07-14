@@ -7,8 +7,6 @@ metadata:
   originSessionId: 203faf18-7d63-42bc-9dce-edfca1b28aff
 ---
 
-⚠️ 本文的迁移计划与 M0/M1 里程碑编号已被 7月14日后端架构/ 的 v2.3 参考架构+M0-M7 迁移路线图取代（两套编号同名不同义，勿混用）；客户端 ECS（bitecs+单画布）与 fog 切片均已落地。仅原则部分（规则单源 shared/、薄调用层、每级 trace）仍有效。
-
 Decided 2026-06-25 (user, after the world-march passability mess). The whole project is being refactored toward total decoupling, **incrementally (strangler-fig, not big-bang)** because the user is fed up with "fix one bug → touch N files → cause N new bugs".
 
 - **Server = ABCD module pipelines**: D=data source (pure fetch), **C=rules (pure functions, ALL rules for a concern in ONE file)**, B=orchestration (calls C, no rules), A=presentation/dispatch (no rules).

@@ -1,7 +1,5 @@
 # Command Owner Pipeline Step3 Implementation Tasks
 
-⚠️ STEP3-T* 已全部完成；目标规范已转 7月14日后端架构/ v2.3（M1/M2 将重做 receipt 与锁语义）。仅存档。
-
 Status: Draft v0.1, derived task list
 Date: 2026-07-09
 Source spec: `step3-command-owner-pipeline-implementation-spec-2026-07-09.md`

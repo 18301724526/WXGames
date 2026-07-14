@@ -1,9 +1,0 @@
-{
-  "schema": "config-registry-retirements-v1",
-  "retirements": [
-    {
-      "id": "tutorial-flow-config",
-      "reason": "Phase A removed server-owned tutorial configuration."
-    }
-  ]
-}

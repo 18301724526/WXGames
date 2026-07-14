@@ -164,9 +164,6 @@ function pagePoint(state, target) {
 }
 
 async function capture(page, label, extra = {}) {
-  if (process.env.PLAYTEST_PROGRESS === '1') {
-    console.log(`[playtest-progress] ${label}`);
-  }
   const state = await readGameState(page);
   const base = path.join(outputDir, safeName(label));
   const screenshotPath = `${base}.png`;

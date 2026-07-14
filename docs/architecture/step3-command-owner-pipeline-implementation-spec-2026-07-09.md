@@ -1,7 +1,5 @@
 # Command Owner Pipeline Implementation Spec
 
-⚠️ 已于 2026-07-10 实现并验证完毕（见 step3-phase2-7-verification）。本文描述的 committer/owner_locks 语义即当前 as-built 现状，v2.3 路线图已判其 NON_CONFORMING：M1 原子 receipt 取代两步 commit/recordResult，M2 epoch fencing 取代 TTL lease。任何新实现以 7月14日后端架构/ v2.3 为目标规范，本文仅存档。
-
 Status: Draft v0.2, requires Step2 admission before implementation
 Date: 2026-07-09
 Scope: formal command pipeline implementation after prerequisite admission

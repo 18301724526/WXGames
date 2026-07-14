@@ -42,7 +42,7 @@
   <header>
     <div>
       <h1><span class="status-dot"></span>wxgame 当前服务器架构</h1>
-      <p class="subtitle">事实快照：2026-07-14 · 生产提交 29e01cc4 · 单台阿里云 ECS（2核2G） · Nginx + PM2 + Node/Express + SQLite WAL。图中只陈述已从运行进程、端口、文件哈希、部署输出和当前源码验证的关系，不包含优化结论。2026-07-15 补充：战斗运行时、同步模型与热路径事实（本地源码核实，见下方卡片）。</p>
+      <p class="subtitle">事实快照：2026-07-14 · 生产提交 29e01cc4 · 单台阿里云 ECS · Nginx + PM2 + Node/Express + SQLite WAL。图中只陈述已从运行进程、端口、文件哈希、部署输出和当前源码验证的关系，不包含优化结论。</p>
     </div>
     <div class="toolbar">
       <div class="toolbar-actions">
@@ -136,12 +136,12 @@
 
   <section class="cards">
     <article class="card fact"><h2>已验证拓扑</h2><ul><li>单台 ECS 同时承载 Nginx、Git HTTP、生产、测试和重构进程</li><li>生产 API 与 world worker 是两个独立 PM2 进程</li><li>生产静态目录与部署 work tree 使用同一路径</li><li>线上 backend 与本地提交逐文件一致</li></ul></article>
-    <article class="card concurrent"><h2>并发与热路径事实</h2><ul><li>API 与 worker 共享一个 civilization.db；WAL 并发读、单 writer domain；owner_locks 忙等自旋兜底</li><li>worker 每 5s tick，有界扫描（活跃窗口 2 分钟、上限 25 人），每玩家结算后整行重写 ~40 个 JSON 列</li><li>状态读取存在 O(全体玩家) 活动源全表扫描（readWorldEncounterActivityStates），玩家数增长时二次放大——已知首要热点</li><li>同步模型：前端 1Hz 轻心跳（无 gameState）+ 每个动作响应携带全量视图 + 按需全量拉取（最小间隔 1s）</li></ul></article>
-    <article class="card security"><h2>访问与安全事实</h2><ul><li>Nginx 暴露 80/443，Git HTTP 使用 3001；生产 *:3000，测试/重构 *:3002/*:3003</li><li>玩家接口 JWT（载荷仅 playerId/username/sessionId），ops 面独立 JWT；注册关闭（白名单）</li><li>战斗防作弊边界：数值/seed/setup 服务端权威；但守方 AI 指令由客户端录制、分队令未校验阵营归属——已知可操纵面待修</li><li>SSH 与同机多环境隔离策略需单独评审</li></ul></article>
-    <article class="card review"><h2>战斗与结算运行时事实</h2><ul><li>战斗=交互式实时实体战（20Hz 模拟步，战中分队令/全军出击/全军撤退/怒气技能）</li><li>权威模型：客户端本地模拟演出并录制 tick 标签指令流；服务器用 seed+setup 确定性重放裁决——战斗过程零网络往返，不吃服务器常驻 tick</li><li>战报=setup+指令流，可确定性回放；占城当前为被动版（脚本化双方全军出击）</li><li>一次解算 ≤6000 模拟 tick 纯内存循环，成本形状良好，不在热点名单</li></ul></article>
+    <article class="card concurrent"><h2>并发事实</h2><ul><li>API 与 worker 共享一个 civilization.db</li><li>WAL 支持并发读取，但所有写入仍属于单 writer domain</li><li>owner_locks 是逻辑资源锁，也保存在同一 SQLite 主库</li><li>observability 已拆到独立数据库</li></ul></article>
+    <article class="card security"><h2>访问与安全事实</h2><ul><li>Nginx 暴露 80/443，Git HTTP 使用 3001</li><li>生产 Node 进程绑定 *:3000；测试/重构绑定 *:3002/*:3003</li><li>玩家接口使用 JWT，Git 推送使用 HTTP Basic Auth</li><li>SSH 与同机多环境隔离策略需单独评审</li></ul></article>
+    <article class="card review"><h2>待架构评审</h2><ul><li>逻辑 owner 并发模型是否匹配 SQLite 物理写锁模型</li><li>后台周期任务与交互请求是否需要统一写入调度</li><li>部署是否具备失败不影响线上静态目录的原子性</li><li>容量、可观测性、备份恢复与安全边界是否足够</li></ul></article>
   </section>
 
-  <footer>来源：服务器进程/端口/lsof/部署输出、提交 29e01cc4、当前源码与运行目录哈希比对；2026-07-15 战斗/同步/热路径事实来自本地源码核实。原"待架构评审"四问（owner 并发模型/统一写调度/部署原子性/容量备份）已由 v2.3 参考架构与迁移路线图 M2/M4/M7 接管。</footer>
+  <footer>来源：服务器进程/端口/lsof/部署输出、提交 29e01cc4、当前源码与运行目录哈希比对</footer>
 </div>
 
 <script>

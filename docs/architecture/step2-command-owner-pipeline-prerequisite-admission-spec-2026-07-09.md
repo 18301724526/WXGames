@@ -1,7 +1,5 @@
 # Command Owner Pipeline Prerequisite Admission Gate
 
-⚠️ 本准入门禁已裁决 ADMIT（fbefd4e7，2026-07-10），Step3 随后实现并验证完毕。仅存档。
-
 Status: Review Standard v1.3, Step2 admission gate
 Date: 2026-07-09
 Scope: Step2 admission criteria for `step1-command-owner-pipeline-prerequisite-staging-spec-2026-07-09.md` before `step3-command-owner-pipeline-implementation-spec-2026-07-09.md`

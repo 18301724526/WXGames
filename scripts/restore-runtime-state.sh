@@ -82,14 +82,6 @@ maybe_stop_pm2() {
     exit 1
 }
 
-remove_file_if_present() {
-    local target="$1"
-    if [ ! -e "$target" ] && [ ! -L "$target" ]; then
-        return
-    fi
-    rm -f -- "$target"
-}
-
 maybe_restart_pm2() {
     if [ "${ALLOW_RESTORE_WITHOUT_PM2_STOP:-0}" = "1" ]; then
         echo "[restore-runtime] PM2 restart skipped by ALLOW_RESTORE_WITHOUT_PM2_STOP=1"
@@ -156,20 +148,9 @@ maybe_stop_pm2
 
 if [ -f "$extract_dir/backend-db/civilization.db" ]; then
     mkdir -p "$(dirname "$DB_PATH")"
-    restore_tmp="$DB_PATH.restore-tmp"
-    remove_file_if_present "$restore_tmp"
-    cp -- "$extract_dir/backend-db/civilization.db" "$restore_tmp"
-    if [ ! -f "$restore_tmp" ]; then
-        echo "[restore-runtime] Failed to prepare SQLite restore file: $restore_tmp" >&2
-        exit 1
-    fi
-    remove_file_if_present "$DB_PATH-wal"
-    remove_file_if_present "$DB_PATH-shm"
-    if [ ! -f "$restore_tmp" ]; then
-        echo "[restore-runtime] SQLite restore file disappeared before activation: $restore_tmp" >&2
-        exit 1
-    fi
-    mv -f -- "$restore_tmp" "$DB_PATH"
+    cp "$extract_dir/backend-db/civilization.db" "$DB_PATH.restore-tmp"
+    mv "$DB_PATH.restore-tmp" "$DB_PATH"
+    rm -f "$DB_PATH-wal" "$DB_PATH-shm"
     echo "[restore-runtime] Restored SQLite database: $DB_PATH"
 else
     echo "[restore-runtime] Backup does not include SQLite database, skipping."

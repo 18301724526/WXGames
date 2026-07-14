@@ -1,7 +1,5 @@
 # Command Owner Pipeline Step1 Prerequisite Staging Tasks
 
-⚠️ STEP1-T* 已全部执行并通过 Step2 ADMIT（fbefd4e7）；证据见 step3/step4 verification 文档。仅存档。
-
 Status: Draft v0.1, derived task list
 Date: 2026-07-09
 Source spec: `step1-command-owner-pipeline-prerequisite-staging-spec-2026-07-09.md`

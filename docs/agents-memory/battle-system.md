@@ -1,13 +1,11 @@
 ---
 name: battle-system
-description: "Interactive real-time entity battle (client plays & records inputStream, server deterministically re-simulates for the authoritative result) — live in main; conquest path still passive."
+description: "New entity-based battle system (三国群英传-style mass melee) — what's built, the architecture, and the one remaining live-integration step."
 metadata: 
   node_type: memory
   type: project
   originSessionId: b650a18f-c0ec-472b-8495-f8e0f2c889cf
 ---
-
-⚠️ codex-battle 分支已于 2026-07-09 并入单一 main，文中分支名引用仅存档；世界接线已闭环（见 p0-combat-in-world），勿按文中旧 Remaining/pending 重复派单。
 
 Building a new entity-based battle (每个士兵独立实体, 主将带兵, 竖版左右对冲, 独立战斗场景) to replace the placeholder 1v1 formula combat. Perf validated (~6000 individual sprites @60fps on an iPhone; rendering is cheap, targeting was the cost — solved by target stickiness).
 

@@ -1,7 +1,5 @@
 # Command Owner Pipeline Step2 Prerequisite Admission Tasks
 
-⚠️ 已 ADMIT（fbefd4e7），流程走完。仅存档。
-
 Status: Draft v0.1, derived task list
 Date: 2026-07-09
 Source spec: `step2-command-owner-pipeline-prerequisite-admission-spec-2026-07-09.md`

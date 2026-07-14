@@ -26,7 +26,6 @@ test('shell script guard tracks project-owned shell entrypoints', () => {
     'scripts/verify-runtime-backup.sh',
     'scripts/rotate-production-secrets.sh',
     'scripts/install-ops-agent-pm2.sh',
-    'scripts/m0-fixture/run-restore-drill.sh',
   ]);
 });
 
@@ -91,24 +90,6 @@ test('deploy rollback entrypoints keep ref and commit deployment support', () =>
   assert.match(deployScript, /restart_ops_agent_if_configured/);
   assert.match(deployScript, /ENABLE_OPS_AGENT:-0/);
   assert.match(deployScript, /bash "\$WORK_TREE\/scripts\/install-ops-agent-pm2\.sh"/);
-  const snapshotSection = deployScript.slice(
-    deployScript.indexOf('snapshot_backend_for_rollback()'),
-    deployScript.indexOf('rollback_backend_and_restart()'),
-  );
-  const rollbackSection = deployScript.slice(
-    deployScript.indexOf('rollback_backend_and_restart()'),
-    deployScript.indexOf('run_deploy_gate()'),
-  );
-  const snapshotCopyIndex = snapshotSection.indexOf('cp -al');
-  const snapshotReadOnlyIndex = snapshotSection.indexOf('chmod -R a-w');
-  const rollbackWriteRestoreIndex = rollbackSection.indexOf('restore_snapshot_write_permissions');
-  const rollbackRsyncIndex = rollbackSection.indexOf('rsync -a --delete');
-  assert.notEqual(snapshotCopyIndex, -1);
-  assert.notEqual(snapshotReadOnlyIndex, -1);
-  assert.notEqual(rollbackWriteRestoreIndex, -1);
-  assert.notEqual(rollbackRsyncIndex, -1);
-  assert.equal(snapshotCopyIndex < snapshotReadOnlyIndex, true);
-  assert.equal(rollbackWriteRestoreIndex < rollbackRsyncIndex, true);
   assert.match(rollbackScript, /rev-parse --verify "\$TARGET_REF\^\{commit\}"/);
   assert.match(rollbackScript, /bash "\$DEPLOY_SCRIPT" "\$TARGET_COMMIT"/);
   assert.match(verifyHookScript, /bash -n "\$HOOK_PATH"/);
@@ -170,15 +151,7 @@ test('runtime backup and restore scripts keep explicit safety contracts', () => 
   assert.match(restoreScript, /PM2 stop skipped by ALLOW_RESTORE_WITHOUT_PM2_STOP=1/);
   assert.match(restoreScript, /PM2 restart skipped by ALLOW_RESTORE_WITHOUT_PM2_STOP=1/);
   assert.match(restoreScript, /RESTORE_DEPLOY_STATE=1/);
-  assert.match(restoreScript, /if \[ ! -e "\$target" \] && \[ ! -L "\$target" \]/);
-  const restoreCopyIndex = restoreScript.indexOf('cp -- "$extract_dir/backend-db/civilization.db" "$restore_tmp"');
-  const walCleanupIndex = restoreScript.indexOf('remove_file_if_present "$DB_PATH-wal"');
-  const shmCleanupIndex = restoreScript.indexOf('remove_file_if_present "$DB_PATH-shm"');
-  const restoreMoveIndex = restoreScript.indexOf('mv -f -- "$restore_tmp" "$DB_PATH"');
-  assert.equal(restoreCopyIndex >= 0, true);
-  assert.equal(restoreCopyIndex < walCleanupIndex, true);
-  assert.equal(walCleanupIndex < shmCleanupIndex, true);
-  assert.equal(shmCleanupIndex < restoreMoveIndex, true);
+  assert.match(restoreScript, /rm -f "\$DB_PATH-wal" "\$DB_PATH-shm"/);
 
   assert.match(cronScript, /BACKUP_CRON_SCHEDULE="\$\{BACKUP_CRON_SCHEDULE:-17 3 \* \* \*\}"/);
   assert.match(cronScript, /CRON_MARKER="\$\{CRON_MARKER:-WXGAME_RUNTIME_BACKUP\}"/);

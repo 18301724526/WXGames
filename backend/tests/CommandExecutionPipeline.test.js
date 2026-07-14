@@ -66,8 +66,7 @@ function successfulDefinition(calls) {
   return {
     validate(context) {
       calls.push('validate');
-      const ownerContext = requireOwnerContext({ ownerKey: context.ownerResolution.ownerKey });
-      assert.equal(ownerContext.commandType, context.envelope.type);
+      requireOwnerContext({ ownerKey: context.ownerResolution.ownerKey });
       return { success: true };
     },
     execute(context) {
