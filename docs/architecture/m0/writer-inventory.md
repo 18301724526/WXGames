@@ -1,8 +1,8 @@
 # M0 Writer Inventory
 
 - 扫描类别：8
-- 源码发现：69
-- 清单声明：69
+- 源码发现：70
+- 清单声明：70
 - drift finding：0
 
 ## route
@@ -93,6 +93,7 @@
 | migration:006-rebuild-game-states-current-schema | backend/migrations/currentGameStateSchemaMigration.js:59 | SchemaMigrationService 迁移 006-rebuild-game-states-current-schema |
 | migration:007-create-release-manifests | backend/migrations/releaseManifestMigration.js:6 | SchemaMigrationService 迁移 007-create-release-manifests |
 | migration:008-create-command-receipts | backend/migrations/commandReceiptsMigration.js:6 | SchemaMigrationService 迁移 008-create-command-receipts |
+| migration:009-create-command-execution-plans | backend/migrations/commandExecutionPlansMigration.js:6 | SchemaMigrationService 迁移 009-create-command-execution-plans |
 
 ## repair_script
 

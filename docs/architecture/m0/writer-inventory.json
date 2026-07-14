@@ -670,6 +670,16 @@
             "backend/migrations/commandReceiptsMigration.js:6"
           ],
           "summary": "SchemaMigrationService 迁移 008-create-command-receipts"
+        },
+        {
+          "category": "migration",
+          "id": "migration:009-create-command-execution-plans",
+          "file": "backend/migrations/commandExecutionPlansMigration.js",
+          "line": 6,
+          "evidence": [
+            "backend/migrations/commandExecutionPlansMigration.js:6"
+          ],
+          "summary": "SchemaMigrationService 迁移 009-create-command-execution-plans"
         }
       ]
     },
@@ -744,15 +754,15 @@
   "findings": [],
   "summary": {
     "categoryCount": 8,
-    "declaredWriterCount": 69,
-    "discoveredWriterCount": 69,
+    "declaredWriterCount": 70,
+    "discoveredWriterCount": 70,
     "driftFindingCount": 0,
     "writersByCategory": {
       "route": 9,
       "command": 35,
       "worker": 5,
       "admin": 10,
-      "migration": 5,
+      "migration": 6,
       "repair_script": 4,
       "consumer": 0,
       "client_state_writer": 1

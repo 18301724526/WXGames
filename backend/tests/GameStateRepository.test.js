@@ -94,12 +94,13 @@ test('GameStateRepository records schema migration ledger during init', () => {
       { id: '006-rebuild-game-states-current-schema', status: 'applied' },
       { id: '007-create-release-manifests', status: 'applied' },
       { id: '008-create-command-receipts', status: 'applied' },
+      { id: '009-create-command-execution-plans', status: 'applied' },
     ]);
 
     const secondRepository = new GameStateRepository(db);
     secondRepository.init();
     const count = db.prepare('SELECT COUNT(*) AS count FROM schema_migrations').get().count;
-    assert.equal(count, 8);
+    assert.equal(count, 9);
   } finally {
     db.close();
   }

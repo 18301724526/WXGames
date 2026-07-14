@@ -24,6 +24,9 @@ const {
 const {
   COMMAND_RECEIPTS_MIGRATION,
 } = require('../migrations/commandReceiptsMigration');
+const {
+  COMMAND_EXECUTION_PLANS_MIGRATION,
+} = require('../migrations/commandExecutionPlansMigration');
 
 function createGameStateSchemaMigrations() {
   return [GAME_STATE_BASELINE_MIGRATION, {
@@ -106,7 +109,7 @@ function createGameStateSchemaMigrations() {
       `);
     },
   }, TASK_REWARD_GRANTS_MIGRATION, CURRENT_GAME_STATE_SCHEMA_MIGRATION, RELEASE_MANIFESTS_MIGRATION,
-  COMMAND_RECEIPTS_MIGRATION];
+  COMMAND_RECEIPTS_MIGRATION, COMMAND_EXECUTION_PLANS_MIGRATION];
 }
 
 function parseJsonField(value, fallback) {
