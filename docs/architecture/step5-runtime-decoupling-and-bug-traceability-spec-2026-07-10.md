@@ -2,7 +2,7 @@
 
 日期: 2026-07-10
 
-状态: DRAFT，待人工审阅后执行
+状态: Tranche 1（A1-A3+building 切片）已执行，见 92a81298 及后续 commits；剩余 tranche 待续。范围=前端运行时，与后端 v2.3 路线图（M0-M7）正交；涉命令管线/受管制命令处以 v2.3 及其新玩法准入清单为准。
 
 前置文档:
 - `docs/architecture/step4-existing-architecture-debt-retirement-spec-2026-07-10.md`

@@ -1,0 +1,626 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.kodagame.top/schemas/slg-capacity-v2.3.schema.json",
+  "title": "SLG Backend Capacity Evidence Contract v2.3",
+  "description": "A typed, replayable capacity and correctness evidence envelope. Structural validation is necessary but not sufficient; the deterministic evaluator described in the v2.3 architecture computes the final result. REFERENCE_V2_3_STATUS = NOT_PROVEN (pending the fourth adversarial review round; per evaluator spec v2.3 §12 every capacity report stays NOT_PROVEN until the evaluator passes its own mutation suite).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "runId",
+    "startedAt",
+    "completedAt",
+    "overallResult",
+    "evaluator",
+    "release",
+    "deploymentProfile",
+    "environment",
+    "inventory",
+    "workload",
+    "phases",
+    "stages",
+    "resourceCenters",
+    "gates",
+    "evidence",
+    "finalState"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "slg-capacity-contract-v2.3" },
+    "runId": { "$ref": "#/$defs/uuid" },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "completedAt": { "type": "string", "format": "date-time" },
+    "overallResult": { "$ref": "#/$defs/result" },
+    "evaluator": { "$ref": "#/$defs/evaluator" },
+    "release": { "$ref": "#/$defs/release" },
+    "deploymentProfile": { "$ref": "#/$defs/deploymentProfile" },
+    "environment": { "$ref": "#/$defs/environment" },
+    "inventory": { "$ref": "#/$defs/inventory" },
+    "workload": { "$ref": "#/$defs/workload" },
+    "phases": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": { "$ref": "#/$defs/phase" },
+      "allOf": [
+        { "contains": { "properties": { "name": { "const": "warmup" } }, "required": ["name"] }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "properties": { "name": { "const": "steady" } }, "required": ["name"] }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "properties": { "name": { "const": "burst" } }, "required": ["name"] }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "properties": { "name": { "const": "fault" } }, "required": ["name"] }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "properties": { "name": { "const": "drain" } }, "required": ["name"] }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "properties": { "name": { "const": "cooldown" } }, "required": ["name"] }, "minContains": 1, "maxContains": 1 }
+      ]
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/stage" }
+    },
+    "resourceCenters": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/resourceCenter" }
+    },
+    "gates": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/gate" }
+    },
+    "evidence": { "$ref": "#/$defs/evidence" },
+    "finalState": { "$ref": "#/$defs/finalState" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "overallResult": { "const": "PASS" } } },
+      "then": {
+        "properties": {
+          "inventory": {
+            "type": "object",
+            "properties": {
+              "unknownRuntimePathCount": { "const": 0 },
+              "uncoveredRuntimePathCount": { "const": 0 }
+            }
+          },
+          "finalState": {
+            "type": "object",
+            "properties": {
+              "invariantViolationCount": { "const": 0 },
+              "unresolvedReceiptCount": { "const": 0 },
+              "unresolvedJobCount": { "const": 0 },
+              "unresolvedSagaCount": { "const": 0 },
+              "checksumMatched": { "const": true },
+              "backlogDrained": { "const": true },
+              "eventConservation": {
+                "type": "object",
+                "properties": { "dropped": { "const": 0 } }
+              },
+              "cursorGap": {
+                "type": "object",
+                "properties": { "count": { "const": 0 } }
+              },
+              "ledgerImbalance": {
+                "type": "object",
+                "properties": { "count": { "const": 0 } }
+              },
+              "ownerViolation": {
+                "type": "object",
+                "properties": { "count": { "const": 0 } }
+              },
+              "cleanupConservation": {
+                "type": "object",
+                "properties": {
+                  "cleanupCount": { "const": 0 },
+                  "deleteCount": { "const": 0 }
+                }
+              },
+              "dlqUnresolved": {
+                "type": "object",
+                "properties": { "count": { "const": 0 } }
+              }
+            }
+          },
+          "gates": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                { "$ref": "#/$defs/gate" },
+                { "properties": { "result": { "enum": ["PASS", "NOT_APPLICABLE"] } } },
+                {
+                  "if": { "properties": { "result": { "const": "NOT_APPLICABLE" } } },
+                  "then": {
+                    "required": ["reason", "approvedBy", "approvalEvidenceDigest"],
+                    "properties": {
+                      "reason": { "type": "string", "minLength": 1 },
+                      "approvedBy": { "type": "string", "minLength": 1 },
+                      "approvalEvidenceDigest": { "$ref": "#/$defs/digest" }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "result": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "NOT_PROVEN", "NOT_APPLICABLE"]
+    },
+    "evaluator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "algorithmDigest", "floatingPointTolerance"],
+      "properties": {
+        "version": { "const": "slg-capacity-evaluator-v2.3" },
+        "algorithmDigest": { "$ref": "#/$defs/digest" },
+        "floatingPointTolerance": { "type": "number", "exclusiveMinimum": 0, "maximum": 0.000001 }
+      }
+    },
+    "nonNegativeNumber": {
+      "type": "number",
+      "minimum": 0
+    },
+    "positiveInteger": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "percentiles": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "mean and sampleCount are mandatory so the evaluator can uniquely recompute rho = arrivalRate.mean x serviceTime.mean from contract fields alone; a contract whose recomputed rho disagrees with any derived claim is NOT_PROVEN (reasonCode RHO_RECOMPUTATION_MISMATCH).",
+      "required": ["p50", "p95", "p99", "max", "mean", "sampleCount", "unit"],
+      "properties": {
+        "p50": { "$ref": "#/$defs/nonNegativeNumber" },
+        "p95": { "$ref": "#/$defs/nonNegativeNumber" },
+        "p99": { "$ref": "#/$defs/nonNegativeNumber" },
+        "max": { "$ref": "#/$defs/nonNegativeNumber" },
+        "mean": { "$ref": "#/$defs/nonNegativeNumber" },
+        "sampleCount": { "$ref": "#/$defs/positiveInteger" },
+        "failedCount": { "type": "integer", "minimum": 0 },
+        "droppedCount": { "type": "integer", "minimum": 0 },
+        "unit": { "type": "string", "enum": ["ms", "bytes", "items", "requests_per_second", "events_per_second", "ratio"] }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["releaseId", "manifestDigest", "backendDigest", "frontendDigest", "configDigest", "databaseSchemaVersion", "protocolVersion", "eventSchemaVersion", "capacityParameters"],
+      "properties": {
+        "releaseId": { "type": "string", "minLength": 1 },
+        "manifestDigest": { "$ref": "#/$defs/digest" },
+        "backendDigest": { "$ref": "#/$defs/digest" },
+        "frontendDigest": { "$ref": "#/$defs/digest" },
+        "configDigest": { "$ref": "#/$defs/digest" },
+        "databaseSchemaVersion": { "$ref": "#/$defs/positiveInteger" },
+        "protocolVersion": { "$ref": "#/$defs/positiveInteger" },
+        "eventSchemaVersion": { "$ref": "#/$defs/positiveInteger" },
+        "capacityParameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Capacity parameters as declared by the release manifest and enforced by the server runtime admission path. This in-contract block is a transcription, not an authority: the evaluator MUST resolve the release manifest artifact identified by release.manifestDigest, verify its signature against the R1 trust root, and assert that every field present in release.capacityParameters equals, field by field, the capacity-parameter block declared inside that signed manifest (a mandatory typed manifest field since v2.3 per evaluator spec §5.4, cutting the former capacityContractId circular reference). An unresolvable or unverifiable manifest, a manifest lacking the capacity-parameter field, or any field mismatch is NOT_PROVEN (reasonCode MMAX_BINDING_MISMATCH). The in-contract equality workload.mMax == release.capacityParameters.mMax is still asserted but is only a necessary precheck: both fields are submitter-filled, so their agreement alone proves nothing — the linearization point of the mMax binding is the signed manifest artifact. Where evidence.artifacts contains a typed artifact of type profile capturing the runtime-enforced admission configuration, the evaluator additionally asserts its declared mMax equals the manifest value; disagreement is likewise MMAX_BINDING_MISMATCH.",
+          "required": ["mMax"],
+          "properties": {
+            "mMax": { "$ref": "#/$defs/positiveInteger" },
+            "maxConcurrentActiveUsers": { "$ref": "#/$defs/positiveInteger" },
+            "maxConnections": { "$ref": "#/$defs/positiveInteger" },
+            "maxActiveOwnersPerWindow": { "$ref": "#/$defs/positiveInteger" }
+          }
+        }
+      }
+    },
+    "deploymentProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Mandatory scope declaration bound to the release manifest. The ground truth for scope is NOT this contract: the evaluator MUST resolve the release manifest artifact identified by release.manifestDigest, verify its signature against the R1 trust root (release_manifests signer key; trust root stored outside the run directory), and read the capacity deployment profile (or the profile catalogue digest) registered inside that signed manifest. It MUST then assert, item by item, that profileId, profileDigest, requiredGateIds, requiredStageClasses, requiredFaultScenarioIds and requiredResourceCenterTypes in this contract equal the manifest-declared profile; an unresolvable or unverifiable manifest, a manifest without a registered capacity profile, or any mismatch is NOT_PROVEN (reasonCode MANDATORY_PROFILE_MISSING / MANDATORY_PROFILE_INCOMPLETE), with the set difference required-minus-present recorded as an evidence field of the verdict. The in-contract assertion releaseManifestDigest == release.manifestDigest remains as a fast precheck but is never sufficient: both sides of that comparison are submitter-filled, so their equality cannot distinguish a true scope from a tailored one. Against the manifest-anchored lists the evaluator further asserts that every requiredGateIds entry appears exactly once in gates (a NOT_APPLICABLE gate counts as present only with a valid approval chain per evaluator spec v2.3 §11), every requiredStageClasses entry is covered by at least one stage, and every requiredFaultScenarioIds entry appears as a stage scenarioId with a matching fault-phase trace. Note: a single-stage / single-gate / faults:[] contract intentionally REMAINS structurally valid (workload.faults carries no minItems); it is rejected at evaluation time by this manifest-anchored profile check, and the evaluator mutation suite (spec §12, incident chain IC-5) pins exactly that fixture to NOT_PROVEN.",
+      "required": ["profileId", "profileDigest", "releaseManifestDigest", "requiredGateIds", "requiredStageClasses", "requiredFaultScenarioIds", "requiredResourceCenterTypes"],
+      "properties": {
+        "profileId": { "type": "string", "minLength": 1 },
+        "profileDigest": {
+          "$ref": "#/$defs/digest",
+          "description": "Digest of the profile definition as registered in the signed release manifest (or in the profile catalogue whose digest the manifest records). The evaluator asserts it equals the manifest-registered value; mismatch or absence on the manifest side is NOT_PROVEN (MANDATORY_PROFILE_MISSING)."
+        },
+        "releaseManifestDigest": { "$ref": "#/$defs/digest" },
+        "requiredGateIds": { "$ref": "#/$defs/nonEmptyStringArray" },
+        "requiredStageClasses": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "enum": ["gateway", "auth", "owner_mailbox", "database", "scheduler", "outbox", "event_stream", "snapshot", "socket", "client_apply"] }
+        },
+        "requiredFaultScenarioIds": { "$ref": "#/$defs/nonEmptyStringArray" },
+        "requiredResourceCenterTypes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "enum": ["cpu", "gc", "db_pool", "lock", "wal_disk", "network", "socket", "client"] },
+          "description": "Resource center types this deployment profile requires evidence for (evaluator spec v2.3 §9.2). Left operand of the deterministic set difference requiredResourceCenterTypes − {resourceCenters[].type}: a non-empty difference is NOT_PROVEN (reasonCode RESOURCE_CENTER_UNCOVERED) with the difference recorded as verdict evidence. Manifest-anchored like the other required lists: the evaluator asserts it equals the manifest-declared profile item by item."
+        }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["environmentId", "isolationClass", "cpuModel", "cpuCores", "memoryBytes", "storageClass", "databaseEngine", "os", "networkShapeDigest", "datasetShapeDigest"],
+      "properties": {
+        "environmentId": { "type": "string", "minLength": 1 },
+        "isolationClass": { "type": "string", "enum": ["isolated_synthetic", "isolated_production_shape", "staging"] },
+        "cpuModel": { "type": "string", "minLength": 1 },
+        "cpuCores": { "$ref": "#/$defs/positiveInteger" },
+        "memoryBytes": { "$ref": "#/$defs/positiveInteger" },
+        "storageClass": { "type": "string", "minLength": 1 },
+        "databaseEngine": { "type": "string", "minLength": 1 },
+        "os": { "type": "string", "minLength": 1 },
+        "networkShapeDigest": { "$ref": "#/$defs/digest" },
+        "datasetShapeDigest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inventoryDigest", "routes", "commandTypes", "jobTypes", "consumerGroups", "clientWriters", "unknownRuntimePathCount", "uncoveredRuntimePathCount"],
+      "properties": {
+        "inventoryDigest": { "$ref": "#/$defs/digest" },
+        "routes": { "$ref": "#/$defs/nonEmptyStringArray" },
+        "commandTypes": { "$ref": "#/$defs/nonEmptyStringArray" },
+        "jobTypes": { "$ref": "#/$defs/nonEmptyStringArray" },
+        "consumerGroups": { "$ref": "#/$defs/nonEmptyStringArray" },
+        "clientWriters": { "$ref": "#/$defs/nonEmptyStringArray" },
+        "unknownRuntimePathCount": { "type": "integer", "minimum": 0 },
+        "uncoveredRuntimePathCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "mixItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "fraction"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "fraction": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+      }
+    },
+    "fault": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "atSecond", "durationSeconds", "target", "expectedInvariant"],
+      "properties": {
+        "type": { "type": "string", "enum": ["process_crash", "process_pause", "network_partition", "relay_outage", "consumer_outage", "database_failover", "disk_pressure", "secret_manager_outage", "reconnect_storm", "clock_skew"] },
+        "atSecond": { "$ref": "#/$defs/nonNegativeNumber" },
+        "durationSeconds": { "$ref": "#/$defs/nonNegativeNumber" },
+        "target": { "type": "string", "minLength": 1 },
+        "expectedInvariant": { "type": "string", "minLength": 1 }
+      }
+    },
+    "workload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seed", "concurrentActiveUsers", "totalPlayers", "activeOwnersPerWindow", "windowMs", "connections", "zones", "hotOwnerFraction", "touchedOwnersP99", "touchedOwnersMax", "mMax", "commandMix", "jobMix", "consumerMix", "faults", "shape"],
+      "properties": {
+        "seed": { "type": "integer", "minimum": 0 },
+        "concurrentActiveUsers": { "$ref": "#/$defs/positiveInteger" },
+        "totalPlayers": { "$ref": "#/$defs/positiveInteger" },
+        "activeOwnersPerWindow": { "$ref": "#/$defs/positiveInteger" },
+        "windowMs": { "$ref": "#/$defs/positiveInteger" },
+        "connections": { "$ref": "#/$defs/positiveInteger" },
+        "zones": { "$ref": "#/$defs/positiveInteger" },
+        "hotOwnerFraction": { "type": "number", "minimum": 0, "maximum": 1 },
+        "touchedOwnersP99": { "$ref": "#/$defs/positiveInteger" },
+        "touchedOwnersMax": { "$ref": "#/$defs/positiveInteger" },
+        "mMax": { "$ref": "#/$defs/positiveInteger" },
+        "commandMix": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/mixItem" } },
+        "jobMix": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/mixItem" } },
+        "consumerMix": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/mixItem" } },
+        "faults": { "type": "array", "items": { "$ref": "#/$defs/fault" } },
+        "shape": { "$ref": "#/$defs/workloadShape" }
+      }
+    },
+    "workloadShape": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Typed workload-shape declaration so the evaluator can reject flat synthetic load masquerading as production shape. Each block is recomputable from the bound traces; a shape claim without matching trace evidence is NOT_PROVEN (reasonCode WORKLOAD_SHAPE_UNSUBSTANTIATED).",
+      "required": ["topKOwnerSkew", "aoi", "dueTimeHistogram", "reconnectCohort", "dataAgeMultiplier"],
+      "properties": {
+        "topKOwnerSkew": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["k", "commandShare"],
+            "properties": {
+              "k": { "$ref": "#/$defs/positiveInteger" },
+              "commandShare": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "aoi": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["actorsPerZoneP99", "actorsPerZoneMax", "watchersPerZoneP99", "watchersPerZoneMax"],
+          "properties": {
+            "actorsPerZoneP99": { "$ref": "#/$defs/positiveInteger" },
+            "actorsPerZoneMax": { "$ref": "#/$defs/positiveInteger" },
+            "watchersPerZoneP99": { "$ref": "#/$defs/positiveInteger" },
+            "watchersPerZoneMax": { "$ref": "#/$defs/positiveInteger" }
+          }
+        },
+        "dueTimeHistogram": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["bucketStartSeconds", "bucketEndSeconds", "jobCount"],
+            "properties": {
+              "bucketStartSeconds": { "$ref": "#/$defs/nonNegativeNumber" },
+              "bucketEndSeconds": { "$ref": "#/$defs/nonNegativeNumber" },
+              "jobCount": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "reconnectCohort": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cohortSize", "windowSeconds"],
+          "properties": {
+            "cohortSize": { "$ref": "#/$defs/positiveInteger" },
+            "windowSeconds": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        "dataAgeMultiplier": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Dataset aging factor relative to launch-day data volume (e.g. 10 declares a 10x data-age dataset); MUST match environment.datasetShapeDigest provenance."
+        }
+      }
+    },
+    "phase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "durationSeconds", "targetRateMultiplier", "evidenceWindowStart", "evidenceWindowEnd"],
+      "properties": {
+        "name": { "type": "string", "enum": ["warmup", "steady", "burst", "fault", "drain", "cooldown"] },
+        "durationSeconds": { "$ref": "#/$defs/nonNegativeNumber" },
+        "targetRateMultiplier": { "$ref": "#/$defs/nonNegativeNumber" },
+        "evidenceWindowStart": { "type": "string", "format": "date-time" },
+        "evidenceWindowEnd": { "type": "string", "format": "date-time" }
+      }
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stageId", "class", "scenarioId", "phase", "traceDigest", "arrivalRate", "serviceTime", "queueDepth", "queueOldestAge", "utilization", "deadlineMs", "maxQueueItems", "maxQueueBytes", "admissionOutcomes", "evidenceRefs"],
+      "description": "Joint-trace binding: every percentile block in this stage MUST be recomputed by the evaluator from the single trace artifact identified by (scenarioId, phase, traceDigest). traceDigest MUST equal the digest of a trace-type artifact in evidence.artifacts. Stages that combine marginals from different runs or phases fail the binding check and the contract is NOT_PROVEN (reasonCode JOINT_TRACE_BINDING_BROKEN); independent per-stage p99 addition remains forbidden per evaluator spec §9.",
+      "properties": {
+        "stageId": { "type": "string", "minLength": 1 },
+        "class": { "type": "string", "enum": ["gateway", "auth", "owner_mailbox", "database", "scheduler", "outbox", "event_stream", "snapshot", "socket", "client_apply"] },
+        "scenarioId": { "type": "string", "minLength": 1 },
+        "phase": { "type": "string", "enum": ["warmup", "steady", "burst", "fault", "drain", "cooldown"] },
+        "traceDigest": { "$ref": "#/$defs/digest" },
+        "arrivalRate": { "$ref": "#/$defs/percentiles" },
+        "serviceTime": { "$ref": "#/$defs/percentiles" },
+        "queueDepth": { "$ref": "#/$defs/percentiles" },
+        "queueOldestAge": { "$ref": "#/$defs/percentiles" },
+        "utilization": { "$ref": "#/$defs/percentiles" },
+        "deadlineMs": { "$ref": "#/$defs/nonNegativeNumber" },
+        "maxQueueItems": { "$ref": "#/$defs/positiveInteger" },
+        "maxQueueBytes": { "$ref": "#/$defs/positiveInteger" },
+        "admissionOutcomes": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 },
+          "required": ["accepted", "rejected_busy", "rejected_deadline", "rejected_invalid"]
+        },
+        "evidenceRefs": { "$ref": "#/$defs/evidenceRefArray" }
+      }
+    },
+    "resourceCenter": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Shared resource center evidence (evaluator spec v2.3 §9.2: coverage is judged deterministically as the set difference deploymentProfile.requiredResourceCenterTypes − {resourceCenters[].type}, NOT by an after-the-fact 'was it an actual bottleneck' judgment; a non-empty difference makes the contract NOT_PROVEN, reasonCode RESOURCE_CENTER_UNCOVERED). Each center carries its own evidenceRefs so saturation claims are independently recomputable; aggregated summaries shared across centers are rejected.",
+      "required": ["centerId", "type", "utilization", "evidenceRefs"],
+      "properties": {
+        "centerId": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "enum": ["cpu", "gc", "db_pool", "lock", "wal_disk", "network", "socket", "client"] },
+        "utilization": { "$ref": "#/$defs/percentiles" },
+        "queueDepth": { "$ref": "#/$defs/percentiles" },
+        "visitsPerCommand": { "$ref": "#/$defs/nonNegativeNumber" },
+        "parallelism": { "$ref": "#/$defs/positiveInteger" },
+        "evidenceRefs": { "$ref": "#/$defs/evidenceRefArray" }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Threshold and observation come from disjoint sources by construction: threshold MUST originate from the product SLO catalogue (thresholdSource is pinned to PRODUCT_SLO) and observed MUST originate from measurement (observedSource is pinned to MEASURED). A submitter can no longer launder a measured value into a threshold or vice versa within one field.",
+      "required": ["metric", "operator", "threshold", "observed", "unit", "thresholdSource", "observedSource"],
+      "properties": {
+        "metric": { "type": "string", "minLength": 1 },
+        "operator": { "type": "string", "enum": ["eq", "neq", "lt", "lte", "gt", "gte"] },
+        "threshold": { "type": "number" },
+        "observed": { "type": "number" },
+        "unit": { "type": "string", "minLength": 1 },
+        "thresholdSource": { "const": "PRODUCT_SLO" },
+        "observedSource": { "const": "MEASURED" }
+      }
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gateId", "result", "scopeComplete", "evidenceValid", "allInvariantsPassed", "allSlosPassed", "drainPassed", "modelAssumptionsUsed", "requiredConditions", "evidenceRefs"],
+      "properties": {
+        "gateId": { "type": "string", "minLength": 1 },
+        "result": { "$ref": "#/$defs/result" },
+        "scopeComplete": { "type": "boolean" },
+        "evidenceValid": { "type": "boolean" },
+        "allInvariantsPassed": { "type": "boolean" },
+        "allSlosPassed": { "type": "boolean" },
+        "drainPassed": { "type": "boolean" },
+        "modelAssumptionsUsed": { "type": "boolean" },
+        "requiredConditions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/condition" } },
+        "evidenceRefs": { "$ref": "#/$defs/evidenceRefArray" },
+        "reason": { "type": "string", "minLength": 1 },
+        "approvedBy": { "type": "string", "minLength": 1 },
+        "approvalEvidenceDigest": { "$ref": "#/$defs/digest" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "result": { "const": "PASS" } } },
+          "then": {
+            "properties": {
+              "scopeComplete": { "const": true },
+              "evidenceValid": { "const": true },
+              "allInvariantsPassed": { "const": true },
+              "allSlosPassed": { "const": true },
+              "drainPassed": { "const": true },
+              "modelAssumptionsUsed": { "const": false }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "result": { "enum": ["NOT_PROVEN", "NOT_APPLICABLE"] } } },
+          "then": {
+            "required": ["reason"],
+            "properties": { "reason": { "type": "string", "minLength": 1 } }
+          }
+        },
+        {
+          "if": { "properties": { "result": { "const": "NOT_APPLICABLE" } } },
+          "then": {
+            "required": ["reason", "approvedBy", "approvalEvidenceDigest"],
+            "properties": {
+              "reason": { "type": "string", "minLength": 1 },
+              "approvedBy": { "type": "string", "minLength": 1 },
+              "approvalEvidenceDigest": { "$ref": "#/$defs/digest" }
+            }
+          }
+        }
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rawEvidenceDigest", "traceDigest", "metricsDigest", "faultTimelineDigest", "correctnessReportDigest", "artifacts"],
+      "properties": {
+        "rawEvidenceDigest": { "$ref": "#/$defs/digest" },
+        "traceDigest": { "$ref": "#/$defs/digest" },
+        "metricsDigest": { "$ref": "#/$defs/digest" },
+        "faultTimelineDigest": { "$ref": "#/$defs/digest" },
+        "correctnessReportDigest": { "$ref": "#/$defs/digest" },
+        "artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/evidenceArtifact" }
+        }
+      }
+    },
+    "evidenceRefArray": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/uuid" }
+    },
+    "evidenceArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidenceId", "runId", "type", "uri", "digest", "capturedAt", "artifactSchema"],
+      "properties": {
+        "evidenceId": { "$ref": "#/$defs/uuid" },
+        "runId": { "$ref": "#/$defs/uuid" },
+        "type": { "type": "string", "enum": ["trace", "metrics", "fault_timeline", "checksum", "correctness_report", "profile", "log"] },
+        "uri": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/digest" },
+        "capturedAt": { "type": "string", "format": "date-time" },
+        "artifactSchema": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Versioned identifier of the typed artifact format (e.g. a schema URI). The evaluator only recomputes from artifacts whose artifactSchema it recognizes; an unrecognized or missing format makes every recomputation depending on this artifact non-unique and the contract NOT_PROVEN (reasonCode UNTYPED_EVIDENCE_ARTIFACT)."
+        }
+      }
+    },
+    "conservationCounter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "evidenceRefs"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "evidenceRefs": { "$ref": "#/$defs/evidenceRefArray" }
+      }
+    },
+    "commandConservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Accepted-to-terminal conservation for commands. The evaluator MUST recompute accepted == terminal + pending and committed <= terminal from the referenced evidence; a drain obtained by deleting receipts breaks this equation and is FAIL, not PASS.",
+      "required": ["accepted", "committed", "terminal", "pending", "evidenceRefs"],
+      "properties": {
+        "accepted": { "type": "integer", "minimum": 0 },
+        "committed": { "type": "integer", "minimum": 0 },
+        "terminal": { "type": "integer", "minimum": 0 },
+        "pending": { "type": "integer", "minimum": 0 },
+        "evidenceRefs": { "$ref": "#/$defs/evidenceRefArray" }
+      }
+    },
+    "eventConservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Authoritative event conservation. The evaluator MUST recompute produced == applied + pending + dropped from the referenced evidence; dropped > 0 (including retention shrink during the run) is FAIL regardless of backlogDrained.",
+      "required": ["produced", "applied", "pending", "dropped", "evidenceRefs"],
+      "properties": {
+        "produced": { "type": "integer", "minimum": 0 },
+        "applied": { "type": "integer", "minimum": 0 },
+        "pending": { "type": "integer", "minimum": 0 },
+        "dropped": { "type": "integer", "minimum": 0 },
+        "evidenceRefs": { "$ref": "#/$defs/evidenceRefArray" }
+      }
+    },
+    "cleanupConservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Rows removed by cleanup or deletion during the run (receipts, jobs, events, cursors). Any nonzero value during a run that claims PASS is a conservation violation: draining a backlog by cleanup must be declared here and forces FAIL.",
+      "required": ["cleanupCount", "deleteCount", "evidenceRefs"],
+      "properties": {
+        "cleanupCount": { "type": "integer", "minimum": 0 },
+        "deleteCount": { "type": "integer", "minimum": 0 },
+        "evidenceRefs": { "$ref": "#/$defs/evidenceRefArray" }
+      }
+    },
+    "finalState": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Final conservation state. The evaluator recomputes every conservation equation from evidenceRefs and does not trust the declared booleans or counts in isolation.",
+      "required": ["checksumAlgorithm", "expectedChecksum", "observedChecksum", "checksumMatched", "invariantViolationCount", "unresolvedReceiptCount", "unresolvedJobCount", "unresolvedSagaCount", "backlogDrained", "drainDurationMs", "commandConservation", "eventConservation", "cursorGap", "ledgerImbalance", "ownerViolation", "cleanupConservation", "dlqUnresolved"],
+      "properties": {
+        "checksumAlgorithm": { "const": "sha256" },
+        "expectedChecksum": { "$ref": "#/$defs/digest" },
+        "observedChecksum": { "$ref": "#/$defs/digest" },
+        "checksumMatched": { "type": "boolean" },
+        "invariantViolationCount": { "type": "integer", "minimum": 0 },
+        "unresolvedReceiptCount": { "type": "integer", "minimum": 0 },
+        "unresolvedJobCount": { "type": "integer", "minimum": 0 },
+        "unresolvedSagaCount": { "type": "integer", "minimum": 0 },
+        "backlogDrained": { "type": "boolean" },
+        "drainDurationMs": { "$ref": "#/$defs/nonNegativeNumber" },
+        "commandConservation": { "$ref": "#/$defs/commandConservation" },
+        "eventConservation": { "$ref": "#/$defs/eventConservation" },
+        "cursorGap": { "$ref": "#/$defs/conservationCounter" },
+        "ledgerImbalance": { "$ref": "#/$defs/conservationCounter" },
+        "ownerViolation": { "$ref": "#/$defs/conservationCounter" },
+        "cleanupConservation": { "$ref": "#/$defs/cleanupConservation" },
+        "dlqUnresolved": { "$ref": "#/$defs/conservationCounter" }
+      }
+    }
+  }
+}
