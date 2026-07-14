@@ -1,0 +1,388 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.kodagame.top/schemas/slg-capacity-v2.2.schema.json",
+  "title": "SLG Backend Capacity Evidence Contract v2.2",
+  "description": "A typed, replayable capacity and correctness evidence envelope. Structural validation is necessary but not sufficient; the deterministic evaluator described in the v2.2 architecture computes the final result.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "runId",
+    "startedAt",
+    "completedAt",
+    "overallResult",
+    "evaluator",
+    "release",
+    "environment",
+    "inventory",
+    "workload",
+    "phases",
+    "stages",
+    "gates",
+    "evidence",
+    "finalState"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "slg-capacity-v2.2" },
+    "runId": { "$ref": "#/$defs/uuid" },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "completedAt": { "type": "string", "format": "date-time" },
+    "overallResult": { "$ref": "#/$defs/result" },
+    "evaluator": { "$ref": "#/$defs/evaluator" },
+    "release": { "$ref": "#/$defs/release" },
+    "environment": { "$ref": "#/$defs/environment" },
+    "inventory": { "$ref": "#/$defs/inventory" },
+    "workload": { "$ref": "#/$defs/workload" },
+    "phases": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": { "$ref": "#/$defs/phase" },
+      "allOf": [
+        { "contains": { "properties": { "name": { "const": "warmup" } }, "required": ["name"] }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "properties": { "name": { "const": "steady" } }, "required": ["name"] }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "properties": { "name": { "const": "burst" } }, "required": ["name"] }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "properties": { "name": { "const": "fault" } }, "required": ["name"] }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "properties": { "name": { "const": "drain" } }, "required": ["name"] }, "minContains": 1, "maxContains": 1 },
+        { "contains": { "properties": { "name": { "const": "cooldown" } }, "required": ["name"] }, "minContains": 1, "maxContains": 1 }
+      ]
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/stage" }
+    },
+    "gates": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/gate" }
+    },
+    "evidence": { "$ref": "#/$defs/evidence" },
+    "finalState": { "$ref": "#/$defs/finalState" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "overallResult": { "const": "PASS" } } },
+      "then": {
+        "properties": {
+          "inventory": {
+            "type": "object",
+            "properties": {
+              "unknownRuntimePathCount": { "const": 0 },
+              "uncoveredRuntimePathCount": { "const": 0 }
+            }
+          },
+          "finalState": {
+            "type": "object",
+            "properties": {
+              "invariantViolationCount": { "const": 0 },
+              "unresolvedReceiptCount": { "const": 0 },
+              "unresolvedJobCount": { "const": 0 },
+              "unresolvedSagaCount": { "const": 0 },
+              "checksumMatched": { "const": true },
+              "backlogDrained": { "const": true }
+            }
+          },
+          "gates": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                { "$ref": "#/$defs/gate" },
+                { "properties": { "result": { "const": "PASS" } } }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "result": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "NOT_PROVEN", "NOT_APPLICABLE"]
+    },
+    "evaluator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "algorithmDigest", "floatingPointTolerance"],
+      "properties": {
+        "version": { "const": "slg-capacity-evaluator-v2.2" },
+        "algorithmDigest": { "$ref": "#/$defs/digest" },
+        "floatingPointTolerance": { "type": "number", "exclusiveMinimum": 0, "maximum": 0.000001 }
+      }
+    },
+    "nonNegativeNumber": {
+      "type": "number",
+      "minimum": 0
+    },
+    "positiveInteger": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "percentiles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["p50", "p95", "p99", "max", "unit"],
+      "properties": {
+        "p50": { "$ref": "#/$defs/nonNegativeNumber" },
+        "p95": { "$ref": "#/$defs/nonNegativeNumber" },
+        "p99": { "$ref": "#/$defs/nonNegativeNumber" },
+        "max": { "$ref": "#/$defs/nonNegativeNumber" },
+        "unit": { "type": "string", "enum": ["ms", "bytes", "items", "requests_per_second", "events_per_second", "ratio"] }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["releaseId", "manifestDigest", "backendDigest", "frontendDigest", "configDigest", "databaseSchemaVersion", "protocolVersion", "eventSchemaVersion"],
+      "properties": {
+        "releaseId": { "type": "string", "minLength": 1 },
+        "manifestDigest": { "$ref": "#/$defs/digest" },
+        "backendDigest": { "$ref": "#/$defs/digest" },
+        "frontendDigest": { "$ref": "#/$defs/digest" },
+        "configDigest": { "$ref": "#/$defs/digest" },
+        "databaseSchemaVersion": { "$ref": "#/$defs/positiveInteger" },
+        "protocolVersion": { "$ref": "#/$defs/positiveInteger" },
+        "eventSchemaVersion": { "$ref": "#/$defs/positiveInteger" }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["environmentId", "isolationClass", "cpuModel", "cpuCores", "memoryBytes", "storageClass", "databaseEngine", "os", "networkShapeDigest", "datasetShapeDigest"],
+      "properties": {
+        "environmentId": { "type": "string", "minLength": 1 },
+        "isolationClass": { "type": "string", "enum": ["isolated_synthetic", "isolated_production_shape", "staging"] },
+        "cpuModel": { "type": "string", "minLength": 1 },
+        "cpuCores": { "$ref": "#/$defs/positiveInteger" },
+        "memoryBytes": { "$ref": "#/$defs/positiveInteger" },
+        "storageClass": { "type": "string", "minLength": 1 },
+        "databaseEngine": { "type": "string", "minLength": 1 },
+        "os": { "type": "string", "minLength": 1 },
+        "networkShapeDigest": { "$ref": "#/$defs/digest" },
+        "datasetShapeDigest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inventoryDigest", "routes", "commandTypes", "jobTypes", "consumerGroups", "clientWriters", "unknownRuntimePathCount", "uncoveredRuntimePathCount"],
+      "properties": {
+        "inventoryDigest": { "$ref": "#/$defs/digest" },
+        "routes": { "$ref": "#/$defs/nonEmptyStringArray" },
+        "commandTypes": { "$ref": "#/$defs/nonEmptyStringArray" },
+        "jobTypes": { "$ref": "#/$defs/nonEmptyStringArray" },
+        "consumerGroups": { "$ref": "#/$defs/nonEmptyStringArray" },
+        "clientWriters": { "$ref": "#/$defs/nonEmptyStringArray" },
+        "unknownRuntimePathCount": { "type": "integer", "minimum": 0 },
+        "uncoveredRuntimePathCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "mixItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "fraction"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "fraction": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+      }
+    },
+    "fault": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "atSecond", "durationSeconds", "target", "expectedInvariant"],
+      "properties": {
+        "type": { "type": "string", "enum": ["process_crash", "process_pause", "network_partition", "relay_outage", "consumer_outage", "database_failover", "disk_pressure", "secret_manager_outage", "reconnect_storm", "clock_skew"] },
+        "atSecond": { "$ref": "#/$defs/nonNegativeNumber" },
+        "durationSeconds": { "$ref": "#/$defs/nonNegativeNumber" },
+        "target": { "type": "string", "minLength": 1 },
+        "expectedInvariant": { "type": "string", "minLength": 1 }
+      }
+    },
+    "workload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seed", "concurrentActiveUsers", "totalPlayers", "activeOwnersPerWindow", "windowMs", "connections", "zones", "hotOwnerFraction", "touchedOwnersP99", "touchedOwnersMax", "mMax", "commandMix", "jobMix", "consumerMix", "faults"],
+      "properties": {
+        "seed": { "type": "integer", "minimum": 0 },
+        "concurrentActiveUsers": { "$ref": "#/$defs/positiveInteger" },
+        "totalPlayers": { "$ref": "#/$defs/positiveInteger" },
+        "activeOwnersPerWindow": { "$ref": "#/$defs/positiveInteger" },
+        "windowMs": { "$ref": "#/$defs/positiveInteger" },
+        "connections": { "$ref": "#/$defs/positiveInteger" },
+        "zones": { "$ref": "#/$defs/positiveInteger" },
+        "hotOwnerFraction": { "type": "number", "minimum": 0, "maximum": 1 },
+        "touchedOwnersP99": { "$ref": "#/$defs/positiveInteger" },
+        "touchedOwnersMax": { "$ref": "#/$defs/positiveInteger" },
+        "mMax": { "$ref": "#/$defs/positiveInteger" },
+        "commandMix": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/mixItem" } },
+        "jobMix": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/mixItem" } },
+        "consumerMix": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/mixItem" } },
+        "faults": { "type": "array", "items": { "$ref": "#/$defs/fault" } }
+      }
+    },
+    "phase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "durationSeconds", "targetRateMultiplier", "evidenceWindowStart", "evidenceWindowEnd"],
+      "properties": {
+        "name": { "type": "string", "enum": ["warmup", "steady", "burst", "fault", "drain", "cooldown"] },
+        "durationSeconds": { "$ref": "#/$defs/nonNegativeNumber" },
+        "targetRateMultiplier": { "$ref": "#/$defs/nonNegativeNumber" },
+        "evidenceWindowStart": { "type": "string", "format": "date-time" },
+        "evidenceWindowEnd": { "type": "string", "format": "date-time" }
+      }
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stageId", "class", "arrivalRate", "serviceTime", "queueDepth", "queueOldestAge", "utilization", "deadlineMs", "maxQueueItems", "maxQueueBytes", "admissionOutcomes", "evidenceRefs"],
+      "properties": {
+        "stageId": { "type": "string", "minLength": 1 },
+        "class": { "type": "string", "enum": ["gateway", "auth", "owner_mailbox", "database", "scheduler", "outbox", "event_stream", "snapshot", "socket", "client_apply"] },
+        "arrivalRate": { "$ref": "#/$defs/percentiles" },
+        "serviceTime": { "$ref": "#/$defs/percentiles" },
+        "queueDepth": { "$ref": "#/$defs/percentiles" },
+        "queueOldestAge": { "$ref": "#/$defs/percentiles" },
+        "utilization": { "$ref": "#/$defs/percentiles" },
+        "deadlineMs": { "$ref": "#/$defs/nonNegativeNumber" },
+        "maxQueueItems": { "$ref": "#/$defs/positiveInteger" },
+        "maxQueueBytes": { "$ref": "#/$defs/positiveInteger" },
+        "admissionOutcomes": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 },
+          "required": ["accepted", "rejected_busy", "rejected_deadline", "rejected_invalid"]
+        },
+        "evidenceRefs": { "$ref": "#/$defs/evidenceRefArray" }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metric", "operator", "threshold", "observed", "unit", "source"],
+      "properties": {
+        "metric": { "type": "string", "minLength": 1 },
+        "operator": { "type": "string", "enum": ["eq", "neq", "lt", "lte", "gt", "gte"] },
+        "threshold": { "type": "number" },
+        "observed": { "type": "number" },
+        "unit": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "enum": ["PRODUCT_SLO", "MEASURED"] }
+      }
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gateId", "result", "scopeComplete", "evidenceValid", "allInvariantsPassed", "allSlosPassed", "drainPassed", "modelAssumptionsUsed", "requiredConditions", "evidenceRefs"],
+      "properties": {
+        "gateId": { "type": "string", "minLength": 1 },
+        "result": { "$ref": "#/$defs/result" },
+        "scopeComplete": { "type": "boolean" },
+        "evidenceValid": { "type": "boolean" },
+        "allInvariantsPassed": { "type": "boolean" },
+        "allSlosPassed": { "type": "boolean" },
+        "drainPassed": { "type": "boolean" },
+        "modelAssumptionsUsed": { "type": "boolean" },
+        "requiredConditions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/condition" } },
+        "evidenceRefs": { "$ref": "#/$defs/evidenceRefArray" },
+        "reason": { "type": "string", "minLength": 1 },
+        "approvedBy": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "result": { "const": "PASS" } } },
+          "then": {
+            "properties": {
+              "scopeComplete": { "const": true },
+              "evidenceValid": { "const": true },
+              "allInvariantsPassed": { "const": true },
+              "allSlosPassed": { "const": true },
+              "drainPassed": { "const": true },
+              "modelAssumptionsUsed": { "const": false }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "result": { "enum": ["NOT_PROVEN", "NOT_APPLICABLE"] } } },
+          "then": {
+            "required": ["reason"],
+            "properties": { "reason": { "type": "string", "minLength": 1 } }
+          }
+        },
+        {
+          "if": { "properties": { "result": { "const": "NOT_APPLICABLE" } } },
+          "then": {
+            "required": ["approvedBy"],
+            "properties": { "approvedBy": { "type": "string", "minLength": 1 } }
+          }
+        }
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rawEvidenceDigest", "traceDigest", "metricsDigest", "faultTimelineDigest", "correctnessReportDigest", "artifacts"],
+      "properties": {
+        "rawEvidenceDigest": { "$ref": "#/$defs/digest" },
+        "traceDigest": { "$ref": "#/$defs/digest" },
+        "metricsDigest": { "$ref": "#/$defs/digest" },
+        "faultTimelineDigest": { "$ref": "#/$defs/digest" },
+        "correctnessReportDigest": { "$ref": "#/$defs/digest" },
+        "artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/evidenceArtifact" }
+        }
+      }
+    },
+    "evidenceRefArray": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/uuid" }
+    },
+    "evidenceArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidenceId", "runId", "type", "uri", "digest", "capturedAt"],
+      "properties": {
+        "evidenceId": { "$ref": "#/$defs/uuid" },
+        "runId": { "$ref": "#/$defs/uuid" },
+        "type": { "type": "string", "enum": ["trace", "metrics", "fault_timeline", "checksum", "correctness_report", "profile", "log"] },
+        "uri": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/digest" },
+        "capturedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "finalState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["checksumAlgorithm", "expectedChecksum", "observedChecksum", "checksumMatched", "invariantViolationCount", "unresolvedReceiptCount", "unresolvedJobCount", "unresolvedSagaCount", "backlogDrained", "drainDurationMs"],
+      "properties": {
+        "checksumAlgorithm": { "const": "sha256" },
+        "expectedChecksum": { "$ref": "#/$defs/digest" },
+        "observedChecksum": { "$ref": "#/$defs/digest" },
+        "checksumMatched": { "type": "boolean" },
+        "invariantViolationCount": { "type": "integer", "minimum": 0 },
+        "unresolvedReceiptCount": { "type": "integer", "minimum": 0 },
+        "unresolvedJobCount": { "type": "integer", "minimum": 0 },
+        "unresolvedSagaCount": { "type": "integer", "minimum": 0 },
+        "backlogDrained": { "type": "boolean" },
+        "drainDurationMs": { "$ref": "#/$defs/nonNegativeNumber" }
+      }
+    }
+  }
+}

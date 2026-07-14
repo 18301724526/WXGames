@@ -1,0 +1,1762 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>成熟 SLG 后端实现参考与验收基准 v2.1</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js" integrity="sha384-en/ztfPSRkGfME4KIm05joYXynqzUgbsG5nMrj/xEFAHXkeZfO3yMK8QQ+mP7p1/" crossorigin="anonymous"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      padding: 32px;
+      background: #020617;
+      color: #f8fafc;
+      font-family: 'JetBrains Mono', 'Microsoft YaHei', monospace;
+    }
+
+    .container {
+      width: min(100%, 1600px);
+      margin: 0 auto;
+    }
+
+    .header {
+      margin-bottom: 24px;
+    }
+
+    .header-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .pulse-dot {
+      width: 12px;
+      height: 12px;
+      flex: 0 0 12px;
+      border-radius: 50%;
+      background: #22d3ee;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.45; }
+    }
+
+    h1 {
+      font-size: 24px;
+      line-height: 1.3;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin-top: 8px;
+      margin-left: 26px;
+      color: #94a3b8;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .toolbar-toggle {
+      padding: 4px 8px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: #64748b;
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .toolbar-toggle:hover {
+      background: rgba(30, 41, 59, 0.7);
+      color: #cbd5e1;
+    }
+
+    .toolbar-actions {
+      display: none;
+      gap: 8px;
+    }
+
+    .toolbar.expanded .toolbar-actions {
+      display: flex;
+    }
+
+    .toolbar-actions button {
+      padding: 6px 10px;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      background: rgba(30, 41, 59, 0.85);
+      color: #cbd5e1;
+      font: inherit;
+      font-size: 12px;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .toolbar-actions button:hover {
+      border-color: #64748b;
+      background: #334155;
+      color: #ffffff;
+    }
+
+    .diagram-container {
+      overflow-x: auto;
+      padding: 18px;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.58);
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      min-width: 1180px;
+      height: auto;
+    }
+
+    .acceptance-rule {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 18px;
+      align-items: center;
+      margin-top: 20px;
+      padding: 16px 18px;
+      border: 1px solid #fb7185;
+      border-radius: 8px;
+      background: rgba(136, 19, 55, 0.2);
+    }
+
+    .acceptance-rule strong {
+      color: #fb7185;
+      font-size: 14px;
+    }
+
+    .acceptance-rule p {
+      color: #cbd5e1;
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 20px;
+    }
+
+    .card {
+      min-width: 0;
+      padding: 16px;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.62);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .card-dot {
+      width: 8px;
+      height: 8px;
+      flex: 0 0 8px;
+      border-radius: 50%;
+    }
+
+    .card-dot.cyan { background: #22d3ee; }
+    .card-dot.emerald { background: #34d399; }
+    .card-dot.violet { background: #a78bfa; }
+    .card-dot.rose { background: #fb7185; }
+
+    .card h2 {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+
+    .card ul {
+      list-style: none;
+      color: #94a3b8;
+      font-size: 11px;
+      line-height: 1.75;
+    }
+
+    .card li + li {
+      margin-top: 7px;
+    }
+
+    .gate-id {
+      color: #f8fafc;
+      font-weight: 700;
+    }
+
+    .standard-section {
+      margin-top: 28px;
+    }
+
+    .section-heading {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 14px;
+      align-items: start;
+      margin-bottom: 14px;
+    }
+
+    .section-index {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 28px;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      background: #0f172a;
+      color: #22d3ee;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .section-heading h2 {
+      font-size: 16px;
+      line-height: 1.4;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .section-heading p {
+      margin-top: 5px;
+      color: #94a3b8;
+      font-size: 11px;
+      line-height: 1.75;
+    }
+
+    .subdiagram {
+      overflow-x: auto;
+      padding: 16px;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.58);
+    }
+
+    .subdiagram svg {
+      min-width: 1100px;
+    }
+
+    .implementation-note {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-left: 3px solid #fbbf24;
+      background: rgba(120, 53, 15, 0.16);
+      color: #cbd5e1;
+      font-size: 11px;
+      line-height: 1.8;
+    }
+
+    .implementation-note strong {
+      color: #fbbf24;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.52);
+    }
+
+    .architecture-table {
+      width: 100%;
+      min-width: 1180px;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 10px;
+      line-height: 1.55;
+    }
+
+    .architecture-table th,
+    .architecture-table td {
+      padding: 10px 11px;
+      border-right: 1px solid #1e293b;
+      border-bottom: 1px solid #1e293b;
+      vertical-align: top;
+      text-align: left;
+      overflow-wrap: anywhere;
+    }
+
+    .architecture-table th:last-child,
+    .architecture-table td:last-child {
+      border-right: 0;
+    }
+
+    .architecture-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .architecture-table th {
+      background: #0f172a;
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+
+    .architecture-table td {
+      color: #94a3b8;
+    }
+
+    .architecture-table code {
+      color: #c4b5fd;
+      font-family: inherit;
+      font-size: 10px;
+    }
+
+    .architecture-table .table-name {
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .architecture-table .owner {
+      color: #34d399;
+      font-weight: 600;
+    }
+
+    .architecture-table .forbidden {
+      color: #fb7185;
+      font-weight: 600;
+    }
+
+    .schema-rule-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .schema-rule {
+      padding: 14px;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.58);
+    }
+
+    .schema-rule h3 {
+      margin-bottom: 8px;
+      color: #ffffff;
+      font-size: 11px;
+      letter-spacing: 0;
+    }
+
+    .schema-rule p {
+      color: #94a3b8;
+      font-size: 10px;
+      line-height: 1.7;
+    }
+
+    .code-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .code-panel {
+      min-width: 0;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      background: #020617;
+      overflow: hidden;
+    }
+
+    .code-panel h3 {
+      padding: 10px 12px;
+      border-bottom: 1px solid #1e293b;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+
+    pre {
+      overflow: auto;
+      padding: 13px;
+      color: #cbd5e1;
+      font: 10px/1.65 'JetBrains Mono', 'Microsoft YaHei', monospace;
+      tab-size: 2;
+      white-space: pre;
+    }
+
+    .protocol-gates {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .protocol-gate {
+      min-width: 0;
+      padding: 13px;
+      border: 1px solid #164e63;
+      border-radius: 8px;
+      background: rgba(8, 51, 68, 0.28);
+      color: #94a3b8;
+      font-size: 10px;
+      line-height: 1.65;
+    }
+
+    .protocol-gate strong {
+      display: block;
+      margin-bottom: 5px;
+      color: #22d3ee;
+      font-size: 10px;
+    }
+
+    .maturity-verdict {
+      display: grid;
+      grid-template-columns: 210px 1fr;
+      gap: 18px;
+      align-items: center;
+      margin-top: 28px;
+      padding: 18px;
+      border: 1px solid #34d399;
+      border-radius: 8px;
+      background: rgba(6, 78, 59, 0.2);
+    }
+
+    .maturity-verdict strong {
+      color: #34d399;
+      font-size: 13px;
+    }
+
+    .maturity-verdict p {
+      color: #cbd5e1;
+      font-size: 11px;
+      line-height: 1.8;
+    }
+
+    .footer {
+      margin-top: 20px;
+      color: #64748b;
+      text-align: center;
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 1180px) {
+      body { padding: 18px; }
+      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .acceptance-rule { grid-template-columns: 1fr; gap: 8px; }
+      .schema-rule-grid { grid-template-columns: 1fr; }
+      .protocol-gates { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .maturity-verdict { grid-template-columns: 1fr; gap: 8px; }
+    }
+
+    @media (max-width: 680px) {
+      body { padding: 12px; }
+      h1 { font-size: 19px; }
+      .subtitle { margin-left: 0; }
+      .header-row { align-items: flex-start; flex-wrap: wrap; }
+      .toolbar { margin-left: 0; }
+      .cards { grid-template-columns: 1fr; }
+      .code-grid { grid-template-columns: 1fr; }
+      .protocol-gates { grid-template-columns: 1fr; }
+    }
+
+    @media print {
+      body { padding: 16px; background: #020617; }
+      .toolbar { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="report-container">
+    <header class="header">
+      <div class="header-row">
+        <div class="pulse-dot"></div>
+        <h1>成熟 SLG 后端实现参考与验收基准 v2.1</h1>
+        <div class="toolbar">
+          <div class="toolbar-actions">
+            <button onclick="copyAsImage(this)">📋 Copy</button>
+            <button onclick="downloadPNG(this)">🖼️ PNG</button>
+            <button onclick="downloadPDF(this)">📄 PDF</button>
+          </div>
+          <button class="toolbar-toggle" onclick="this.parentElement.classList.toggle('expanded')" title="Export options" aria-label="Export options">⋯</button>
+        </div>
+      </div>
+      <p class="subtitle">实现级标准：规定 fenced owner、原子命令结果、核心表约束、持久事件水位、断线续传、容量合同和恢复证据。单机与多机只能改变部署映射，不得改变这些语义。</p>
+    </header>
+
+    <main>
+      <div class="diagram-container">
+        <svg viewBox="0 0 1400 1040" role="img" aria-labelledby="diagram-title diagram-desc">
+          <title id="diagram-title">成熟 SLG 后端逻辑参考架构</title>
+          <desc id="diagram-desc">客户端经过边缘安全和无状态接入层，服务端推导完整 owner 集合并取得带 epoch 的写入租约。领域状态、版本、命令终态、定时任务、持久事件和 outbox 在同一事务提交；调度器和 Saga 只提交命令，不绕过权威运行时直接写库。</desc>
+          <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"></polygon>
+            </marker>
+            <marker id="arrowhead-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee"></polygon>
+            </marker>
+            <marker id="arrowhead-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#34d399"></polygon>
+            </marker>
+            <marker id="arrowhead-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#fb923c"></polygon>
+            </marker>
+            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"></path>
+            </pattern>
+          </defs>
+
+          <rect width="1400" height="1040" fill="url(#grid)"></rect>
+
+          <!-- Connections are drawn first so component surfaces mask them. -->
+          <line x1="130" y1="325" x2="188" y2="325" stroke="#22d3ee" stroke-width="2" marker-end="url(#arrowhead-cyan)"></line>
+          <line x1="360" y1="325" x2="418" y2="220" stroke="#22d3ee" stroke-width="2" marker-end="url(#arrowhead-cyan)"></line>
+          <line x1="510" y1="245" x2="510" y2="268" stroke="#fb7185" stroke-width="1.8" marker-end="url(#arrowhead)"></line>
+          <line x1="510" y1="325" x2="510" y2="348" stroke="#34d399" stroke-width="1.8" marker-end="url(#arrowhead-emerald)"></line>
+          <path d="M 510 325 L 625 325 L 625 472 L 602 472" fill="none" stroke="#22d3ee" stroke-width="1.6" marker-end="url(#arrowhead-cyan)"></path>
+          <line x1="602" y1="382" x2="708" y2="382" stroke="#34d399" stroke-width="2.2" marker-end="url(#arrowhead-emerald)"></line>
+          <line x1="830" y1="255" x2="830" y2="273" stroke="#a78bfa" stroke-width="1.6" marker-end="url(#arrowhead)"></line>
+          <line x1="830" y1="332" x2="830" y2="348" stroke="#a78bfa" stroke-width="1.6" marker-end="url(#arrowhead)"></line>
+          <line x1="830" y1="415" x2="830" y2="478" stroke="#34d399" stroke-width="2.2" marker-end="url(#arrowhead-emerald)"></line>
+          <path d="M 510 640 L 510 560 L 445 560 L 445 418" fill="none" stroke="#fb923c" stroke-width="2" marker-end="url(#arrowhead-orange)"></path>
+          <path d="M 952 540 L 995 540 L 995 245 L 1048 245" fill="none" stroke="#a78bfa" stroke-width="2.2" marker-end="url(#arrowhead)"></path>
+          <line x1="1175" y1="290" x2="1175" y2="328" stroke="#fb923c" stroke-width="1.8" marker-end="url(#arrowhead-orange)"></line>
+          <path d="M 1300 255 L 1318 255 L 1318 527 L 1302 527" fill="none" stroke="#a78bfa" stroke-width="1.8" marker-end="url(#arrowhead)"></path>
+          <line x1="1175" y1="390" x2="1175" y2="418" stroke="#fb923c" stroke-width="2.2" marker-end="url(#arrowhead-orange)"></line>
+          <path d="M 1050 445 L 1000 445 L 1000 685 L 978 685" fill="none" stroke="#fb923c" stroke-width="2" marker-end="url(#arrowhead-orange)"></path>
+          <line x1="1175" y1="555" x2="1175" y2="578" stroke="#22d3ee" stroke-width="1.8" marker-end="url(#arrowhead-cyan)"></line>
+          <line x1="980" y1="685" x2="1048" y2="615" stroke="#22d3ee" stroke-width="1.8" marker-end="url(#arrowhead-cyan)"></line>
+          <path d="M 602 472 L 660 472 L 660 615 L 1048 615" fill="none" stroke="#22d3ee" stroke-width="1.8" marker-end="url(#arrowhead-cyan)"></path>
+          <line x1="1175" y1="645" x2="1175" y2="678" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#arrowhead)"></line>
+
+          <!-- Operations relationships -->
+          <path d="M 280 830 L 280 765 L 740 765 L 740 612" fill="none" stroke="#fbbf24" stroke-width="1.3" stroke-dasharray="6,5"></path>
+          <path d="M 510 830 L 510 780 L 1120 780 L 1120 292" fill="none" stroke="#a78bfa" stroke-width="1.3" stroke-dasharray="6,5"></path>
+          <path d="M 740 830 L 740 750 L 950 750 L 950 620" fill="none" stroke="#94a3b8" stroke-width="1.3" stroke-dasharray="6,5"></path>
+          <path d="M 970 830 L 970 790 L 275 790 L 275 367" fill="none" stroke="#fb7185" stroke-width="1.3" stroke-dasharray="6,5"></path>
+          <path d="M 1200 830 L 1200 748" fill="none" stroke="#fb923c" stroke-width="1.3" stroke-dasharray="6,5"></path>
+
+          <!-- Top deployment-neutral banner -->
+          <rect x="150" y="25" width="1210" height="58" rx="6" fill="#0f172a"></rect>
+          <rect x="150" y="25" width="1210" height="58" rx="6" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.5"></rect>
+          <text x="175" y="49" fill="#fbbf24" font-size="12" font-weight="700">DEPLOYMENT-NEUTRAL / 部署中立</text>
+          <text x="175" y="69" fill="#cbd5e1" font-size="10">这些逻辑组件可以全部位于一台服务器，也可以分布在多台服务器；任何部署方式都必须保持相同的所有权和事务语义。</text>
+
+          <!-- Main logical boundary -->
+          <rect x="150" y="105" width="1210" height="650" rx="12" fill="rgba(251, 191, 36, 0.025)" stroke="#fbbf24" stroke-width="1" stroke-dasharray="8,4"></rect>
+          <text x="168" y="128" fill="#fbbf24" font-size="10" font-weight="600">AUTHORITATIVE GAME SYSTEM / 权威游戏系统逻辑边界</text>
+
+          <!-- Client -->
+          <rect x="20" y="285" width="110" height="80" rx="6" fill="#0f172a"></rect>
+          <rect x="20" y="285" width="110" height="80" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"></rect>
+          <text x="75" y="313" fill="#ffffff" font-size="12" font-weight="600" text-anchor="middle">Game Client</text>
+          <text x="75" y="333" fill="#94a3b8" font-size="9" text-anchor="middle">Web / App / Mini</text>
+          <text x="75" y="350" fill="#22d3ee" font-size="8" text-anchor="middle">Untrusted</text>
+
+          <!-- Edge security -->
+          <rect x="190" y="275" width="170" height="100" rx="6" fill="#0f172a"></rect>
+          <rect x="190" y="275" width="170" height="100" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"></rect>
+          <text x="275" y="302" fill="#ffffff" font-size="12" font-weight="600" text-anchor="middle">Edge Security</text>
+          <text x="275" y="324" fill="#cbd5e1" font-size="9" text-anchor="middle">TLS · WAF · Rate Limit</text>
+          <text x="275" y="342" fill="#94a3b8" font-size="9" text-anchor="middle">CDN / LB / DDoS</text>
+          <text x="275" y="360" fill="#fb7185" font-size="8" text-anchor="middle">Only public entry</text>
+
+          <!-- Access plane boundary -->
+          <rect x="390" y="150" width="240" height="380" rx="8" fill="transparent" stroke="#22d3ee" stroke-width="1" stroke-dasharray="4,4"></rect>
+          <text x="404" y="170" fill="#22d3ee" font-size="9" font-weight="600">STATELESS ACCESS PLANE</text>
+
+          <rect x="420" y="190" width="180" height="55" rx="6" fill="#0f172a"></rect>
+          <rect x="420" y="190" width="180" height="55" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"></rect>
+          <text x="510" y="213" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">API / Connection Gateway</text>
+          <text x="510" y="231" fill="#94a3b8" font-size="8" text-anchor="middle">stateless · horizontally replaceable</text>
+
+          <rect x="420" y="270" width="180" height="55" rx="6" fill="#0f172a"></rect>
+          <rect x="420" y="270" width="180" height="55" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"></rect>
+          <text x="510" y="293" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">Auth + Session Policy</text>
+          <text x="510" y="311" fill="#94a3b8" font-size="8" text-anchor="middle">identity · permission · quota</text>
+
+          <rect x="420" y="350" width="180" height="65" rx="6" fill="#0f172a"></rect>
+          <rect x="420" y="350" width="180" height="65" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"></rect>
+          <text x="510" y="374" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">Command Ingress</text>
+          <text x="510" y="392" fill="#94a3b8" font-size="8" text-anchor="middle">validate · request ID · idempotency</text>
+          <text x="510" y="406" fill="#34d399" font-size="8" text-anchor="middle">all writes enter here</text>
+
+          <rect x="420" y="445" width="180" height="55" rx="6" fill="#0f172a"></rect>
+          <rect x="420" y="445" width="180" height="55" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"></rect>
+          <text x="510" y="468" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">Query Ingress</text>
+          <text x="510" y="486" fill="#94a3b8" font-size="8" text-anchor="middle">read-only · cache-safe</text>
+
+          <!-- Ownership plane -->
+          <rect x="680" y="150" width="300" height="470" rx="8" fill="transparent" stroke="#34d399" stroke-width="1" stroke-dasharray="4,4"></rect>
+          <text x="694" y="170" fill="#34d399" font-size="9" font-weight="600">AUTHORITATIVE OWNERSHIP PLANE</text>
+
+          <rect x="710" y="195" width="240" height="60" rx="6" fill="#0f172a"></rect>
+          <rect x="710" y="195" width="240" height="60" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"></rect>
+          <text x="830" y="220" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">Owner Placement Authority</text>
+          <text x="830" y="239" fill="#94a3b8" font-size="8" text-anchor="middle">realm · zone · player · aggregate → holder</text>
+
+          <rect x="710" y="275" width="240" height="55" rx="6" fill="#0f172a"></rect>
+          <rect x="710" y="275" width="240" height="55" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"></rect>
+          <text x="830" y="297" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">Owner Lease + Fencing</text>
+          <text x="830" y="316" fill="#94a3b8" font-size="8" text-anchor="middle">owner_epoch · holder · lease · handoff state</text>
+
+          <rect x="710" y="350" width="240" height="65" rx="6" fill="#0f172a"></rect>
+          <rect x="710" y="350" width="240" height="65" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"></rect>
+          <text x="830" y="376" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">Owner Router</text>
+          <text x="830" y="395" fill="#94a3b8" font-size="8" text-anchor="middle">derive owner set · validate current epoch</text>
+
+          <rect x="710" y="480" width="240" height="120" rx="6" fill="#0f172a"></rect>
+          <rect x="710" y="480" width="240" height="120" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="2"></rect>
+          <text x="830" y="506" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">Realm / Cell Runtime</text>
+          <text x="830" y="528" fill="#34d399" font-size="9" font-weight="600" text-anchor="middle">SINGLE WRITER</text>
+          <text x="830" y="549" fill="#cbd5e1" font-size="8" text-anchor="middle">mailbox serializes commands per owner</text>
+          <text x="830" y="566" fill="#94a3b8" font-size="8" text-anchor="middle">domain rules · expectedVersions · fenced transaction</text>
+          <text x="830" y="583" fill="#94a3b8" font-size="8" text-anchor="middle">predeclared owners ≤ M_max; larger work → Saga</text>
+
+          <!-- Scheduler -->
+          <rect x="390" y="640" width="240" height="80" rx="6" fill="#0f172a"></rect>
+          <rect x="390" y="640" width="240" height="80" rx="6" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"></rect>
+          <text x="510" y="666" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">World Scheduler / Timer Wheel</text>
+          <text x="510" y="686" fill="#cbd5e1" font-size="8" text-anchor="middle">creates due commands only</text>
+          <text x="510" y="704" fill="#fb923c" font-size="8" font-weight="600" text-anchor="middle">MUST NOT write state directly</text>
+
+          <!-- Projection workers -->
+          <rect x="680" y="650" width="300" height="70" rx="6" fill="#0f172a"></rect>
+          <rect x="680" y="650" width="300" height="70" rx="6" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"></rect>
+          <text x="830" y="675" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">Saga / Projection / Notification Workers</text>
+          <text x="830" y="695" fill="#94a3b8" font-size="8" text-anchor="middle">durable workflows · read models · mail · analytics</text>
+          <text x="830" y="710" fill="#fb923c" font-size="8" text-anchor="middle">authoritative changes return as commands</text>
+
+          <!-- Durable data plane -->
+          <rect x="1020" y="150" width="310" height="590" rx="8" fill="transparent" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4,4"></rect>
+          <text x="1034" y="170" fill="#a78bfa" font-size="9" font-weight="600">DURABLE DATA + EVENT PLANE</text>
+
+          <rect x="1050" y="200" width="250" height="90" rx="6" fill="#0f172a"></rect>
+          <rect x="1050" y="200" width="250" height="90" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="2"></rect>
+          <text x="1175" y="226" fill="#ffffff" font-size="11" font-weight="700" text-anchor="middle">Transactional State Store</text>
+          <text x="1175" y="246" fill="#cbd5e1" font-size="8" text-anchor="middle">authoritative state + row version</text>
+          <text x="1175" y="264" fill="#94a3b8" font-size="8" text-anchor="middle">atomic state + receipt + jobs + stream + outbox</text>
+          <text x="1175" y="280" fill="#a78bfa" font-size="8" text-anchor="middle">SQL / strict single-writer store</text>
+
+          <rect x="1050" y="330" width="250" height="60" rx="6" fill="#0f172a"></rect>
+          <rect x="1050" y="330" width="250" height="60" rx="6" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"></rect>
+          <text x="1175" y="355" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">Short-lived Transactional Outbox</text>
+          <text x="1175" y="374" fill="#94a3b8" font-size="8" text-anchor="middle">relay spool · retry · bounded cleanup</text>
+
+          <rect x="1050" y="420" width="250" height="50" rx="4" fill="#0f172a"></rect>
+          <rect x="1050" y="420" width="250" height="50" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"></rect>
+          <text x="1175" y="442" fill="#ffffff" font-size="10" font-weight="600" text-anchor="middle">Domain Bus + Consumer Cursors</text>
+          <text x="1175" y="459" fill="#94a3b8" font-size="8" text-anchor="middle">at-least-once · gap detection · DLQ</text>
+
+          <rect x="1050" y="500" width="250" height="55" rx="4" fill="#0f172a"></rect>
+          <rect x="1050" y="500" width="250" height="55" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"></rect>
+          <text x="1175" y="523" fill="#ffffff" font-size="10" font-weight="600" text-anchor="middle">Durable Client Resume Stream</text>
+          <text x="1175" y="541" fill="#94a3b8" font-size="8" text-anchor="middle">transactional rows · seq · retention · committed watermark</text>
+
+          <rect x="1050" y="580" width="250" height="65" rx="6" fill="#0f172a"></rect>
+          <rect x="1050" y="580" width="250" height="65" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"></rect>
+          <text x="1175" y="603" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">Read Model + Ephemeral Cache</text>
+          <text x="1175" y="622" fill="#94a3b8" font-size="8" text-anchor="middle">query views · presence · hot data</text>
+          <text x="1175" y="638" fill="#22d3ee" font-size="8" text-anchor="middle">never source of truth</text>
+
+          <rect x="1050" y="680" width="250" height="45" rx="6" fill="#0f172a"></rect>
+          <rect x="1050" y="680" width="250" height="45" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"></rect>
+          <text x="1175" y="699" fill="#ffffff" font-size="10" font-weight="600" text-anchor="middle">PITR Data + Stream Restore</text>
+          <text x="1175" y="715" fill="#94a3b8" font-size="8" text-anchor="middle">fence writers · verify · replay · smoke</text>
+
+          <!-- Flow labels -->
+          <text x="158" y="316" fill="#22d3ee" font-size="8">HTTPS</text>
+          <text x="648" y="371" fill="#34d399" font-size="8">owner key</text>
+          <text x="968" y="361" fill="#a78bfa" font-size="8">transaction</text>
+          <text x="628" y="606" fill="#fb923c" font-size="8">due command</text>
+          <text x="818" y="631" fill="#fb923c" font-size="8">events</text>
+          <text x="775" y="605" fill="#22d3ee" font-size="8">queries</text>
+
+          <!-- Operations boundary -->
+          <rect x="150" y="800" width="1210" height="165" rx="12" fill="rgba(30, 41, 59, 0.25)" stroke="#94a3b8" stroke-width="1" stroke-dasharray="8,4"></rect>
+          <text x="168" y="821" fill="#94a3b8" font-size="9" font-weight="600">CONTROL PLANE / 不得绕过权威数据路径</text>
+
+          <rect x="180" y="840" width="200" height="85" rx="6" fill="#0f172a"></rect>
+          <rect x="180" y="840" width="200" height="85" rx="6" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.5"></rect>
+          <text x="280" y="866" fill="#ffffff" font-size="10" font-weight="600" text-anchor="middle">Immutable Release Controller</text>
+          <text x="280" y="886" fill="#94a3b8" font-size="8" text-anchor="middle">build once · atomic switch</text>
+          <text x="280" y="903" fill="#fbbf24" font-size="8" text-anchor="middle">health gate · full rollback</text>
+
+          <rect x="410" y="840" width="200" height="85" rx="6" fill="#0f172a"></rect>
+          <rect x="410" y="840" width="200" height="85" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"></rect>
+          <text x="510" y="866" fill="#ffffff" font-size="10" font-weight="600" text-anchor="middle">Config + Schema Lifecycle</text>
+          <text x="510" y="886" fill="#94a3b8" font-size="8" text-anchor="middle">versioned · validated · compatible</text>
+          <text x="510" y="903" fill="#a78bfa" font-size="8" text-anchor="middle">expand → migrate → contract</text>
+
+          <rect x="640" y="840" width="200" height="85" rx="6" fill="#0f172a"></rect>
+          <rect x="640" y="840" width="200" height="85" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"></rect>
+          <text x="740" y="866" fill="#ffffff" font-size="10" font-weight="600" text-anchor="middle">Observability + SLO</text>
+          <text x="740" y="886" fill="#94a3b8" font-size="8" text-anchor="middle">metrics · logs · traces · alerts</text>
+          <text x="740" y="903" fill="#cbd5e1" font-size="8" text-anchor="middle">gateway · runtime · DB · queue</text>
+
+          <rect x="870" y="840" width="200" height="85" rx="6" fill="#0f172a"></rect>
+          <rect x="870" y="840" width="200" height="85" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"></rect>
+          <text x="970" y="866" fill="#ffffff" font-size="10" font-weight="600" text-anchor="middle">Security + Secrets</text>
+          <text x="970" y="886" fill="#94a3b8" font-size="8" text-anchor="middle">private backend · least privilege</text>
+          <text x="970" y="903" fill="#fb7185" font-size="8" text-anchor="middle">rotation · audit · redaction</text>
+
+          <rect x="1100" y="840" width="200" height="85" rx="6" fill="#0f172a"></rect>
+          <rect x="1100" y="840" width="200" height="85" rx="6" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"></rect>
+          <text x="1200" y="866" fill="#ffffff" font-size="10" font-weight="600" text-anchor="middle">Capacity + Backpressure</text>
+          <text x="1200" y="886" fill="#94a3b8" font-size="8" text-anchor="middle">measured limits · bounded queues</text>
+          <text x="1200" y="903" fill="#fb923c" font-size="8" text-anchor="middle">shed load before corruption</text>
+
+          <!-- Legend outside all boundaries -->
+          <text x="150" y="1002" fill="#ffffff" font-size="9" font-weight="600">LEGEND</text>
+          <rect x="220" y="991" width="18" height="11" rx="2" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee"></rect>
+          <text x="246" y="1001" fill="#94a3b8" font-size="8">Access / Read</text>
+          <rect x="355" y="991" width="18" height="11" rx="2" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399"></rect>
+          <text x="381" y="1001" fill="#94a3b8" font-size="8">Authoritative Write</text>
+          <rect x="525" y="991" width="18" height="11" rx="2" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa"></rect>
+          <text x="551" y="1001" fill="#94a3b8" font-size="8">Durable State</text>
+          <rect x="670" y="991" width="18" height="11" rx="2" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c"></rect>
+          <text x="696" y="1001" fill="#94a3b8" font-size="8">Async / Scheduling</text>
+          <rect x="845" y="991" width="18" height="11" rx="2" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185"></rect>
+          <text x="871" y="1001" fill="#94a3b8" font-size="8">Security</text>
+          <line x1="965" y1="997" x2="995" y2="997" stroke="#64748b" stroke-width="1.5" stroke-dasharray="5,4"></line>
+          <text x="1003" y="1001" fill="#94a3b8" font-size="8">Control / Observation</text>
+        </svg>
+      </div>
+
+      <section class="acceptance-rule" aria-label="architecture verdict rule">
+        <strong>ARCHITECTURE VERDICT</strong>
+        <p><code>REFERENCE_V2_STATUS = NOT_PROVEN</code>，<code>CURRENT_IMPLEMENTATION = NON_CONFORMING</code>。机器数量不参与正确性判定。C1-C5、D1-D5、R1-R5 中任意一项失败即不通过；不得以“用户少、冲突概率低、增加重试、提高 busy timeout”代替证明。O1-O5 决定该架构能否进入对外测试或生产运行。</p>
+      </section>
+
+      <section class="cards" aria-label="architecture acceptance gates">
+        <article class="card">
+          <div class="card-header">
+            <div class="card-dot emerald"></div>
+            <h2>Correctness Gates</h2>
+          </div>
+          <ul>
+            <li><span class="gate-id">C1</span> 每个可变 aggregate 只有当前 <code>owner_epoch</code> 的 holder 可写；每笔事务在数据库内验证 fencing。</li>
+            <li><span class="gate-id">C2</span> 服务端推导完整 owner 集合并校验所有引用实体权限；客户端 ownerKey 不构成授权。</li>
+            <li><span class="gate-id">C3</span> 同一 owner 串行；多 owner 预声明、按唯一顺序加锁，动态发现 owner 必须回滚并重路由。</li>
+            <li><span class="gate-id">C4</span> 命令携带所有 touched owner 的 expectedVersions；任一冲突整体拒绝并重新求值。</li>
+            <li><span class="gate-id">C5</span> 调度器、后台任务和管理接口不得绕过命令入口直接改权威状态。</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <div class="card-dot violet"></div>
+            <h2>Data + Event Gates</h2>
+          </div>
+          <ul>
+            <li><span class="gate-id">D1</span> 领域行、aggregate 版本、命令终态、定时任务、持久事件和 outbox 在同一事务提交。</li>
+            <li><span class="gate-id">D2</span> 短期 outbox 与客户端续传事件流职责分离；snapshot cut 使用已提交事件水位。</li>
+            <li><span class="gate-id">D3</span> 消费者具有 per-stream cursor、缺口检测、重放、退避、最大重试和 DLQ。</li>
+            <li><span class="gate-id">D4</span> 缓存、搜索索引、读模型均不是权威来源，可被完整重建。</li>
+            <li><span class="gate-id">D5</span> 付费货币、充值、退款和补偿进入不可变 ledger；幂等键不能代替业务唯一约束。</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <div class="card-dot cyan"></div>
+            <h2>Release + Recovery Gates</h2>
+          </div>
+          <ul>
+            <li><span class="gate-id">R1</span> release manifest 锁定后端、前端、配置、DB schema、协议和事件 schema。</li>
+            <li><span class="gate-id">R2</span> 线上运行不可变制品并原子切换；Git worktree 不承担线上目录。</li>
+            <li><span class="gate-id">R3</span> API、协议、事件和数据库迁移遵循兼容矩阵与 expand-migrate-contract。</li>
+            <li><span class="gate-id">R4</span> 权威数据由 DB/PITR 和持久流恢复；基础设施由版本配置重建，密钥来自 secret manager。</li>
+            <li><span class="gate-id">R5</span> 恢复先 fence 全部 writer，再做 integrity、replay、未决工作流检查和玩法 smoke。</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <div class="card-header">
+            <div class="card-dot rose"></div>
+            <h2>Operational Gates</h2>
+          </div>
+          <ul>
+            <li><span class="gate-id">O1</span> 健康检查覆盖 owner lease、scheduler、outbox、事件流、DB、磁盘和恢复 lag。</li>
+            <li><span class="gate-id">O2</span> versioned workload manifest 声明负载形状、阶段容量、队列、deadline 和停止条件。</li>
+            <li><span class="gate-id">O3</span> 后端仅私网可达，凭据不入代码和日志，权限最小化并可审计。</li>
+            <li><span class="gate-id">O4</span> 生产与非生产隔离；单机部署时也必须有资源预算和故障边界。</li>
+            <li><span class="gate-id">O5</span> 按 endpoint、账号、session、owner、AOI 和成本设置可测量限制，不使用万能固定数字。</li>
+          </ul>
+        </article>
+      </section>
+
+      <section class="standard-section" aria-labelledby="write-path-title">
+        <div class="section-heading">
+          <span class="section-index">01</span>
+          <div>
+            <h2 id="write-path-title">一次权威写入到底怎样发生</h2>
+            <p>成熟实现不是“多个服务都能写同一份状态”。每条命令必须具有稳定 ID、服务端推导的 owner 集合、当前 fencing epoch、全量 expectedVersions 和可查询终态；重试只恢复同一 commandId，不重新创造一次业务事实。</p>
+          </div>
+        </div>
+
+        <div class="subdiagram">
+          <svg viewBox="0 0 1400 720" role="img" aria-labelledby="write-seq-title write-seq-desc">
+            <title id="write-seq-title">权威命令事务序列</title>
+            <desc id="write-seq-desc">客户端命令经过会话校验、服务端 owner 推导和串行运行时，在一个数据库事务中验证 owner epoch 与所有版本，并提交领域状态、命令终态、定时任务、持久事件和 outbox。ACK 可按 commandId 恢复，客户端状态只由有序事件更新。</desc>
+            <defs>
+              <marker id="write-arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"></polygon>
+              </marker>
+              <marker id="write-arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#34d399"></polygon>
+              </marker>
+              <marker id="write-arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#fb923c"></polygon>
+              </marker>
+              <pattern id="write-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"></path>
+              </pattern>
+            </defs>
+            <rect width="1400" height="720" fill="url(#write-grid)"></rect>
+
+            <!-- Lifelines and arrows first -->
+            <line x1="110" y1="86" x2="110" y2="675" stroke="#334155" stroke-dasharray="5,5"></line>
+            <line x1="330" y1="86" x2="330" y2="675" stroke="#334155" stroke-dasharray="5,5"></line>
+            <line x1="555" y1="86" x2="555" y2="675" stroke="#334155" stroke-dasharray="5,5"></line>
+            <line x1="800" y1="86" x2="800" y2="675" stroke="#334155" stroke-dasharray="5,5"></line>
+            <line x1="1050" y1="86" x2="1050" y2="675" stroke="#334155" stroke-dasharray="5,5"></line>
+            <line x1="1280" y1="86" x2="1280" y2="675" stroke="#334155" stroke-dasharray="5,5"></line>
+
+            <line x1="110" y1="130" x2="328" y2="130" stroke="#22d3ee" stroke-width="1.8" marker-end="url(#write-arrow)"></line>
+            <line x1="330" y1="185" x2="553" y2="185" stroke="#fb7185" stroke-width="1.8" marker-end="url(#write-arrow)"></line>
+            <line x1="555" y1="235" x2="798" y2="235" stroke="#34d399" stroke-width="2" marker-end="url(#write-arrow-green)"></line>
+            <path d="M 800 280 C 875 280 875 315 800 315" fill="none" stroke="#34d399" stroke-width="1.8" marker-end="url(#write-arrow-green)"></path>
+            <line x1="800" y1="355" x2="1048" y2="355" stroke="#a78bfa" stroke-width="1.8" marker-end="url(#write-arrow)"></line>
+            <line x1="800" y1="410" x2="1048" y2="410" stroke="#a78bfa" stroke-width="1.8" marker-end="url(#write-arrow)"></line>
+            <line x1="800" y1="465" x2="1048" y2="465" stroke="#a78bfa" stroke-width="2" marker-end="url(#write-arrow)"></line>
+            <line x1="1050" y1="515" x2="802" y2="515" stroke="#34d399" stroke-width="2" marker-end="url(#write-arrow-green)"></line>
+            <line x1="800" y1="555" x2="332" y2="555" stroke="#34d399" stroke-width="1.8" marker-end="url(#write-arrow-green)"></line>
+            <line x1="330" y1="585" x2="112" y2="585" stroke="#22d3ee" stroke-width="1.8" marker-end="url(#write-arrow)"></line>
+            <line x1="1050" y1="625" x2="1278" y2="625" stroke="#fb923c" stroke-width="2" marker-end="url(#write-arrow-orange)"></line>
+            <path d="M 1280 665 L 1280 690 L 110 690 L 110 668" fill="none" stroke="#fb923c" stroke-width="1.8" marker-end="url(#write-arrow-orange)"></path>
+
+            <!-- Transaction boundary -->
+            <rect x="735" y="325" width="385" height="215" rx="8" fill="rgba(76, 29, 149, 0.07)" stroke="#a78bfa" stroke-width="1" stroke-dasharray="6,4"></rect>
+            <text x="750" y="344" fill="#a78bfa" font-size="9" font-weight="600">ONE DATABASE TRANSACTION</text>
+
+            <!-- Participants -->
+            <rect x="30" y="30" width="160" height="55" rx="6" fill="#0f172a"></rect>
+            <rect x="30" y="30" width="160" height="55" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"></rect>
+            <text x="110" y="53" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">Game Client</text>
+            <text x="110" y="71" fill="#94a3b8" font-size="8" text-anchor="middle">intent only, never full state</text>
+
+            <rect x="250" y="30" width="160" height="55" rx="6" fill="#0f172a"></rect>
+            <rect x="250" y="30" width="160" height="55" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"></rect>
+            <text x="330" y="53" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">Gateway</text>
+            <text x="330" y="71" fill="#94a3b8" font-size="8" text-anchor="middle">auth · quota · schema</text>
+
+            <rect x="475" y="30" width="160" height="55" rx="6" fill="#0f172a"></rect>
+            <rect x="475" y="30" width="160" height="55" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"></rect>
+            <text x="555" y="53" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">Owner Router</text>
+            <text x="555" y="71" fill="#94a3b8" font-size="8" text-anchor="middle">derive owners · lease epoch · authorize refs</text>
+
+            <rect x="710" y="30" width="180" height="55" rx="6" fill="#0f172a"></rect>
+            <rect x="710" y="30" width="180" height="55" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"></rect>
+            <text x="800" y="53" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">Realm Runtime</text>
+            <text x="800" y="71" fill="#94a3b8" font-size="8" text-anchor="middle">owner mailbox · fenced writer</text>
+
+            <rect x="960" y="30" width="180" height="55" rx="6" fill="#0f172a"></rect>
+            <rect x="960" y="30" width="180" height="55" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"></rect>
+            <text x="1050" y="53" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">Transactional DB</text>
+            <text x="1050" y="71" fill="#94a3b8" font-size="8" text-anchor="middle">narrow rows · versioned</text>
+
+            <rect x="1190" y="30" width="180" height="55" rx="6" fill="#0f172a"></rect>
+            <rect x="1190" y="30" width="180" height="55" rx="6" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"></rect>
+            <text x="1280" y="53" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">Outbox + Event Streams</text>
+            <text x="1280" y="71" fill="#94a3b8" font-size="8" text-anchor="middle">durable seq · cursors · retry</text>
+
+            <!-- Sequence labels -->
+            <text x="122" y="121" fill="#22d3ee" font-size="8">1 CMD commandId · clientSeq · sessionEpoch · expectedVersions · intent</text>
+            <text x="350" y="176" fill="#fb7185" font-size="8">2 authenticate · revocation/freeze/device policy · request budget</text>
+            <text x="585" y="226" fill="#34d399" font-size="8">3 derive and authorize complete owner set; owner count ≤ M_max</text>
+            <text x="820" y="273" fill="#34d399" font-size="8">4 serialize mailbox; canonical command/owner/domain lock order</text>
+            <text x="820" y="372" fill="#a78bfa" font-size="8">5 lock receipt + owner_leases + heads; validate payload hash and epochs</text>
+            <text x="820" y="401" fill="#a78bfa" font-size="8">6 compare every expectedVersion; validate constraints and reservations</text>
+            <text x="820" y="456" fill="#a78bfa" font-size="8">7 domain rows + heads + jobs + stream events + outbox + terminal receipt</text>
+            <text x="820" y="506" fill="#34d399" font-size="8">8 COMMIT makes result, versions and committed watermarks durable together</text>
+            <text x="455" y="546" fill="#34d399" font-size="8">9 ACK: terminal status · result · versions · watermarks; no competing state patch</text>
+            <text x="1090" y="616" fill="#fb923c" font-size="8">10 relay committed outbox; advance consumer cursors</text>
+            <text x="550" y="682" fill="#fb923c" font-size="8">11 push ordered events; reconnect resumes independently for every subscribed stream</text>
+          </svg>
+        </div>
+
+        <div class="implementation-note">
+          <strong>命令状态机与未知提交：</strong><code>RECEIVED → ACCEPTED → IN_PROGRESS → COMMITTED | REJECTED_FINAL | FAILED_FINAL</code>。领域事务必须把终态 receipt 与领域写入一起提交。连接在 COMMIT 附近断开时，客户端以 <code>commandId</code> 查询或重试；服务端只返回已存终态，或继续恢复同一命令。相同 ID 不同 payload hash 必须拒绝。ACK 仅报告命令终态和事件水位，不作为第二条状态应用通道。
+        </div>
+
+        <div class="implementation-note">
+          <strong>当前实现差距：</strong><code>backend/application/commands/CommandCommitter.js:50</code> 先持久化领域状态，<code>:110</code> 再单独记录命令结果，尚未满足 D1 的原子终态要求。与此同时，<code>WorldWorkerService.executeInternalCommand():231-256</code> 已进入统一 <code>CommandExecutionPipeline</code>；不能把“worker 完全绕过管线”写成事实。
+        </div>
+      </section>
+
+      <section class="standard-section" aria-labelledby="consistency-title">
+        <div class="section-heading">
+          <span class="section-index">02</span>
+          <div>
+            <h2 id="consistency-title">不同类型写入采用不同一致性边界</h2>
+            <p>SLG 的关键不是把所有操作塞进一个玩家 JSON。单 owner、有限多 owner 和长事务工作流必须采用三种明确边界，并且共享同一 fencing、幂等和审计语义。</p>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="architecture-table">
+            <colgroup>
+              <col style="width: 16%">
+              <col style="width: 19%">
+              <col style="width: 25%">
+              <col style="width: 20%">
+              <col style="width: 20%">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>写入类型</th>
+                <th>典型命令</th>
+                <th>owner 与事务</th>
+                <th>冲突/失败处理</th>
+                <th>明确禁止</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="table-name">单玩家 / 单城市</td>
+                <td>升级建筑、科技、征兵、领取奖励、资源消费</td>
+                <td><span class="owner">player:{id}</span> 或 <span class="owner">city:{id}</span> 邮箱；事务验证 owner_leases.epoch，并更新领域行、head、terminal receipt、jobs、stream event 与 outbox。</td>
+                <td>expectedVersions 冲突即拒绝；相同 commandId 返回原终态；余额约束与业务唯一键共同防重复。</td>
+                <td class="forbidden">API 与 worker 分别读取旧快照后覆盖整行玩家状态。</td>
+              </tr>
+              <tr>
+                <td class="table-name">同 realm / zone 多实体</td>
+                <td>开始行军、占领地块、战斗结算、双方资源转移</td>
+                <td>服务端预声明完整 owner 集合；仅当 owner 数不超过 capacity contract 的 <code>M_max</code> 时，按全局锁顺序在同一数据库分区事务内更新 army、march、tile、battle。</td>
+                <td>锁序固定为 receipt → owner_leases → aggregate_heads/stream_heads → 按表序与主键排序的领域行。动态 owner 发现导致整体回滚和重路由。</td>
+                <td class="forbidden">跨多个进程各写一半后再“尽量补齐”。</td>
+              </tr>
+              <tr>
+                <td class="table-name">跨 zone / realm</td>
+                <td>跨服迁移、跨区邮件、联盟协作、排行榜奖励</td>
+                <td>使用持久 Saga：reserve → dispatch → confirm，失败进入 compensate；每个 step 通过稳定 commandId 进入对应 owner runtime，每一步仍是本地事务。</td>
+                <td>实例、步骤和 reservation 全部持久化；超时进入 compensating，无法自动收敛进入 escalated/manual_review，禁止静默遗留半完成状态。</td>
+                <td class="forbidden">跨数据库双写、无状态机的分布式“同时成功”。</td>
+              </tr>
+              <tr>
+                <td class="table-name">定时推进</td>
+                <td>建筑完成、行军到达、体力恢复、活动结算</td>
+                <td>scheduled_jobs 以稳定 <code>job:{jobId}</code> 命令进入 owner runtime；claim 必须原子写入 lease_token/lease_epoch，旧 lease 无权完成任务。</td>
+                <td>按 due_at、priority class、job_id 稳定出队；指数退避、最大尝试和 DLQ 有界；重复投递由 receipt 去重。</td>
+                <td class="forbidden">timer worker 直接 UPDATE 玩家、地块或行军状态。</td>
+              </tr>
+              <tr>
+                <td class="table-name">读模型 / 推送</td>
+                <td>排行榜、地图视野、战报、在线状态、前端 projection</td>
+                <td>消费持久事件流后更新 projection；outbox 仅是短期 relay spool。客户端与后台消费者分别维护 per-stream cursor。</td>
+                <td>重复事件幂等，缺口阻止 cursor 前移并触发重放；超出保留窗口才使用带 committed watermark 的 snapshot。</td>
+                <td class="forbidden">把 Redis、缓存或 projection 当成资源余额和领地归属的权威来源。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="schema-rule-grid">
+          <article class="schema-rule">
+            <h3>Owner Handoff Rule</h3>
+            <p><code>active → draining → transferring → active</code>。draining 后拒绝新命令并排空 mailbox；旧 holder 释放或被撤销后递增 owner_epoch，新 holder 从已提交 watermark 接管。旧 epoch 的任何写入必须在数据库内失败。</p>
+          </article>
+          <article class="schema-rule">
+            <h3>Owner Set Rule</h3>
+            <p>路由前计算并记录 owner_set_hash。执行阶段发现未声明 owner 时不得临时补锁；事务回滚，重新授权并重路由同一 commandId。<code>M_max</code> 是版本化容量参数，不是写死的通用数字。</p>
+          </article>
+          <article class="schema-rule">
+            <h3>Saga Rule</h3>
+            <p>超过 M_max、跨分区或包含外部系统的工作必须拆为可补偿步骤。reservation 具有到期时间、业务唯一键和守恒校验；人工仲裁是显式终态，不允许无限重试。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="standard-section" aria-labelledby="schema-title">
+        <div class="section-heading">
+          <span class="section-index">03</span>
+          <div>
+            <h2 id="schema-title">核心表模型：权威状态、所有权租约、事件与工作流分离</h2>
+            <p>以下是可直接用于验收的逻辑表目录。示例以 PostgreSQL 语义表达；其他数据库只有在保留相同主键、约束、事务、fencing 和恢复语义时才可判定等价。表名可变，语义不可省略。</p>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="architecture-table">
+            <colgroup>
+              <col style="width: 15%">
+              <col style="width: 18%">
+              <col style="width: 32%">
+              <col style="width: 16%">
+              <col style="width: 19%">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>逻辑表</th>
+                <th>主键 / 分区键</th>
+                <th>关键字段</th>
+                <th>唯一写入 owner</th>
+                <th>必须具备的约束 / 索引</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="table-name">accounts</td><td><code>account_id</code></td><td>status, credential_version, created_at</td><td class="owner">identity service</td><td>登录名/平台身份 UNIQUE；不存明文密码。</td></tr>
+              <tr><td class="table-name">sessions</td><td><code>session_id</code></td><td>account_id, device_id, token_hash, credential_version, session_epoch, state, expires_at, revoked_at</td><td class="owner">session service</td><td>token_hash UNIQUE；state CHECK；冻结/重置/撤销必须可立即使旧 epoch 失效；多设备策略显式化。</td></tr>
+              <tr><td class="table-name">realm_players</td><td><code>(realm_id, player_id)</code></td><td>account_id, home_zone_id, name, status, created_at</td><td class="owner">player:{id}</td><td><code>(realm_id, account_id)</code> UNIQUE；realm_id 是所有游戏表首要分区键。</td></tr>
+              <tr><td class="table-name">owner_leases</td><td><code>(realm_id, owner_key)</code></td><td>owner_epoch, holder_id, state, lease_until, transfer_to, updated_at</td><td class="owner">placement authority</td><td>state CHECK(active/draining/transferring)；epoch 单调递增；每笔写事务匹配 holder、epoch 与未过期 lease。</td></tr>
+              <tr><td class="table-name">aggregate_heads</td><td><code>(realm_id, owner_key)</code></td><td>version, committed_event_seq, updated_at</td><td class="owner">对应 owner runtime</td><td>只表达 aggregate 版本，不兼任租约；expectedVersion CAS；多 owner 按统一顺序锁定。</td></tr>
+              <tr><td class="table-name">stream_heads</td><td><code>(realm_id, stream_key)</code></td><td>committed_seq, retained_from_seq, updated_at</td><td class="owner">领域事务</td><td>每条 stream 单调分配 seq；snapshot 和 delta 只使用 committed_seq，不依赖 published_at。</td></tr>
+              <tr><td class="table-name">player_resources</td><td><code>(realm_id, player_id)</code></td><td>food, wood, stone, gold, version</td><td class="owner">player:{id}</td><td>软资源余额 CHECK &gt;= 0；命令/奖励/活动有 domain dedupe key 与审计来源；不藏入大 JSON。</td></tr>
+              <tr><td class="table-name">economy_journals</td><td><code>(realm_id, journal_id)</code></td><td>command_id, business_type, business_key, external_txn_id, state, created_at</td><td class="owner">economy service</td><td>业务键和支付渠道交易号按适用范围 UNIQUE；退款/补偿引用原 journal；终态不可改写。</td></tr>
+              <tr><td class="table-name">economy_ledger_entries</td><td><code>(realm_id, journal_id, line_no)</code></td><td>account_key, currency, delta, balance_after, reversal_of</td><td class="owner">economy service</td><td>不可 UPDATE/DELETE；同 journal 借贷守恒由 deferred constraint/transaction check 保证；premium 余额由 ledger 导出。</td></tr>
+              <tr><td class="table-name">cities</td><td><code>(realm_id, city_id)</code></td><td>player_id, zone_id, tile_id, level, state, version</td><td class="owner">city:{id}</td><td><code>(realm_id, tile_id)</code> 对有效城市 UNIQUE；player_id 索引。</td></tr>
+              <tr><td class="table-name">city_buildings</td><td><code>(realm_id, city_id, slot_id)</code></td><td>building_type, level, upgrade_finish_at, version</td><td class="owner">city:{id}</td><td>building_type/level 校验；finish_at 索引仅供恢复，不替代 scheduled_jobs。</td></tr>
+              <tr><td class="table-name">research_tasks</td><td><code>(realm_id, player_id, queue_no)</code></td><td>tech_id, target_level, state, finish_at, version</td><td class="owner">player:{id}</td><td>活动队列位置 UNIQUE；完成命令由 scheduled_jobs 触发。</td></tr>
+              <tr><td class="table-name">armies</td><td><code>(realm_id, army_id)</code></td><td>player_id, city_id, zone_id, status, current_tile_id, version</td><td class="owner">army:{id}</td><td>player_id/status 索引；状态机 CHECK；同一 army 仅一条活动 march。</td></tr>
+              <tr><td class="table-name">army_units</td><td><code>(realm_id, army_id, unit_type)</code></td><td>count, wounded, reserved</td><td class="owner">army:{id}</td><td>count/wounded/reserved CHECK &gt;= 0；禁止以客户端上报数量覆盖。</td></tr>
+              <tr><td class="table-name">marches</td><td><code>(realm_id, march_id)</code></td><td>army_id, owner_player_id, origin_tile_id, target_tile_id, depart_at, arrive_at, state, version</td><td class="owner">army:{id} + cell:{id}</td><td>活动 army_id partial UNIQUE；时间与状态 CHECK；状态迁移 CAS；<code>(realm_id, state, arrive_at, march_id)</code> 稳定索引。</td></tr>
+              <tr><td class="table-name">world_tile_state</td><td><code>(realm_id, zone_id, tile_id)</code></td><td>owner_type, owner_id, garrison_army_id, resource_state, state, version</td><td class="owner">cell:{id}</td><td>占领/驻军引用完整性；状态 CHECK；tile version CAS；静态地形与动态归属分表。</td></tr>
+              <tr><td class="table-name">player_tile_vision</td><td><code>(realm_id, player_id, zone_id, tile_id)</code></td><td>visibility, intel_version, observed_at, expires_at</td><td class="owner">player:{id}</td><td>保存玩家已知情报，可能过期；绝不能当作当前世界真相。若影响规则则为权威知识状态并版本化。</td></tr>
+              <tr><td class="table-name">alliances</td><td><code>(realm_id, alliance_id)</code></td><td>name, leader_player_id, level, state, version</td><td class="owner">alliance:{id}</td><td>realm 内活动名称 UNIQUE；leader 通过 deferred composite FK 指向本联盟活动成员。</td></tr>
+              <tr><td class="table-name">alliance_members</td><td><code>(realm_id, alliance_id, player_id)</code></td><td>role_id, state, contribution, joined_at, left_at, version</td><td class="owner">alliance:{id}</td><td><code>(realm_id, player_id) WHERE state='active'</code> UNIQUE；每联盟恰一名活动 leader；role 外键。</td></tr>
+              <tr><td class="table-name">battles</td><td><code>(realm_id, battle_id)</code></td><td>zone_id, state, seed, ruleset_version, config_version, version, started_at, ended_at, result_payload</td><td class="owner">battle:{id} / cell:{id}</td><td>状态与时间 CHECK；结算终态及结果不可变；seed 由服务端生成；历史 ruleset/config manifest 可追溯。</td></tr>
+              <tr><td class="table-name">command_receipts</td><td><code>(realm_id, command_id)</code></td><td>session_id, client_seq, payload_hash, owner_set_hash, expected_versions, status, result, terminal_at</td><td class="owner">command pipeline</td><td><code>(realm_id, session_id, client_seq)</code> UNIQUE；状态机 CHECK；同 ID 不同 hash 拒绝；terminal receipt 与领域事务原子提交。</td></tr>
+              <tr><td class="table-name">scheduled_jobs</td><td><code>(realm_id, job_id)</code></td><td>owner_key, due_at, priority_class, command_type, payload, status, lease_token, lease_epoch, lease_until, attempts, max_attempts, next_attempt_at, last_error, dead_letter_at, dedupe_key</td><td class="owner">scheduler coordinator</td><td>dedupe_key UNIQUE；按 due_at/priority/job_id 稳定 claim；旧 token 无法完成；超限进入 DLQ。</td></tr>
+              <tr><td class="table-name">saga_instances</td><td><code>(realm_id, saga_id)</code></td><td>saga_type, business_key, state, current_step, deadline_at, version</td><td class="owner">saga:{id}</td><td>business_key UNIQUE；状态 CHECK(reserving/confirming/compensating/completed/escalated)；版本 CAS。</td></tr>
+              <tr><td class="table-name">saga_steps</td><td><code>(realm_id, saga_id, step_no)</code></td><td>command_id, owner_key, action, compensate_action, state, attempts, last_error</td><td class="owner">saga:{id}</td><td>command_id UNIQUE；步骤状态单向迁移；每步可重放并记录结果。</td></tr>
+              <tr><td class="table-name">saga_reservations</td><td><code>(realm_id, reservation_id)</code></td><td>saga_id, owner_key, resource_type, amount, state, expires_at, business_key</td><td class="owner">目标 domain owner</td><td>business_key UNIQUE；amount &gt; 0；reserve/confirm/release 互斥且守恒。</td></tr>
+              <tr><td class="table-name">stream_events</td><td><code>(realm_id, stream_key, stream_seq)</code></td><td>event_id, owner_key, owner_version, schema_version, event_type, payload, committed_at</td><td class="owner">领域事务</td><td>event_id UNIQUE；per-stream seq 无重复；作为客户端续传和 snapshot watermark 的持久来源。</td></tr>
+              <tr><td class="table-name">outbox_events</td><td><code>(realm_id, event_id, destination)</code></td><td>stream_key, stream_seq, payload_ref, status, attempts, next_attempt_at, published_at</td><td class="owner">领域事务 / relay</td><td>短期 relay spool；destination 去重；published_at 不是 snapshot cut；仅在所有目标确认后按保留策略清理。</td></tr>
+              <tr><td class="table-name">consumer_cursors</td><td><code>(consumer_name, realm_id, stream_key)</code></td><td>acked_seq, observed_head_seq, state, updated_at</td><td class="owner">各消费者</td><td>cursor 只能连续前移；发现 gap 停止并重放；清理水位不超过所有所需消费者最小 cursor。</td></tr>
+              <tr><td class="table-name">inbox_receipts</td><td><code>(consumer_name, event_id)</code></td><td>stream_key, stream_seq, processed_at, result_hash</td><td class="owner">各消费者</td><td>消费 receipt、projection 和 cursor 在同一事务；重复事件返回原结果。</td></tr>
+              <tr><td class="table-name">player_read_snapshots</td><td><code>(realm_id, player_id, snapshot_id)</code></td><td>stream_watermarks, owner_versions, payload, config_version, event_schema_version, created_at</td><td class="owner">snapshot builder</td><td>watermark 来自 committed stream heads；snapshot + seq&gt;watermark 的事件必须精确重建；不得反向覆盖权威表。</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="schema-rule-grid">
+          <article class="schema-rule">
+            <h3>Hot State Rule</h3>
+            <p>资源、建筑、军队、行军、地块归属使用窄行和明确类型。JSON 只用于低频、不可索引或不可变结果，不允许一行玩家状态包含几十个 JSON 字段并被整行重写。</p>
+          </article>
+          <article class="schema-rule">
+            <h3>Partition Rule</h3>
+            <p>所有世界游戏表携带 realm_id；地图和战斗再携带 zone/cell。分区键从主键、唯一约束、路由、事件 stream、迁移到恢复保持一致。合服/拆服需要显式 ID 与游标迁移方案，不能从复合键“自动正确”推导。</p>
+          </article>
+          <article class="schema-rule">
+            <h3>Time Rule</h3>
+            <p>持久化 finish_at/due_at 和状态，不每秒写倒计时。客户端用 serverTime 本地渲染；到期由 scheduled job 重新提交确定性命令。</p>
+          </article>
+          <article class="schema-rule">
+            <h3>Constraint Rule</h3>
+            <p>幂等处理网络重投，数据库唯一键、CHECK、FK、CAS 和不可变 ledger 处理业务重复与并发。两者不能互相替代；重复奖励、重复占领、重复入盟必须由 domain constraint 最终阻止。</p>
+          </article>
+          <article class="schema-rule">
+            <h3>Knowledge Rule</h3>
+            <p><code>player_tile_vision</code> 表示“玩家知道什么”，不是“世界现在是什么”。AOI 推送必须取当前权威世界状态与当前可见权限的交集，权限撤销会使订阅和缓存立即失效。</p>
+          </article>
+          <article class="schema-rule">
+            <h3>History Rule</h3>
+            <p>战斗、经济、事件和 Saga 历史必须携带解释它们所需的 ruleset/config/event schema 版本。版本制品的保留周期不得短于相应审计和回放周期。</p>
+          </article>
+        </div>
+
+        <div class="code-grid">
+          <article class="code-panel">
+            <h3>owner lease + fenced aggregate CAS</h3>
+            <pre><code>CREATE TABLE owner_leases (
+  realm_id    BIGINT NOT NULL,
+  owner_key   TEXT NOT NULL,
+  owner_epoch BIGINT NOT NULL,
+  holder_id   TEXT NOT NULL,
+  state       TEXT NOT NULL CHECK
+    (state IN ('active','draining','transferring')),
+  lease_until TIMESTAMPTZ NOT NULL,
+  transfer_to TEXT,
+  updated_at  TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (realm_id, owner_key)
+);
+
+CREATE TABLE aggregate_heads (
+  realm_id BIGINT NOT NULL,
+  owner_key TEXT NOT NULL,
+  version BIGINT NOT NULL DEFAULT 0,
+  committed_event_seq BIGINT NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (realm_id, owner_key)
+);
+
+-- Inside the domain transaction, never only in memory:
+UPDATE aggregate_heads h
+SET version = version + 1, updated_at = now()
+FROM owner_leases l
+WHERE h.realm_id = :realm AND h.owner_key = :owner
+  AND l.realm_id = h.realm_id AND l.owner_key = h.owner_key
+  AND l.holder_id = :holder AND l.owner_epoch = :epoch
+  AND l.state = 'active' AND l.lease_until &gt; statement_timestamp()
+  AND h.version = :expected_version
+RETURNING h.version;</code></pre>
+          </article>
+
+          <article class="code-panel">
+            <h3>command receipt terminal state</h3>
+            <pre><code>CREATE TABLE command_receipts (
+  realm_id BIGINT NOT NULL,
+  command_id UUID NOT NULL,
+  session_id UUID NOT NULL,
+  client_seq BIGINT NOT NULL,
+  payload_hash BYTEA NOT NULL,
+  owner_set_hash BYTEA NOT NULL,
+  expected_versions JSONB NOT NULL,
+  status TEXT NOT NULL CHECK (status IN (
+    'accepted','in_progress','committed',
+    'rejected_final','failed_final'
+  )),
+  result JSONB,
+  result_versions JSONB,
+  event_watermarks JSONB,
+  terminal_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (realm_id, command_id),
+  UNIQUE (realm_id, session_id, client_seq)
+);
+
+-- The same transaction that changes domain rows must update
+-- in_progress -&gt; committed/rejected_final and persist result.
+-- A status query by command_id is the recovery path for an unknown COMMIT.</code></pre>
+          </article>
+
+          <article class="code-panel">
+            <h3>scheduled job lease + stable claim</h3>
+            <pre><code>CREATE TABLE scheduled_jobs (
+  realm_id BIGINT NOT NULL,
+  job_id UUID NOT NULL,
+  owner_key TEXT NOT NULL,
+  due_at TIMESTAMPTZ NOT NULL,
+  priority_class SMALLINT NOT NULL,
+  command_type TEXT NOT NULL,
+  payload JSONB NOT NULL,
+  status TEXT NOT NULL CHECK
+    (status IN ('pending','leased','completed','dead_letter')),
+  lease_token UUID,
+  lease_epoch BIGINT NOT NULL DEFAULT 0,
+  lease_until TIMESTAMPTZ,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  max_attempts INTEGER NOT NULL,
+  next_attempt_at TIMESTAMPTZ NOT NULL,
+  last_error JSONB,
+  dead_letter_at TIMESTAMPTZ,
+  dedupe_key TEXT NOT NULL,
+  PRIMARY KEY (realm_id, job_id),
+  UNIQUE (realm_id, dedupe_key)
+);
+
+CREATE INDEX scheduled_jobs_due
+  ON scheduled_jobs
+  (realm_id, status, next_attempt_at, due_at, priority_class, job_id);
+
+-- Claim is one atomic UPDATE ... FROM SELECT ... FOR UPDATE SKIP LOCKED.
+-- Complete uses WHERE lease_token=:token AND lease_epoch=:epoch.
+-- Expired holders may submit the stable command but cannot mark success.</code></pre>
+          </article>
+
+          <article class="code-panel">
+            <h3>durable stream + short-lived outbox</h3>
+            <pre><code>CREATE TABLE stream_events (
+  realm_id BIGINT NOT NULL,
+  stream_key TEXT NOT NULL,
+  stream_seq BIGINT NOT NULL,
+  event_id UUID NOT NULL,
+  owner_key TEXT NOT NULL,
+  owner_version BIGINT NOT NULL,
+  schema_version INTEGER NOT NULL,
+  event_type TEXT NOT NULL,
+  payload JSONB NOT NULL,
+  committed_at TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (realm_id, stream_key, stream_seq),
+  UNIQUE (realm_id, event_id)
+);
+
+CREATE TABLE outbox_events (
+  realm_id BIGINT NOT NULL,
+  event_id UUID NOT NULL,
+  destination TEXT NOT NULL,
+  stream_key TEXT NOT NULL,
+  stream_seq BIGINT NOT NULL,
+  status TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  next_attempt_at TIMESTAMPTZ NOT NULL,
+  published_at TIMESTAMPTZ,
+  PRIMARY KEY (realm_id, event_id, destination)
+);
+
+CREATE INDEX outbox_unpublished
+  ON outbox_events (realm_id, status, next_attempt_at)
+  WHERE status &lt;&gt; 'published';
+
+-- Snapshot cut = stream_heads.committed_seq.
+-- published_at is relay progress, never the authoritative cut.</code></pre>
+          </article>
+
+          <article class="code-panel">
+            <h3>premium currency immutable ledger</h3>
+            <pre><code>CREATE TABLE economy_journals (
+  realm_id BIGINT NOT NULL,
+  journal_id UUID NOT NULL,
+  command_id UUID NOT NULL,
+  business_type TEXT NOT NULL,
+  business_key TEXT NOT NULL,
+  external_txn_id TEXT,
+  state TEXT NOT NULL CHECK (state IN ('posted','reversed')),
+  created_at TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (realm_id, journal_id),
+  UNIQUE (realm_id, business_type, business_key)
+);
+
+CREATE UNIQUE INDEX economy_external_txn_unique
+  ON economy_journals (realm_id, external_txn_id)
+  WHERE external_txn_id IS NOT NULL;
+
+CREATE TABLE economy_ledger_entries (
+  realm_id BIGINT NOT NULL,
+  journal_id UUID NOT NULL,
+  line_no SMALLINT NOT NULL,
+  account_key TEXT NOT NULL,
+  currency TEXT NOT NULL,
+  delta BIGINT NOT NULL CHECK (delta &lt;&gt; 0),
+  balance_after BIGINT NOT NULL CHECK (balance_after &gt;= 0),
+  reversal_of UUID,
+  PRIMARY KEY (realm_id, journal_id, line_no)
+);
+
+-- Journal lines must balance per currency before COMMIT.
+-- Posted lines are append-only; refunds and compensation add reversals.</code></pre>
+          </article>
+
+          <article class="code-panel">
+            <h3>persistent Saga state</h3>
+            <pre><code>CREATE TABLE saga_instances (
+  realm_id BIGINT NOT NULL,
+  saga_id UUID NOT NULL,
+  saga_type TEXT NOT NULL,
+  business_key TEXT NOT NULL,
+  state TEXT NOT NULL CHECK (state IN (
+    'reserving','confirming','compensating',
+    'completed','escalated'
+  )),
+  current_step INTEGER NOT NULL,
+  deadline_at TIMESTAMPTZ NOT NULL,
+  version BIGINT NOT NULL,
+  PRIMARY KEY (realm_id, saga_id),
+  UNIQUE (realm_id, saga_type, business_key)
+);
+
+CREATE TABLE saga_steps (
+  realm_id BIGINT NOT NULL,
+  saga_id UUID NOT NULL,
+  step_no INTEGER NOT NULL,
+  command_id UUID NOT NULL,
+  owner_key TEXT NOT NULL,
+  action TEXT NOT NULL,
+  compensate_action TEXT,
+  state TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  last_error JSONB,
+  PRIMARY KEY (realm_id, saga_id, step_no),
+  UNIQUE (realm_id, command_id)
+);
+
+-- Reservations are separate rows with expires_at and a business UNIQUE key.
+-- Timeout must converge to compensate or escalated/manual review.</code></pre>
+          </article>
+        </div>
+      </section>
+
+      <section class="standard-section" aria-labelledby="protocol-title">
+        <div class="section-heading">
+          <span class="section-index">04</span>
+          <div>
+            <h2 id="protocol-title">前端通信：session policy + command status + ordered event + resync</h2>
+            <p>成熟通信的重点不是 REST 还是 WebSocket，而是身份可撤销、命令可按 ID 查询、状态只从一条有序事件通道应用、每个 stream 独立续传，并且 snapshot 与增量共享同一已提交水位。</p>
+          </div>
+        </div>
+
+        <div class="subdiagram">
+          <svg viewBox="0 0 1400 760" role="img" aria-labelledby="protocol-seq-title protocol-seq-desc">
+            <title id="protocol-seq-title">客户端同步和命令协议序列</title>
+            <desc id="protocol-seq-desc">客户端协商会话 epoch 与版本矩阵，获取带 committed watermarks 的初始快照，建立 per-stream 可续传连接。ACK 只报告命令终态，客户端状态由有序事件更新；出现缺口时按 stream 请求增量或完整快照。</desc>
+            <defs>
+              <marker id="proto-arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"></polygon>
+              </marker>
+              <marker id="proto-arrow-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee"></polygon>
+              </marker>
+              <marker id="proto-arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#fb923c"></polygon>
+              </marker>
+              <pattern id="proto-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"></path>
+              </pattern>
+            </defs>
+            <rect width="1400" height="760" fill="url(#proto-grid)"></rect>
+
+            <line x1="120" y1="86" x2="120" y2="705" stroke="#334155" stroke-dasharray="5,5"></line>
+            <line x1="390" y1="86" x2="390" y2="705" stroke="#334155" stroke-dasharray="5,5"></line>
+            <line x1="700" y1="86" x2="700" y2="705" stroke="#334155" stroke-dasharray="5,5"></line>
+            <line x1="1000" y1="86" x2="1000" y2="705" stroke="#334155" stroke-dasharray="5,5"></line>
+            <line x1="1270" y1="86" x2="1270" y2="705" stroke="#334155" stroke-dasharray="5,5"></line>
+
+            <line x1="120" y1="125" x2="388" y2="125" stroke="#fb7185" stroke-width="1.8" marker-end="url(#proto-arrow)"></line>
+            <line x1="390" y1="165" x2="122" y2="165" stroke="#fb7185" stroke-width="1.8" marker-end="url(#proto-arrow)"></line>
+            <line x1="120" y1="215" x2="388" y2="215" stroke="#22d3ee" stroke-width="1.8" marker-end="url(#proto-arrow-cyan)"></line>
+            <line x1="390" y1="250" x2="698" y2="250" stroke="#34d399" stroke-width="1.8" marker-end="url(#proto-arrow)"></line>
+            <line x1="700" y1="290" x2="392" y2="290" stroke="#34d399" stroke-width="1.8" marker-end="url(#proto-arrow)"></line>
+            <line x1="390" y1="325" x2="122" y2="325" stroke="#22d3ee" stroke-width="1.8" marker-end="url(#proto-arrow-cyan)"></line>
+            <line x1="120" y1="370" x2="998" y2="370" stroke="#fb923c" stroke-width="1.8" marker-end="url(#proto-arrow-orange)"></line>
+            <line x1="1000" y1="405" x2="122" y2="405" stroke="#fb923c" stroke-width="1.8" marker-end="url(#proto-arrow-orange)"></line>
+            <line x1="120" y1="455" x2="388" y2="455" stroke="#34d399" stroke-width="2" marker-end="url(#proto-arrow)"></line>
+            <line x1="390" y1="490" x2="698" y2="490" stroke="#34d399" stroke-width="2" marker-end="url(#proto-arrow)"></line>
+            <line x1="700" y1="525" x2="392" y2="525" stroke="#34d399" stroke-width="2" marker-end="url(#proto-arrow)"></line>
+            <line x1="390" y1="560" x2="122" y2="560" stroke="#22d3ee" stroke-width="1.8" marker-end="url(#proto-arrow-cyan)"></line>
+            <line x1="1000" y1="600" x2="122" y2="600" stroke="#fb923c" stroke-width="1.8" marker-end="url(#proto-arrow-orange)"></line>
+            <line x1="120" y1="645" x2="998" y2="645" stroke="#22d3ee" stroke-width="1.8" marker-end="url(#proto-arrow-cyan)"></line>
+            <line x1="1000" y1="680" x2="122" y2="680" stroke="#22d3ee" stroke-width="1.8" marker-end="url(#proto-arrow-cyan)"></line>
+            <line x1="1270" y1="345" x2="122" y2="345" stroke="#fbbf24" stroke-width="1.8" marker-end="url(#proto-arrow)"></line>
+
+            <rect x="30" y="30" width="180" height="55" rx="6" fill="#0f172a"></rect>
+            <rect x="30" y="30" width="180" height="55" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"></rect>
+            <text x="120" y="53" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">Client State Store</text>
+            <text x="120" y="71" fill="#94a3b8" font-size="8" text-anchor="middle">projection + per-stream cursors</text>
+
+            <rect x="295" y="30" width="190" height="55" rx="6" fill="#0f172a"></rect>
+            <rect x="295" y="30" width="190" height="55" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"></rect>
+            <text x="390" y="53" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">Edge / Gateway</text>
+            <text x="390" y="71" fill="#94a3b8" font-size="8" text-anchor="middle">session policy + authz + budgets</text>
+
+            <rect x="610" y="30" width="180" height="55" rx="6" fill="#0f172a"></rect>
+            <rect x="610" y="30" width="180" height="55" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"></rect>
+            <text x="700" y="53" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">Realm Runtime</text>
+            <text x="700" y="71" fill="#94a3b8" font-size="8" text-anchor="middle">command status + snapshot authority</text>
+
+            <rect x="910" y="30" width="180" height="55" rx="6" fill="#0f172a"></rect>
+            <rect x="910" y="30" width="180" height="55" rx="6" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"></rect>
+            <text x="1000" y="53" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">Ordered Push Stream</text>
+            <text x="1000" y="71" fill="#94a3b8" font-size="8" text-anchor="middle">stream seq · retention · resume</text>
+
+            <rect x="1180" y="30" width="180" height="55" rx="6" fill="#0f172a"></rect>
+            <rect x="1180" y="30" width="180" height="55" rx="6" fill="rgba(120, 53, 15, 0.3)" stroke="#fbbf24" stroke-width="1.5"></rect>
+            <text x="1270" y="53" fill="#ffffff" font-size="11" font-weight="600" text-anchor="middle">CDN Config</text>
+            <text x="1270" y="71" fill="#94a3b8" font-size="8" text-anchor="middle">immutable versioned manifest</text>
+
+            <text x="140" y="116" fill="#fb7185" font-size="8">1 POST /sessions {platformToken, deviceId, deviceProof, clientVersions}</text>
+            <text x="145" y="156" fill="#fb7185" font-size="8">2 {sessionId, accessToken, credentialVersion, sessionEpoch, devicePolicy}</text>
+            <text x="145" y="206" fill="#22d3ee" font-size="8">3 GET /bootstrap?cursors&amp;ownerVersions&amp;releaseId</text>
+            <text x="420" y="241" fill="#34d399" font-size="8">load snapshot or bounded delta</text>
+            <text x="420" y="281" fill="#34d399" font-size="8">projection + ownerVersions + committed stream watermarks</text>
+            <text x="145" y="316" fill="#22d3ee" font-size="8">4 BOOTSTRAP {snapshot/delta, watermarks, serverTime, release matrix}</text>
+            <text x="145" y="361" fill="#fb923c" font-size="8">5 WS HELLO {sessionEpoch, cursorsByStream, subscriptions}</text>
+            <text x="145" y="396" fill="#fb923c" font-size="8">6 RESUME_OK {headsByStream} or SNAPSHOT_REQUIRED {streamKeys}</text>
+            <text x="145" y="446" fill="#34d399" font-size="8">7 COMMAND {commandId, clientSeq, expectedVersions, type, intent}</text>
+            <text x="420" y="481" fill="#34d399" font-size="8">route to authoritative owner</text>
+            <text x="420" y="516" fill="#34d399" font-size="8">ACK {terminalStatus, result, resultVersions, eventWatermarks}</text>
+            <text x="145" y="551" fill="#22d3ee" font-size="8">8 resolve pending command; ACK never applies a competing state patch</text>
+            <text x="145" y="591" fill="#fb923c" font-size="8">9 EVENT {streamKey, streamSeq, ownerVersion, schemaVersion, patch}</text>
+            <text x="145" y="636" fill="#22d3ee" font-size="8">10 SUBSCRIBE_AOI / SYNC_FROM {zone, viewport, cursor, permissionEpoch}</text>
+            <text x="145" y="671" fill="#22d3ee" font-size="8">11 FILTERED WORLD_EVENT / DELTA or SNAPSHOT_REQUIRED</text>
+            <text x="965" y="336" fill="#fbbf24" font-size="8">release/{id}: protocol + config + ruleset + event schema compatibility</text>
+          </svg>
+        </div>
+
+        <div class="code-grid">
+          <article class="code-panel">
+            <h3>Command envelope</h3>
+            <pre><code>{
+  "protocolVersion": 4,
+  "eventSchemaVersion": 7,
+  "releaseId": "2026.07.14-r21",
+  "sessionId": "018f...",
+  "sessionEpoch": 19,
+  "credentialVersion": 6,
+  "realmId": 12,
+  "commandId": "0190...",
+  "clientSeq": 1842,
+  "expectedVersions": {
+    "player:4815": 401,
+    "city:92831": 77
+  },
+  "type": "city.building.upgrade",
+  "payload": { "cityId": 92831, "slotId": 4 }
+}</code></pre>
+          </article>
+
+          <article class="code-panel">
+            <h3>Command ACK</h3>
+            <pre><code>{
+  "commandId": "0190...",
+  "status": "committed",
+  "result": { "upgradeJobId": "job-74..." },
+  "resultVersions": {
+    "player:4815": 402,
+    "city:92831": 78
+  },
+  "eventWatermarks": {
+    "player:4815": 991204,
+    "zone:33:aoi:4815": 33822
+  },
+  "statusUrl": "/commands/0190...",
+  "serverTime": "2026-07-14T09:00:00.000Z",
+  "retryable": false
+}</code></pre>
+          </article>
+
+          <article class="code-panel">
+            <h3>Ordered server event</h3>
+            <pre><code>{
+  "streamKey": "player:4815",
+  "streamSeq": 991205,
+  "committedWatermark": 991205,
+  "ownerVersion": 79,
+  "schemaVersion": 7,
+  "type": "city.building.completed",
+  "eventId": "0190...",
+  "commandId": "cmd-job-74...",
+  "serverTime": "2026-07-14T09:05:00.000Z",
+  "patch": [
+    { "op": "replace", "path": "/buildings/4/level", "value": 12 },
+    { "op": "remove", "path": "/scheduled/building-4" }
+  ]
+}</code></pre>
+          </article>
+
+          <article class="code-panel">
+            <h3>Reconnect / gap recovery</h3>
+            <pre><code>{
+  "type": "sync.request",
+  "sessionEpoch": 19,
+  "releaseId": "2026.07.14-r21",
+  "cursorsByStream": {
+    "player:4815": 991180,
+    "zone:33:aoi:4815": 33810
+  },
+  "knownOwnerVersions": {
+    "player:4815": 401,
+    "city:92831": 76,
+    "cell:33:7": 8210
+  },
+  "aoi": {
+    "zoneId": 33,
+    "viewport": [120, 80, 160, 120],
+    "permissionEpoch": 58
+  }
+}</code></pre>
+          </article>
+        </div>
+
+        <div class="protocol-gates">
+          <div class="protocol-gate"><strong>P1 Session Epoch</strong>密码重置、账号冻结、显式登出和风险处置递增 credential/session epoch；每个请求校验。多设备是明确策略，不是偶然共享 token。</div>
+          <div class="protocol-gate"><strong>P2 Intent + Authorization</strong>客户端只提交意图。服务端推导 owner，并校验 payload 中 city/army/tile/alliance 等每个引用实体的归属与操作权限。</div>
+          <div class="protocol-gate"><strong>P3 Stable Retry</strong>超时复用 commandId，并可查询终态。网络幂等只处理重投；奖励、支付、占领和入盟仍必须有 domain business key/constraint。</div>
+          <div class="protocol-gate"><strong>P4 One State Channel</strong>ACK 只解决命令生命周期；客户端 projection 只应用 ordered event/snapshot，禁止 ACK patch 与 EVENT patch 竞争覆盖。</div>
+          <div class="protocol-gate"><strong>P5 Per-stream Resume</strong>玩家、AOI、聊天等 stream 各自维护 cursor、head、retainedFrom 和 gap 状态；慢流不能阻塞其他流恢复。</div>
+          <div class="protocol-gate"><strong>P6 Committed Snapshot Cut</strong>snapshot 返回 per-stream committed watermarks；应用后仅接收 seq &gt; watermark。cut 不依赖 relay 的 published_at。</div>
+          <div class="protocol-gate"><strong>P7 AOI Permission</strong>viewport、zone、实体密度和 fanout 有 endpoint-specific budget；推送取权威世界状态与当前 visibility 的交集，权限 epoch 变化立即失效订阅。</div>
+          <div class="protocol-gate"><strong>P8 Version Matrix</strong>release manifest 声明客户端协议、配置、ruleset、事件 schema 和服务端读写范围；支持几个旧版本属于产品发布策略，不是固定常数。</div>
+          <div class="protocol-gate"><strong>P9 Lightweight Heartbeat</strong>PING/PONG 只维护连接、serverTime 和 presence TTL；不得 1Hz 加载完整玩家状态、地图或做源码 hash。</div>
+          <div class="protocol-gate"><strong>P10 Server Authority</strong>倒计时由 serverTime + finishAt 本地显示；seed、结算、奖励和运动真值由服务端生成。缺失客户端报告不能改变权威结果。</div>
+          <div class="protocol-gate"><strong>P11 Transport Equivalence</strong>WebSocket、SSE 和 HTTP fallback 必须保持相同 commandId、event seq、cursor、错误和恢复语义。</div>
+          <div class="protocol-gate"><strong>P12 Resource Budgets</strong>按 endpoint、IP、account、session、player、owner、命令类型、body 深度/解压后大小和 AOI 成本分别限额并输出明确拒绝原因。</div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="architecture-table">
+            <colgroup>
+              <col style="width: 17%">
+              <col style="width: 25%">
+              <col style="width: 31%">
+              <col style="width: 27%">
+            </colgroup>
+            <thead><tr><th>兼容面</th><th>release manifest 必填</th><th>同时运行规则</th><th>切换 / 回滚门禁</th></tr></thead>
+            <tbody>
+              <tr><td class="table-name">Client Protocol</td><td>min_read、max_read、write_version、deprecation_at</td><td>旧客户端只能发送其声明版本允许的命令；未知字段和未知 event type 的行为逐类型定义。</td><td>协议错误率、强制升级范围和活跃旧版本数在阈值内；回滚版本仍可读已写 envelope。</td></tr>
+              <tr><td class="table-name">Event Schema</td><td>producer_version、consumer_read_range、upcaster set</td><td>先部署可读新旧 schema 的消费者，再切 producer；不能消费的事件进入 DLQ，cursor 不越过 gap。</td><td>所有 required consumer 已兼容且 replay 通过；回滚 producer 不产生旧消费者无法解释的数据。</td></tr>
+              <tr><td class="table-name">Config + Ruleset</td><td>config hash、ruleset id、effective_at、retention policy</td><td>命令与战斗锁定实际使用版本；历史版本在审计/回放周期内不可变可取。</td><td>灰度 cohort、checksum 和回放测试通过；回滚不得让已开始战斗换规则。</td></tr>
+              <tr><td class="table-name">Database Schema</td><td>schema_version、expand/migrate/contract phase、reader/writer range</td><td>expand 后旧新代码均可读写；migrate 可断点续跑并对账；旧 reader 清零后才 contract。</td><td>迁移 checksum、行数/守恒对账、回滚路径和 contract 前旧版本存活数均有证据。</td></tr>
+              <tr><td class="table-name">Release Identity</td><td>backend、frontend、config、DB、protocol、event schema 六类不可变 digest</td><td>健康检查和每条 trace 都暴露同一 releaseId；不允许临时拼接未登记组合。</td><td>原子切换整个兼容组合；回滚选择另一份完整 manifest，不逐文件手工回退。</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </section>
+
+      <section class="standard-section" aria-labelledby="workload-title">
+        <div class="section-heading">
+          <span class="section-index">05</span>
+          <div>
+            <h2 id="workload-title">版本化容量合同：负载形状、阶段队列与停止条件</h2>
+            <p>容量不是一个“并发人数”数字。每次结论必须绑定完整 workload manifest、硬件/配置、各阶段 arrival/service/queue/utilization/deadline、爆发排空和最终状态校验；未填参数时结论保持 NOT_PROVEN。</p>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="architecture-table">
+            <colgroup>
+              <col style="width: 12%">
+              <col style="width: 38%">
+              <col style="width: 50%">
+            </colgroup>
+            <thead><tr><th>变量</th><th>定义</th><th>必须记录的分布 / 联合形状</th></tr></thead>
+            <tbody>
+              <tr><td class="table-name">U</td><td>同时在线且产生业务请求的用户数</td><td>realm、zone、活跃度、设备、付费分层，而非只记录平均在线。</td></tr>
+              <tr><td class="table-name">P</td><td>权威库保留的总玩家数，包含离线与待归档账号</td><td>账号年龄、状态大小、最近活跃时间、索引 working set。</td></tr>
+              <tr><td class="table-name">A</td><td>一个推进窗口内有主动命令或到期命令的活跃 owner 数</td><td>owner 类型、每 owner 到达率、deadline 与冲突图。</td></tr>
+              <tr><td class="table-name">V / W</td><td>单连接 AOI 实体量 / 单 zone 共享计算实体量</td><td>viewport、密度、changed 比例、候选/实际写入比。</td></tr>
+              <tr><td class="table-name">F / Z</td><td>联盟/阵营/外交主体数 / realm 内 zone 数</td><td>成员规模、外交边密度、zone 热度与数据 skew。</td></tr>
+              <tr><td class="table-name">C / E</td><td>网络连接数 / 每次 commit 产生的权威事件数</td><td>多设备、RTT、慢连接比例、event payload 和 fanout。</td></tr>
+              <tr><td class="table-name">K_hot / M</td><td>最热 owner 的命令占比 / 单事务 touched owner 数</td><td>top-K owner、M 的 p95/p99/max、超过 M_max 的 Saga 比例。</td></tr>
+              <tr><td class="table-name">B / R</td><td>命令、事件、snapshot、tile 的字节数 / receipt、event、snapshot 保留窗口</td><td>p50/p95/p99/max、磁盘增长率、最小消费 cursor 和恢复窗口。</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="implementation-note">
+          <strong>阶段模型：</strong>对 gateway、auth、owner mailbox、DB transaction、scheduler、outbox relay、event stream、snapshot、socket 和 client apply 每个阶段 x，必须填写 <code>rho_x = lambda_x × E[S_x] &lt; rho_target &lt; 1</code>、<code>Wq_x,p99 + S_x,p99 ≤ D_x</code>、<code>Q_x ≤ Q_x,max</code>。爆发 B 的最短排空时间满足 <code>T_drain ≥ B / (mu_effective - lambda_new)</code>；若分母不为正，系统没有可证明的恢复能力。
+        </div>
+
+        <div class="table-wrap">
+          <table class="architecture-table">
+            <colgroup>
+              <col style="width: 13%">
+              <col style="width: 25%">
+              <col style="width: 27%">
+              <col style="width: 20%">
+              <col style="width: 15%">
+            </colgroup>
+            <thead><tr><th>Gate</th><th>通过条件</th><th>必须测量</th><th>直接失败条件</th><th>证明方式</th></tr></thead>
+            <tbody>
+              <tr><td class="table-name">H1 Heartbeat</td><td>O(1) 窄查询或纯连接 PING；状态变化通过事件/增量同步。</td><td>req/s、CPU ms、DB rows、response bytes、p99。</td><td class="forbidden">固定 1Hz 读取完整状态、全部视野或全玩家数据。</td><td>路由级 profile + 隔离压测。</td></tr>
+              <tr><td class="table-name">H2 Request Path</td><td>请求路径无同步 sleep、源码树扫描、全目录 hash 和无界 JSON parse。</td><td>event-loop delay、blocked ms、sync IO 次数。</td><td class="forbidden">单请求可冻结唯一事件循环数秒。</td><td>event-loop probe + flamegraph。</td></tr>
+              <tr><td class="table-name">W1 Changed Only</td><td>只写 changed rows/tiles/people；WAL/redo 与实际变化量近似线性。</td><td>loaded rows、changed rows、written rows、WAL bytes。</td><td class="forbidden">无变化仍重写全部 player/tile/person JSON。</td><td>mutation journal + before/after counters。</td></tr>
+              <tr><td class="table-name">W2 Hot Owner</td><td>每类 owner 有独立 arrival/service/depth/oldest-age 上限；同 key 饱和不会污染无关 key。</td><td>top-K lambda、S_owner、rho、Q bytes、deadline miss、reject reason。</td><td class="forbidden">同一热点 key 队列无界，或通过增加机器宣称提升该 key 串行吞吐。</td><td>player/alliance/city/tile/cell 同 key 1/10/100/1000 + 10k burst。</td></tr>
+              <tr><td class="table-name">W3 Fair Scheduler</td><td>稳定 claim、优先级与 aging 不破坏 owner 内顺序；每类任务定义最大 lag 和 retry budget。</td><td>scheduled/start/end、lag p99/max、starvation、lease steal、DLQ。</td><td class="forbidden">固定 top-N、旧 lease 成功完成或无限毒任务重试。</td><td>整点/活动结束/行军到达同秒洪峰 + pause/steal fault。</td></tr>
+              <tr><td class="table-name">W4 Bounded Complexity</td><td>热路径不随 P 全扫；共享计算声明复杂度与分区；M 超过 M_max 转 Saga。</td><td>U/P/A/V/W/F/Z/C/E/K_hot/M 与 rows、CPU、WAL、locks 的曲线。</td><td class="forbidden">O(A×P)、逐 tile SELECT、未声明 O(F²/F³)、无界多 owner 事务。</td><td>同 U 放大 P/V/F/E/K_hot/M 与 10 倍数据规模矩阵。</td></tr>
+              <tr><td class="table-name">W5 AOI + Slow Client</td><td>AOI fanout、连接 buffer 和客户端 apply 有界；只允许丢弃明确定义的非权威视觉事件。</td><td>actors×watchers、serialize/compress CPU、socket bytes、buffer age、client apply p99。</td><td class="forbidden">慢连接无限占内存、权威事件被合并丢弃、热点 zone 拖垮全 realm。</td><td>万人热点、快速 viewport、慢网/后台客户端、buffer overflow 转 snapshot。</td></tr>
+              <tr><td class="table-name">W6 Reconnect + Snapshot</td><td>保留窗口内增量恢复；窗口外 snapshot 构建与后续事件精确衔接，风暴受 admission 控制。</td><td>reconnect rate、snapshot bytes/CPU、build time、stream lag、最终 checksum。</td><td class="forbidden">snapshot cut 期间丢/重事件，或重连风暴击穿前台命令 SLO。</td><td>1/10/100/1000 同时重连 + 构建各阶段 crash/fault。</td></tr>
+              <tr><td class="table-name">W7 Outbox + Retention</td><td>relay 新消费率大于新事件率并可在 deadline 内排空 backlog；清理受 cursor 水位保护。</td><td>new/relay rate、oldest age、bytes、attempts、DLQ、min cursor、disk headroom。</td><td class="forbidden">backlog 不收敛、追赶压垮 DB/consumer、清理仍需重放的事件。</td><td>relay outage、poison event、schema mismatch、catch-up 与 retention 边界测试。</td></tr>
+              <tr><td class="table-name">W8 Backpressure</td><td>gateway、owner、DB pool、scheduler、relay、socket 各层有长度/字节/等待上限和确定拒绝语义。</td><td>Q、Wq、rho、reject class、retry amplification、paid/non-paid deadline。</td><td class="forbidden">无限排队、全站同步等待、静默丢命令或付费已扣无可查询终态。</td><td>阶梯压测 + overload/load-shed fault + 最终状态对账。</td></tr>
+              <tr><td class="table-name">F1 Recovery</td><td>恢复前 fence 所有 writer；恢复后 integrity、cursor/replay、receipt/job/Saga reconciliation 和玩法 smoke。</td><td>writer epoch、restore duration、实际 RPO/RTO、replay gap、unresolved count。</td><td class="forbidden">旧 writer 继续写、未来任务错位、半完成 Saga 或重复奖励未被发现。</td><td>完整 PITR/stream restore 演练与原始报告。</td></tr>
+              <tr><td class="table-name">F2 Evidence</td><td>结论绑定 workload manifest、releaseId、硬件、seed、原始指标、最终 checksum 和停止条件。</td><td>跨阶段 trace、lambda/S/Q/rho/D、错误、数据守恒、drain curve。</td><td class="forbidden">只报成功 QPS/p95，跳过最热路径、慢客户端、恢复 backlog 或正确性校验。</td><td>固定数据集、脚本、原始结果和可重复 PASS/FAIL 判定。</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="code-grid">
+          <article class="code-panel">
+            <h3>versioned workload manifest</h3>
+            <pre><code>{
+  "capacityContractVersion": "slg-capacity-v1",
+  "releaseId": "2026.07.14-r21",
+  "environmentId": "isolated-prod-shape-a",
+  "workload": {
+    "U": { "value": "TBD", "distribution": "by realm/zone" },
+    "P": { "value": "TBD", "stateBytesP99": "TBD" },
+    "A": { "value": "TBD", "windowMs": "TBD" },
+    "V": "TBD", "W": "TBD", "F": "TBD", "Z": "TBD",
+    "C": "TBD", "E": "TBD", "K_hot": "TBD",
+    "M": { "p99": "TBD", "M_max": "TBD" },
+    "B": { "command": "TBD", "event": "TBD", "snapshot": "TBD" },
+    "R": { "receipt": "TBD", "event": "TBD", "snapshot": "TBD" }
+  },
+  "burstProfiles": ["scheduler", "reconnect", "aoi_hotspot"],
+  "thresholds": "product SLO values, never copied as universal constants"
+}</code></pre>
+          </article>
+
+          <article class="code-panel">
+            <h3>per-stage acceptance contract</h3>
+            <pre><code>{
+  "stage": "owner-mailbox:cell",
+  "arrivalRate": "lambda_x distribution",
+  "serviceTime": { "p50": "TBD", "p95": "TBD", "p99": "TBD" },
+  "queue": { "maxItems": "TBD", "maxBytes": "TBD" },
+  "utilizationTarget": "rho_target &lt; 1",
+  "deadline": "D_x from gameplay promise",
+  "admission": ["accepted", "rejected_busy", "rejected_deadline"],
+  "stopWhen": [
+    "any invariant fails",
+    "rho does not recover below target",
+    "queue or oldest age exceeds contract",
+    "backlog drain misses deadline",
+    "final authoritative checksum diverges"
+  ]
+}</code></pre>
+          </article>
+        </div>
+      </section>
+
+      <section class="standard-section" aria-labelledby="recovery-title">
+        <div class="section-heading">
+          <span class="section-index">06</span>
+          <div>
+            <h2 id="recovery-title">发布、恢复、安全和运行证据</h2>
+            <p>正确的数据路径如果无法兼容发布、隔离故障和可重复恢复，仍然不是可运营架构。所有数值阈值由产品 SLO 和实测填写，不从示例复制。</p>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="architecture-table">
+            <colgroup>
+              <col style="width: 16%">
+              <col style="width: 31%">
+              <col style="width: 28%">
+              <col style="width: 25%">
+            </colgroup>
+            <thead><tr><th>领域</th><th>强制设计</th><th>失败 / 恢复语义</th><th>唯一可接受证据</th></tr></thead>
+            <tbody>
+              <tr><td class="table-name">Immutable Release</td><td>manifest 固定 backend、frontend、config、DB schema、protocol、event schema 的 digest 与兼容范围；制品 build once。</td><td>原子切换完整 release；失败回滚到另一份完整 manifest，不在运行目录 git checkout 或逐文件修补。</td><td>签名 manifest、制品 digest、切换 trace、健康 gate 和完整回滚演练。</td></tr>
+              <tr><td class="table-name">Expand-Migrate-Contract</td><td>expand 阶段兼容旧新 reader/writer；迁移可断点续跑并对账；旧版本清零后 contract。</td><td>任一阶段失败均停在仍兼容状态；禁止 schema、代码、事件 producer 同时做不可逆切换。</td><td>版本兼容矩阵、migration checksum、行数/守恒对账、旧 reader 数和回滚测试。</td></tr>
+              <tr><td class="table-name">Data Restore</td><td>权威 DB 使用备份/PITR；持久事件流与对象数据按各自恢复方案；基础设施由版本配置和制品重建。</td><td>恢复顺序为 fence writers → stop scheduler/relay → restore → integrity → replay → reconcile → smoke → issue new epochs。</td><td>定期全量演练，报告实际 RPO/RTO、stream gap、未决 receipt/job/Saga 和最终 checksum。</td></tr>
+              <tr><td class="table-name">Writer Fencing</td><td>恢复、failover、迁移和部署前撤销/递增 owner epoch；旧 holder、旧 scheduler lease、旧 DB primary 无写权。</td><td>提交结果未知通过 receipt/status 恢复；旧 epoch 写、旧 lease complete 和旧主提交必须确定失败。</td><td>split-brain、GC pause、进程重叠、DB failover 和 restore-orphan-writer 故障注入。</td></tr>
+              <tr><td class="table-name">Durability Profile</td><td>逐存储声明 process crash、OS/power loss、disk corruption、replica lag 的保证和确认点。</td><td>不得把进程 OOM/kill 与主机掉电混为同一丢失语义；ACK 只在声明的 durable commit point 后返回。</td><td>按故障类型重复 crash/power/failover 测试，核对所有 ACKed commandId 与恢复后终态。</td></tr>
+              <tr><td class="table-name">Secrets + Identity</td><td>密钥来自 secret manager，服务到服务使用可轮换身份与最小权限；日志、trace、备份不含明文秘密。</td><td>轮换支持明确重叠窗口和撤销；secret manager 不可用时按 endpoint 拒绝，不回退到代码默认值。</td><td>secret scan、权限矩阵、轮换演练、撤销时延、审计日志和敏感字段泄漏测试。</td></tr>
+              <tr><td class="table-name">Health + Runbooks</td><td>健康覆盖 owner lease/epoch、scheduler lag、outbox/event lag、DB/replica、disk、snapshot、restore/replay 和证书。</td><td>liveness 不等于 correctness；假活、cursor 停滞、磁盘趋满和恢复分叉必须在用户错误前触发隔离或降级。</td><td>每个信号的故障注入、告警时延、自动化边界、值班 runbook 和人工升级记录。</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="code-grid">
+          <article class="code-panel">
+            <h3>immutable release manifest</h3>
+            <pre><code>{
+  "releaseId": "2026.07.14-r21",
+  "backendDigest": "sha256:...",
+  "frontendDigest": "sha256:...",
+  "configDigest": "sha256:...",
+  "databaseSchemaVersion": 42,
+  "protocol": { "write": 4, "read": [3, 4] },
+  "eventSchema": { "produce": 7, "consume": [6, 7] },
+  "rulesetIds": ["season-9.18.2"],
+  "migrationPhase": "expand|migrate|contract",
+  "capacityContractId": "slg-capacity-v1/result-...",
+  "signature": "..."
+}</code></pre>
+          </article>
+
+          <article class="code-panel">
+            <h3>restore state machine</h3>
+            <pre><code>REQUESTED
+  -&gt; WRITERS_FENCED
+  -&gt; SCHEDULERS_AND_RELAYS_STOPPED
+  -&gt; DATA_RESTORED
+  -&gt; INTEGRITY_VERIFIED
+  -&gt; STREAMS_REPLAYED
+  -&gt; RECEIPTS_JOBS_SAGAS_RECONCILED
+  -&gt; GAMEPLAY_SMOKE_PASSED
+  -&gt; NEW_OWNER_EPOCHS_ISSUED
+  -&gt; TRAFFIC_REOPENED
+
+Any failed step -&gt; RESTORE_BLOCKED.
+No manual traffic reopen without recorded evidence.</code></pre>
+          </article>
+        </div>
+
+        <div class="implementation-note">
+          <strong>当前实现事实边界：</strong><code>SchemaMigrationService</code> 已记录 migration id、checksum、status，并在锁内事务应用迁移；缺失的是跨版本发布的 expand-migrate-contract 政策与证据，不是“完全没有迁移版本控制”。前端、Nginx、基础设施和秘密也不应作为普通数据库备份内容；它们分别由不可变制品、版本化基础设施配置和 secret manager 恢复。
+        </div>
+      </section>
+
+      <section class="maturity-verdict" aria-label="implementation maturity verdict">
+        <strong>IMPLEMENTATION VERDICT</strong>
+        <p><code>REFERENCE_V2_STATUS = NOT_PROVEN</code>，表示本规范已定义必须实现和证明的语义，但具体阈值与证据仍待项目填写。<code>CURRENT_IMPLEMENTATION = NON_CONFORMING</code>：当前主持久化仍以大型 <code>game_states</code> 行及多个 JSON 字段为主，命令领域提交与 terminal result 仍是两步；尚无本文定义的 owner epoch、持久 client stream、完整 Saga/lease/ledger 与容量合同。已有统一 worker command pipeline 和 migration id/checksum/lock 不应被误报为不存在。后续验收必须逐项出示事务、DDL、协议 trace、负载原始指标、故障注入和恢复报告；组件同机部署不能豁免任何一项。</p>
+      </section>
+    </main>
+
+    <p class="footer">Reference v2.1 · 2026-07-14 · wxgame SLG backend implementation and acceptance baseline · ownership, transaction, protocol and recovery semantics are independent of host count</p>
+  </div>
+
+  <script>
+    async function copyAsImage(btn) {
+      const orig = btn.textContent;
+      try {
+        const el = document.getElementById('report-container');
+        const r = el.getBoundingClientRect();
+        const pad = 32;
+        const canvas = await html2canvas(document.body, { backgroundColor: '#020617', scale: 2, useCORS: true, ignoreElements: (e) => e.classList && e.classList.contains('toolbar'), x: r.left + window.scrollX - pad, y: r.top + window.scrollY - pad, width: r.width + pad * 2, height: r.height + pad * 2 });
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        btn.textContent = '✓ Copied!';
+      } catch (e) {
+        btn.textContent = '✗ Failed';
+      }
+      setTimeout(() => { btn.textContent = orig; }, 2000);
+    }
+
+    async function downloadPNG(btn) {
+      const orig = btn.textContent;
+      btn.textContent = '⏳ ...';
+      try {
+        const el = document.getElementById('report-container');
+        const r = el.getBoundingClientRect();
+        const pad = 32;
+        const canvas = await html2canvas(document.body, { backgroundColor: '#020617', scale: 2, useCORS: true, ignoreElements: (e) => e.classList && e.classList.contains('toolbar'), x: r.left + window.scrollX - pad, y: r.top + window.scrollY - pad, width: r.width + pad * 2, height: r.height + pad * 2 });
+        const link = document.createElement('a');
+        link.download = 'slg-backend-reference-architecture.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        btn.textContent = '✓ Done!';
+      } catch (e) {
+        btn.textContent = '✗ Failed';
+      }
+      setTimeout(() => { btn.textContent = orig; }, 2000);
+    }
+
+    async function downloadPDF(btn) {
+      const orig = btn.textContent;
+      btn.textContent = '⏳ ...';
+      try {
+        const el = document.getElementById('report-container');
+        const r = el.getBoundingClientRect();
+        const pad = 32;
+        const canvas = await html2canvas(document.body, { backgroundColor: '#020617', scale: 2, useCORS: true, ignoreElements: (e) => e.classList && e.classList.contains('toolbar'), x: r.left + window.scrollX - pad, y: r.top + window.scrollY - pad, width: r.width + pad * 2, height: r.height + pad * 2 });
+        const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
+        const orientation = canvas.width > canvas.height ? 'landscape' : 'portrait';
+        const pdf = new jsPDF({ orientation, unit: 'px', format: [canvas.width, canvas.height], hotfixes: ['px_scaling'] });
+        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+        pdf.save('slg-backend-reference-architecture.pdf');
+        btn.textContent = '✓ Done!';
+      } catch (e) {
+        btn.textContent = '✗ Failed';
+      }
+      setTimeout(() => { btn.textContent = orig; }, 2000);
+    }
+  </script>
+</body>
+</html>
