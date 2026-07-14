@@ -29,6 +29,19 @@ test('SecurityConfig keeps development runnable without wildcard production poli
   );
 });
 
+test('SecurityConfig limits the fallback secret to the explicit development and test allowlist', () => {
+  for (const nodeEnv of ['development', 'test']) {
+    assert.equal(
+      SecurityConfig.resolveJwtSecret({ NODE_ENV: nodeEnv }),
+      SecurityConfig.DEFAULT_DEV_JWT_SECRET,
+    );
+  }
+  assert.throws(
+    () => SecurityConfig.resolveJwtSecret({ NODE_ENV: 'staging' }),
+    /JWT_SECRET is required in NODE_ENV=staging/,
+  );
+});
+
 test('SecurityConfig parses configured origins', () => {
   assert.deepEqual(
     SecurityConfig.parseAllowedOrigins('https://a.example, https://b.example ,,'),
