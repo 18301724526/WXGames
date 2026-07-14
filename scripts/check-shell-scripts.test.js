@@ -152,7 +152,15 @@ test('runtime backup and restore scripts keep explicit safety contracts', () => 
   assert.match(restoreScript, /PM2 stop skipped by ALLOW_RESTORE_WITHOUT_PM2_STOP=1/);
   assert.match(restoreScript, /PM2 restart skipped by ALLOW_RESTORE_WITHOUT_PM2_STOP=1/);
   assert.match(restoreScript, /RESTORE_DEPLOY_STATE=1/);
-  assert.match(restoreScript, /rm -f "\$DB_PATH-wal" "\$DB_PATH-shm"/);
+  assert.match(restoreScript, /if \[ ! -e "\$target" \] && \[ ! -L "\$target" \]/);
+  const restoreCopyIndex = restoreScript.indexOf('cp -- "$extract_dir/backend-db/civilization.db" "$restore_tmp"');
+  const walCleanupIndex = restoreScript.indexOf('remove_file_if_present "$DB_PATH-wal"');
+  const shmCleanupIndex = restoreScript.indexOf('remove_file_if_present "$DB_PATH-shm"');
+  const restoreMoveIndex = restoreScript.indexOf('mv -f -- "$restore_tmp" "$DB_PATH"');
+  assert.equal(restoreCopyIndex >= 0, true);
+  assert.equal(restoreCopyIndex < walCleanupIndex, true);
+  assert.equal(walCleanupIndex < shmCleanupIndex, true);
+  assert.equal(shmCleanupIndex < restoreMoveIndex, true);
 
   assert.match(cronScript, /BACKUP_CRON_SCHEDULE="\$\{BACKUP_CRON_SCHEDULE:-17 3 \* \* \*\}"/);
   assert.match(cronScript, /CRON_MARKER="\$\{CRON_MARKER:-WXGAME_RUNTIME_BACKUP\}"/);
