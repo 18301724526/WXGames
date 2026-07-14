@@ -119,7 +119,6 @@
       const layout = this.getLayout();
       const resourceView = this.buildResourceViewState(state);
       const cityView = this.presenter?.buildCitySwitcherViewState ? this.presenter.buildCitySwitcherViewState(state) : { hidden: true };
-      const advisorView = this.presenter?.buildAdvisorViewState ? this.presenter.buildAdvisorViewState(state.softGuide) : { hidden: true };
       const populationScale = resourceView.text?.populationValue
         ?? (typeof this.presenter?.toDisplayPopulation === 'function'
           ? this.presenter.toDisplayPopulation(state.population?.total ?? state.totalPop)
@@ -130,7 +129,6 @@
       const width = layout.contentWidth;
       const barPaddingX = 14;
       const statusTop = y + 10;
-      const statusHeight = 38;
       const resourceTop = y + 56;
       const resourceHeight = 62;
       const cityTop = y + 126;
@@ -166,20 +164,15 @@
       );
 
       const actionDefs = [];
-      if (!advisorView.hidden) actionDefs.push({ id: 'advisor', label: this.t('shell.topBar.advisor'), width: 62 });
       actionDefs.push({ id: 'logs', label: this.t('shell.topBar.logs'), width: 44 });
       actionDefs.push({ id: 'settings', label: this.t('shell.topBar.settings'), width: 44 });
       let cursor = x + width - barPaddingX;
       actionDefs.slice().reverse().forEach((action, index) => {
         cursor -= action.width;
         const actionY = statusTop + 1;
-        const actionHeight = action.id === 'advisor' ? statusHeight : 36;
+        const actionHeight = 36;
         this.drawButton(cursor, actionY, action.width, actionHeight, action.label, { size: 12, bold: true, active: false, radius: 18 });
-        if (action.id === 'advisor') {
-          this.drawText(this.t('shell.advisor.icon'), cursor + 14, statusTop + 20, { size: 12, bold: true, color: '#f0b45b', baseline: 'middle', align: 'center' });
-          this.drawText('●', cursor + action.width - 10, statusTop + 20, { size: 7, color: '#74d3a0', baseline: 'middle', align: 'center' });
-          this.addHitTarget({ x: cursor, y: actionY, width: action.width, height: actionHeight }, { type: 'openAdvisor' });
-        } else if (action.id === 'logs') {
+        if (action.id === 'logs') {
           this.addHitTarget({ x: cursor, y: actionY, width: action.width, height: actionHeight }, { type: 'openLogs' });
         } else if (action.id === 'settings') {
           this.addHitTarget({ x: cursor, y: actionY, width: action.width, height: actionHeight }, { type: 'openSettings' });

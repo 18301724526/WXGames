@@ -6,10 +6,8 @@
       "category": "main",
       "title": "安下第一处民居",
       "description": "建造一座民居，让族人拥有稳定的居所。",
-      "target": "buildings",
       "condition": { "type": "buildingLevel", "buildingId": "house", "count": 1 },
       "reward": { "resources": {} },
-      "action": { "type": "goToGuideTaskTarget", "target": "buildings" },
       "sortOrder": 10,
       "enabled": true
     },
@@ -18,7 +16,6 @@
       "category": "main",
       "title": "安居的火种",
       "description": "完成第一处民居并迈入农耕时代后，领取建设农田与下一次文明进阶所需的基础物资。",
-      "target": "tasks",
       "condition": {
         "type": "all",
         "conditions": [
@@ -27,7 +24,6 @@
         ]
       },
       "reward": { "formulas": ["buildCost:farm", "advanceCost:1"] },
-      "action": { "type": "claimTaskReward", "taskId": "main_first_supplies", "category": "main" },
       "sortOrder": 20,
       "enabled": true
     },
@@ -36,10 +32,8 @@
       "category": "main",
       "title": "让木材流入仓房",
       "description": "建成伐木场后领取下一阶段文明进阶物资。",
-      "target": "tasks",
       "condition": { "type": "buildingLevel", "buildingId": "lumbermill", "count": 1 },
       "reward": { "formulas": ["advanceCost:2"] },
-      "action": { "type": "claimTaskReward", "taskId": "main_lumbermill_supplies", "category": "main" },
       "sortOrder": 30,
       "enabled": true
     },
@@ -48,10 +42,8 @@
       "category": "main",
       "title": "兵营物资",
       "description": "城邦时代已经到来，领取兵营物资，为常备军备好营地。",
-      "target": "tasks",
       "condition": { "type": "eraAtLeast", "era": 3 },
       "reward": { "formulas": ["buildCost:barracks"] },
-      "action": { "type": "claimTaskReward", "taskId": "main_barracks_supplies", "category": "main" },
       "sortOrder": 35,
       "enabled": true
     },
@@ -60,11 +52,9 @@
       "category": "main",
       "title": "组建首支军队",
       "description": "兵营建成后领取军费，一支千人军队将进入城防储备。",
-      "target": "tasks",
       "condition": { "type": "buildingLevel", "buildingId": "barracks", "count": 1 },
       "reward": { "resources": { "soldiers": 1000 } },
       "rewardText": "士兵+1000",
-      "action": { "type": "claimTaskReward", "taskId": "main_first_army", "category": "main" },
       "sortOrder": 40,
       "enabled": true
     },
@@ -73,11 +63,9 @@
       "category": "main",
       "title": "先驱",
       "description": "军队已经成形，招募一位善于行军探路的名人担任先驱。",
-      "target": "tasks",
       "condition": { "type": "taskRewardGranted", "grantType": "soldiers", "grantKey": "firstArmy" },
       "reward": { "famousPerson": "scout" },
       "rewardText": "开拓名人+1",
-      "action": { "type": "claimTaskReward", "taskId": "main_scout_officer", "category": "main" },
       "sortOrder": 45,
       "enabled": true
     }

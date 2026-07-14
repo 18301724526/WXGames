@@ -36,9 +36,7 @@ const SHOW_FIELDS = Object.freeze([
   'showCitySwitcher',
   'showSubcityList',
   'showCityManagement',
-  'showAdvisor',
   'showTaskCenter',
-  'showGuidebook',
   'showFamousPersons',
 ]);
 const PANEL_FIELDS = Object.freeze([...SHOW_FIELDS, 'activeCommandPanel', 'techDetailOpen']);

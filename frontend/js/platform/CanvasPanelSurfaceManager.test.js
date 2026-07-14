@@ -11,7 +11,6 @@ function createPooledRenderer(baseTargets = [], options = {}) {
     hitTargetPools: {
       base: Array.isArray(baseTargets) ? baseTargets : [],
       modal: [],
-      guide: [],
     },
     activeHitTargetPool: 'base',
     hitTargets: [],
@@ -19,7 +18,6 @@ function createPooledRenderer(baseTargets = [], options = {}) {
       this.hitTargets = [
         ...this.hitTargetPools.base,
         ...this.hitTargetPools.modal,
-        ...this.hitTargetPools.guide,
       ];
       return this.hitTargets;
     },
@@ -189,22 +187,19 @@ test('CanvasPanelSurfaceManager modal projection survives base hit target rebuil
     },
   });
 
-  renderer.withHitTargetPool('guide', () => {
-    renderer.addHitTarget({ x: 1, y: 1, width: 20, height: 20 }, { type: 'guideFocus' });
-  });
   assert.equal(manager.openPanel('famousPersons'), true);
-  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['openCity', 'closeFamousPersons', 'panelOutsideClick', 'guideFocus']);
+  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['openCity', 'closeFamousPersons', 'panelOutsideClick']);
 
   renderer.setHitTargets([{ action: { type: 'openCity' } }, { action: { type: 'openTaskCenter' } }], 'base');
   assert.deepEqual(
     renderer.hitTargets.map((target) => target.action.type),
-    ['openCity', 'openTaskCenter', 'closeFamousPersons', 'panelOutsideClick', 'guideFocus'],
+    ['openCity', 'openTaskCenter', 'closeFamousPersons', 'panelOutsideClick'],
   );
 
   assert.equal(manager.closePanel('famousPersons'), true);
   assert.deepEqual(
     renderer.hitTargets.map((target) => target.action.type),
-    ['openCity', 'openTaskCenter', 'guideFocus'],
+    ['openCity', 'openTaskCenter'],
   );
 });
 
@@ -234,7 +229,7 @@ test('CanvasPanelSurfaceManager projects open panels once in band and priority o
   const entries = {
     settings: makeEntry('settings', 'dialog', 1),
     famousPersons: makeEntry('famousPersons', 'panel', 100),
-    guide: makeEntry('guide', 'panel', 10),
+    cityManagement: makeEntry('cityManagement', 'panel', 10),
   };
   const manager = new CanvasPanelSurfaceManager({
     host: {
@@ -254,15 +249,15 @@ test('CanvasPanelSurfaceManager projects open panels once in band and priority o
         return entries[panelKey] || null;
       },
       keys() {
-        return ['settings', 'famousPersons', 'guide'];
+        return ['settings', 'famousPersons', 'cityManagement'];
       },
     },
   });
 
   assert.equal(manager.projectModalLayer({ source: 'test' }), true);
   assert.deepEqual(calls, [
-    ['overlay', 'guide', true],
-    ['render', 'guide', 'panelOverlay'],
+    ['overlay', 'cityManagement', true],
+    ['render', 'cityManagement', 'panelOverlay'],
     ['overlay', 'famousPersons', false],
     ['render', 'famousPersons', 'panelOverlay'],
     ['overlay', 'settings', false],
@@ -270,7 +265,7 @@ test('CanvasPanelSurfaceManager projects open panels once in band and priority o
   ]);
   assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), [
     'openCity',
-    'guide:hit',
+    'cityManagement:hit',
     'famousPersons:hit',
     'settings:hit',
   ]);

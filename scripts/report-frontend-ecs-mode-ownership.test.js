@@ -27,7 +27,6 @@ test('mode ownership report detects explicit mode symbols and boolean-like show 
   );
   assert.deepEqual(extractModeSymbols("'shell.naming.title': 'Name',"), []);
   assert.deepEqual(extractModeSymbols('this.showFloatingText("saved");'), []);
-  assert.deepEqual(extractModeSymbols('showSoftGuide(target, message) { return false; }'), []);
 });
 
 test('mode ownership report classifies reads and writes', () => {

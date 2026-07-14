@@ -3,7 +3,6 @@ const {
   CATEGORY_IDS,
   RESOURCE_KEYS,
   addResources,
-  clone,
   normalizeCategory,
   nowIso,
   parseFormulaList,
@@ -23,11 +22,8 @@ const HEADER_ALIASES = Object.freeze({
   category: ['category', '分类', '任务分类'],
   title: ['title', 'name', '任务名称', '名称'],
   description: ['description', 'desc', '任务描述', '描述'],
-  target: ['target', '目标', '跳转目标'],
   sortOrder: ['sortOrder', 'sort', '排序', '顺序'],
   enabled: ['enabled', '启用', '是否启用'],
-  actionType: ['action.type', 'actionType', '动作类型'],
-  actionTarget: ['action.target', 'actionTarget', '动作目标'],
   conditionJson: ['condition', 'conditionJson', '完成条件JSON', '条件JSON'],
   conditionType: ['condition.type', 'conditionType', '条件类型'],
   conditionTarget: ['condition.target', 'conditionTarget', 'condition.buildingId', '条件目标', '建筑ID'],
@@ -132,21 +128,11 @@ function normalizeReward(rawTask, row) {
   return normalized;
 }
 
-function normalizeAction(rawTask, row, taskId, target) {
-  const rawAction = rawTask.action && typeof rawTask.action === 'object' ? clone(rawTask.action) : {};
-  const type = sanitizeText(rawAction.type || getHeaderValue(row, 'actionType'), '');
-  const actionTarget = sanitizeText(rawAction.target || getHeaderValue(row, 'actionTarget'), target);
-  if (type) return { ...rawAction, type, target: actionTarget };
-  if (target === 'tasks') return { type: 'claimTaskReward', taskId, category: normalizeCategory(rawTask.category) };
-  return { type: 'goToGuideTaskTarget', taskId, target: actionTarget || target };
-}
-
 function normalizeTask(rawTask, index = 0) {
   const row = rawTask && typeof rawTask === 'object' ? rawTask : {};
   const id = sanitizeText(row.id || getHeaderValue(row, 'id'));
   const category = normalizeCategory(row.category || getHeaderValue(row, 'category'));
   const title = sanitizeText(row.title || getHeaderValue(row, 'title'));
-  const target = sanitizeText(row.target || getHeaderValue(row, 'target'), 'tasks');
   const reward = normalizeReward(row, row);
   const condition = normalizeCondition(row, row);
   return {
@@ -154,13 +140,11 @@ function normalizeTask(rawTask, index = 0) {
     category,
     title,
     description: sanitizeText(row.description || getHeaderValue(row, 'description')),
-    target,
     condition,
     reward,
     // Explicit reward copy (e.g. '士兵+1000') for non-resource rewards; falls
     // back to the resolved-resource text in normalizeDefinitions.
     rewardText: sanitizeText(getHeaderValue(row, 'rewardText')),
-    action: normalizeAction({ ...row, category }, row, id, target),
     sortOrder: Math.floor(toNumber(row.sortOrder ?? getHeaderValue(row, 'sortOrder'), index + 1)),
     enabled: toBoolean(row.enabled ?? getHeaderValue(row, 'enabled'), true),
   };

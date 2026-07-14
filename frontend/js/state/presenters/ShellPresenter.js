@@ -151,28 +151,6 @@
       });
     }
 
-    static buildAdvisorViewState(guide = {}) {
-      const message = guide?.message || '';
-      return {
-        hidden: !message,
-        activeAdvisor: message ? { message, target: guide?.target || null } : null,
-        text: {
-          message: message || this.t('shell.advisor.noAdvice'),
-        },
-        goButton: {
-          disabled: !message || !guide?.target,
-        },
-        closeModal: !message,
-      };
-    }
-
-    static getAdvisorTargetTab(target) {
-      if (target === 'scout-action-first') return 'military';
-      if (target === 'tab-territory') return 'territory';
-      if (typeof target === 'string' && target.startsWith('tab-')) return target.slice(4);
-      return null;
-    }
-
     static buildNamingPromptViewState(prompt = {}) {
       const type = prompt?.type || '';
       return {

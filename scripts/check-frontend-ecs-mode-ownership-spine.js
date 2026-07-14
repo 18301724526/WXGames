@@ -19,8 +19,6 @@ const APPROVED_MODE_RUNTIME_PATHS = Object.freeze([
   'frontend/js/platform/CanvasModalSnapshotAdapter.js',
   'frontend/js/platform/CanvasGameApp.js',
   'frontend/js/platform/CanvasGameShell.js',
-  // Northstar S3 moves the tutorial host compatibility reads behind this adapter.
-  'frontend/js/tutorial/TutorialHostContext.js',
 ]);
 const APPROVED_MODE_VOCABULARY_PATHS = Object.freeze([
   'frontend/js/ecs/registry/EcsBoundaryManifest.js',
@@ -106,7 +104,7 @@ function makeViolation({ finding, currentCount, baselineCount }) {
     role: finding.role,
     access: finding.access,
     evidence: finding.evidence,
-    note: 'mode/panel/tutorial decisions outside the ECS mode owner or approved runtime cannot grow after Batch 3',
+    note: 'mode/panel decisions outside the ECS mode owner or approved runtime cannot grow after Batch 3',
   };
 }
 

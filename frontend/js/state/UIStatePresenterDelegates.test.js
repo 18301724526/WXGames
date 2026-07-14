@@ -35,33 +35,6 @@ test('UIStatePresenterDelegates creates direct presenter static delegates', () =
   ]);
 });
 
-test('UIStatePresenterDelegates keeps custom guidebook facade callbacks', () => {
-  class Facade {}
-  Object.assign(Facade, UIStatePresenterDelegates.createStaticMethods({
-    TaskGuidePresenter: {
-      buildGuidebookViewState(state, options) {
-        return {
-          stateId: state.id,
-          planning: options.buildCityPlanningViewState({ id: 'plan-state' }),
-        };
-      },
-    },
-    HomePresenter: {
-      buildCityPlanningViewState(state) {
-        return { source: 'home', id: state.id };
-      },
-    },
-  }));
-
-  Facade.buildCityPlanningViewState = (state) => ({ source: 'facade', id: state.id });
-
-  assert.deepEqual(Facade.buildGuidebookViewState({ id: 'guide' }), {
-    stateId: 'guide',
-    planning: { source: 'facade', id: 'plan-state' },
-  });
-  assert.equal(typeof Facade.buildHomeFeatureViewState, 'undefined');
-});
-
 test('UIStatePresenterDelegates preserves tech fallback contract', () => {
   class WithTech {}
   Object.assign(WithTech, UIStatePresenterDelegates.createStaticMethods({

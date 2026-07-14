@@ -25,7 +25,7 @@ test('ClientCommandSemantics permits only the four local command block reasons',
   ClientCommandSemantics.LOCAL_BLOCK_REASONS.forEach((reason) => {
     assert.equal(ClientCommandSemantics.getCommandBlockReason({ type: 'research', commandDisabled: reason }), reason);
   });
-  ['RESOURCES', 'TUTORIAL', 'ERA', 'TECH', 'COOLDOWN', 'MARCH', 'CANDIDATE', 'TERRITORY', 'REWARD', 'ENCOUNTER', 'LOOT', 'BOSS'].forEach((reason) => {
+  ['RESOURCES', 'ERA', 'TECH', 'COOLDOWN', 'MARCH', 'CANDIDATE', 'TERRITORY', 'REWARD', 'ENCOUNTER', 'LOOT', 'BOSS'].forEach((reason) => {
     assert.equal(ClientCommandSemantics.getCommandBlockReason({ type: 'research', commandDisabled: reason }), '');
   });
 });

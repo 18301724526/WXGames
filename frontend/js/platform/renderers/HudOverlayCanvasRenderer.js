@@ -41,7 +41,6 @@
     renderConfirmDialog(...args) { return this.host?.renderConfirmDialog?.(...args); }
     renderFloatingSubcityButton(...args) { return this.host?.renderFloatingSubcityButton?.(...args); }
     renderFloatingEventButton(...args) { return this.host?.renderFloatingEventButton?.(...args); }
-    renderFloatingAdvisorButton(...args) { return this.host?.renderFloatingAdvisorButton?.(...args); }
     renderFloatingAccountButton(...args) { return this.host?.renderFloatingAccountButton?.(...args); }
     renderMapCommandPanel(...args) { return this.host?.renderMapCommandPanel?.(...args); }
     renderSubcityListPanel(...args) { return this.host?.renderSubcityListPanel?.(...args); }
@@ -56,9 +55,7 @@
     renderSettingsPanel(...args) { return this.host?.renderSettingsPanel?.(...args); }
     renderLogsPanel(...args) { return this.host?.renderLogsPanel?.(...args); }
     renderCitySwitcherMenu(...args) { return this.host?.renderCitySwitcherMenu?.(...args); }
-    renderAdvisorPanel(...args) { return this.host?.renderAdvisorPanel?.(...args); }
     renderTaskCenterPanel(...args) { return this.host?.renderTaskCenterPanel?.(...args); }
-    renderGuidebookPanel(...args) { return this.host?.renderGuidebookPanel?.(...args); }
     renderFamousPersonsPanel(...args) { return this.host?.renderFamousPersonsPanel?.(...args); }
     renderArmyFormationEditor(...args) { return this.host?.renderArmyFormationEditor?.(...args); }
     renderEventModal(...args) { return this.host?.renderEventModal?.(...args); }
@@ -177,14 +174,8 @@
       if (options.showCitySwitcher) {
         this.renderCitySwitcherMenu(state);
       }
-      if (options.showAdvisor) {
-        this.renderAdvisorPanel(state);
-      }
       if (options.showTaskCenter) {
         this.renderTaskCenterPanel(state, options);
-      }
-      if (options.showGuidebook) {
-        this.renderGuidebookPanel(state, options);
       }
       if (options.armyFormationEditor?.open) {
         this.renderArmyFormationEditor(state, options);

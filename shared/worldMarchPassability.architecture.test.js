@@ -14,7 +14,7 @@ const repoRoot = path.resolve(__dirname, '..');
 //
 // This test FAILS THE BUILD if the rule is re-scattered, so the architecture
 // standard (docs/architecture/module-pipeline-and-observability-standard.md) is
-// machine-checked, not advisory. This is the answer to "the gates are for show".
+// machine-checked, not optional. This is the answer to "the gates are for show".
 const RULE_FILE = 'shared/worldMarchPassability.js';
 const CONSUMERS = [
   'frontend/js/ecs/system/WorldMarchRoutePolicy.js',

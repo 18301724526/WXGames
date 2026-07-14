@@ -22,7 +22,6 @@ const REQUIRED_COMMAND_ACTION_TYPES = Object.freeze([
   'buildBuilding',
   'claimConquest',
   'claimEvent',
-  'claimGuideTaskReward',
   'claimTaskReward',
   'conquer',
   'dismissFamousPersonCandidate',

@@ -7,7 +7,7 @@ metadata:
   originSessionId: 2992377e-0795-4820-a4df-9cbb32be926b
 ---
 
-The tutorial advisor "spine 盖在对话框之上" bug (fixed `f53232dd`+`ee0973dc`, deployed): root cause was NOT z-index. `tutorialDialogue` (2d, z1002) and `tutorialSpine` (webgl, z1001) are `position:fixed` BODY siblings. Layers are ensured **lazily on first paint** — `begin()` creates the dialogue canvas *before* the portrait creates the spine canvas — so `H5CanvasRuntime.ensureLayerCanvas` appended them in use-order (`appendChild` to end), leaving DOM order `[dialogue, spine]` (spine the *later* sibling with the *lower* z). Chromium honors z-index so it looks fine; **WebViews (WeChat X5/XWeb) break stacking-context ties by document order and/or float webgl-backed canvases above later 2d ones**, so the later spine wins — exactly the user's "严重架构问题，无法定位" (code reads correct: 1002>1001).
+A mixed WebGL/2D overlay ordering bug (fixed `f53232dd`+`ee0973dc`, deployed) showed that z-index alone was insufficient. The layers were `position:fixed` BODY siblings and were ensured **lazily on first paint**, so `H5CanvasRuntime.ensureLayerCanvas` appended them in use-order rather than registry order. Chromium honored z-index, while **WebViews (WeChat X5/XWeb) could break stacking-context ties by document order or float WebGL-backed canvases above 2D siblings**, making the lower-z layer appear on top.
 
 **Fix:** `ensureLayerCanvas` now inserts each layer element at the DOM position dictated by its z-index (`insertLayerElementInStackOrder`), so document order always matches `CanvasLayerRegistry.PHYSICAL_LAYER_ORDER`. Registry test now locks that order's z-monotonicity.
 

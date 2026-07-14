@@ -83,7 +83,7 @@ Contract ids: `COP-CLIENT-001`, `COP-CLIENT-002`, `COP-AUTHORITY-001`,
 Goals:
 
 - introduce `visualDisabled` versus `commandDisabled`
-- keep local display hints for resources, tutorial, era, tech, cooldown, march,
+- keep local display hints for resources, era, tech, cooldown, march,
   candidate, territory, reward, encounter, loot, and boss state
 - stop using domain display state to suppress command submission
 - allow only these local block reasons:

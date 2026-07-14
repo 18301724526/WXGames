@@ -126,9 +126,7 @@
     if (isAnyModalOpen(host, 'modal:citySwitcher')) keys.push('modal:citySwitcher');
     if (isAnyModalOpen(host, 'modal:subcityList')) keys.push('modal:subcityList');
     if (isAnyModalOpen(host, 'modal:cityManagement')) keys.push('modal:cityManagement');
-    if (isAnyModalOpen(host, 'modal:advisor')) keys.push('modal:advisor');
     if (isAnyModalOpen(host, 'modal:taskCenter')) keys.push('modal:taskCenter');
-    if (isAnyModalOpen(host, 'modal:guidebook')) keys.push('modal:guidebook');
     if (isAnyModalOpen(host, 'modal:famousPersons')) keys.push('modal:famousPersons');
     if (isAnyModalOpen(host, 'modal:commandPanel')) keys.push('modal:commandPanel');
     if (isAnyModalOpen(host, 'modal:techDetail')) keys.push('modal:techDetail');
@@ -150,9 +148,7 @@
       isAnyModalOpen(host, 'modal:citySwitcher') ||
       isAnyModalOpen(host, 'modal:subcityList') ||
       isAnyModalOpen(host, 'modal:cityManagement') ||
-      isAnyModalOpen(host, 'modal:advisor') ||
       isAnyModalOpen(host, 'modal:taskCenter') ||
-      isAnyModalOpen(host, 'modal:guidebook') ||
       isAnyModalOpen(host, 'modal:famousPersons') ||
       isTruthy(formationEditor?.open) ||
       isAnyModalOpen(host, 'modal:confirmDialog') ||
@@ -337,7 +333,7 @@
     return ModalStore.resolve(ModalStore.getToken(subtype), action, ...args);
   }
 
-  // Batch 8F: the single source-flip chokepoint. The flat-12 panel facts are now
+  // Batch 8F: the single source-flip chokepoint. The panel facts are now
   // DERIVED from the per-panel modal entries (the owner is the source of truth)
   // instead of read off a shell/game/host mirror. ~40 downstream renderer/runtime
   // reads of snapshot.panel.showX keep working unchanged. buildRendererSnapshot
@@ -355,18 +351,14 @@
       showCitySwitcher: isOpen('modal:citySwitcher'),
       showSubcityList: isOpen('modal:subcityList'),
       showCityManagement: isOpen('modal:cityManagement'),
-      showAdvisor: isOpen('modal:advisor'),
       showTaskCenter: isOpen('modal:taskCenter'),
-      showGuidebook: isOpen('modal:guidebook'),
       showFamousPersons: isOpen('modal:famousPersons'),
       activeCommandPanel: commandEntry?.open ? String(commandEntry.payload?.value || '') : '',
       techDetailOpen: isOpen('modal:techDetail'),
       // Map-command dock active states are DECIDED here on the owner side (Batch-3
       // ratchet: renderers may not derive mode decisions from modal facts). Each id
       // lights its dock item; MapCommandCanvasRenderer only consumes the list.
-      // (tech/civilization light through activeCommandPanel above -- also a
-      // pre-decided owner fact; the UI-REDO dock dropped the 'more' guidebook
-      // item, so modal:guidebook no longer maps to a dock id.)
+      // (tech/civilization light through activeCommandPanel above.)
       activeDockItemIds: [
         isOpen('modal:taskCenter') && 'tasks',
         isOpen('modal:famousPersons') && 'famousPersons',

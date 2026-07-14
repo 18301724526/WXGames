@@ -1,5 +1,5 @@
 (function (global) {
-  const HIT_TARGET_POOLS = Object.freeze(['base', 'modal', 'guide']);
+  const HIT_TARGET_POOLS = Object.freeze(['base', 'modal']);
   const HIT_TARGET_POOL_SET = new Set(HIT_TARGET_POOLS);
 
   function normalizeHitTargetPool(pool = 'base') {
@@ -17,7 +17,6 @@
     return {
       base: Array.isArray(baseTargets) ? baseTargets : [],
       modal: Array.isArray(sourcePools?.modal) ? sourcePools.modal : [],
-      guide: Array.isArray(sourcePools?.guide) ? sourcePools.guide : [],
     };
   }
 
@@ -26,9 +25,8 @@
     const pools = ensureHitTargetPools(surfaceState);
     const base = pools.base || [];
     const modal = pools.modal || [];
-    const guide = pools.guide || [];
-    surfaceState.hitTargets = modal.length || guide.length
-      ? [...base, ...modal, ...guide]
+    surfaceState.hitTargets = modal.length
+      ? [...base, ...modal]
       : base;
     return surfaceState.hitTargets;
   }
@@ -61,12 +59,11 @@
   }
 
   function ensureHitTargetPools(surfaceState = null) {
-    if (!surfaceState) return { base: [], modal: [], guide: [] };
+    if (!surfaceState) return { base: [], modal: [] };
     if (!surfaceState.hitTargetPools || typeof surfaceState.hitTargetPools !== 'object') {
       surfaceState.hitTargetPools = {
         base: Array.isArray(surfaceState.hitTargets) ? surfaceState.hitTargets : [],
         modal: [],
-        guide: [],
       };
     }
     HIT_TARGET_POOLS.forEach((pool) => {

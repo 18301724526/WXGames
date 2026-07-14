@@ -11,7 +11,7 @@ const FamousPersonPresenter = require('./presenters/FamousPersonPresenter');
 const HomePresenter = require('./presenters/HomePresenter');
 const MilitaryPresenter = require('./presenters/MilitaryPresenter');
 const TalentPolicyPresenter = require('./presenters/TalentPolicyPresenter');
-const TaskGuidePresenter = require('./presenters/TaskGuidePresenter');
+const TaskPresenter = require('./presenters/TaskPresenter');
 const WorldSitePresenter = require('./presenters/WorldSitePresenter');
 require('../config/LocaleTextRegistry');
 const LocaleText = require('../ecs/resource/LocaleText');
@@ -58,9 +58,6 @@ test('UIStatePresenter delegates shell view state while preserving facade contra
     ShellPresenter.buildTabLockViewState([{ id: 'resources' }, { tabId: 'events' }], (id) => id !== 'events'),
   );
 
-  const guide = { message: 'Go scout', target: 'scout-action-first' };
-  assert.deepEqual(UIStatePresenter.buildAdvisorViewState(guide), ShellPresenter.buildAdvisorViewState(guide));
-  assert.equal(UIStatePresenter.getAdvisorTargetTab('tab-events'), ShellPresenter.getAdvisorTargetTab('tab-events'));
   const namingPrompt = { type: 'city', territoryId: 'city-1', title: 'Name City', message: 'Choose a city name' };
   assert.deepEqual(UIStatePresenter.buildNamingPromptViewState(namingPrompt), ShellPresenter.buildNamingPromptViewState(namingPrompt));
   assert.deepEqual(UIStatePresenter.buildRecentLogViewState(['started', { text: 'finished' }]), ShellPresenter.buildRecentLogViewState(['started', { text: 'finished' }]));
@@ -886,7 +883,6 @@ test('UIStatePresenter delegates building view state while preserving facade con
       barracks: { wood: 50 },
     },
     resources: { food: 20, wood: 12 },
-    softGuide: { mode: 'strong', target: 'card-farm' },
     military: { soldiers: 3, soldierCap: 20, trainingProgress: 4, trainingIntervalSeconds: 30, trainingBatchSize: 1, defense: 2 },
     buildingEffects: {
       byBuilding: { house: { level: 1, populationCapBonus: 2 } },
@@ -958,14 +954,8 @@ test('UIStatePresenter delegates event view state while preserving facade contra
   assert.deepEqual(UIStatePresenter.buildEventResourcePart('metal', 12), { type: 'resource', resource: 'iron', text: '+12' });
 });
 
-test('UIStatePresenter delegates task center and guidebook view state while preserving facade contracts', () => {
+test('UIStatePresenter delegates task center view state while preserving facade contracts', () => {
   const state = {
-    guideTasks: {
-      visible: true,
-      tasks: [
-        { id: 'legacy-task', title: 'Legacy Task', status: 'active', target: 'buildings' },
-      ],
-    },
     taskCenter: {
       visible: true,
       tabs: [
@@ -983,47 +973,20 @@ test('UIStatePresenter delegates task center and guidebook view state while pres
         },
         daily: {
           label: 'Daily',
-          tasks: [{ id: 'daily-go', title: 'Scout', status: 'active', target: 'scout-north' }],
+          tasks: [{ id: 'daily-active', title: 'Scout', status: 'active' }],
         },
       },
-    },
-    guidebook: {
-      activeTab: 'policy',
-      categories: [
-        { id: 'planning', label: 'Plan', title: 'Planning', lines: ['Build around terrain.'] },
-        { id: 'policy', label: 'Policy', title: 'Talent Policy', lines: ['Assign talent deliberately.'] },
-      ],
-    },
-    cityState: {
-      activeCityId: 'capital',
-      cities: [{
-        id: 'capital',
-        planning: {
-          terrainLabel: 'River Plain',
-          habitabilityLabel: 'Stable',
-          habitability: 12,
-          populationGrowthMultiplier: 1.12,
-        },
-      }],
     },
   };
 
   const taskView = UIStatePresenter.buildTaskCenterViewState(state, { activeTab: 'daily' });
-  const directTaskView = TaskGuidePresenter.buildTaskCenterViewState(state, { activeTab: 'daily' });
-  const guidebookView = UIStatePresenter.buildGuidebookViewState(state, { activeTab: 'planning' });
-  const directGuidebookView = TaskGuidePresenter.buildGuidebookViewState(state, {
-    activeTab: 'planning',
-    buildCityPlanningViewState: (sourceState) => HomePresenter.buildCityPlanningViewState(sourceState),
-  });
+  const directTaskView = TaskPresenter.buildTaskCenterViewState(state, { activeTab: 'daily' });
 
   assert.deepEqual(taskView, directTaskView);
-  assert.deepEqual(guidebookView, directGuidebookView);
   assert.equal(taskView.activeTab, 'daily');
   assert.equal(taskView.tabs.find((tab) => tab.id === 'main').badge, 1);
   assert.deepEqual(taskView.categories.main.tasks[0].action, { type: 'claimTaskReward', taskId: 'claimable-main', category: 'main' });
-  assert.equal(taskView.categories.daily.tasks[0].action.type, 'goToGuideTaskTarget');
-  assert.equal(guidebookView.activeCategory.id, 'planning');
-  assert.equal(guidebookView.subtitle.includes('River Plain'), true);
+  assert.equal(taskView.categories.daily.tasks[0].action, null);
 });
 
 test('UIStatePresenter delegates civilization view state while preserving facade contracts', () => {
@@ -1695,10 +1658,9 @@ test('UIStatePresenter resolves business module UI chrome through active locale'
   assert.match(eventView.pending.cards[0].hint, /left, expires automatically/);
   assert.equal(eventView.history.emptyText, 'No event records');
 
-  const taskView = UIStatePresenter.buildTaskCenterViewState({ guideTasks: { visible: true, tasks: [] } });
+  const taskView = UIStatePresenter.buildTaskCenterViewState({ taskCenter: { visible: true, categories: {} } });
   assert.equal(taskView.tabs.find((tab) => tab.id === 'main').label, 'Main');
   assert.equal(taskView.categories.main.emptyText, 'No main tasks');
-  assert.equal(UIStatePresenter.buildGuidebookViewState(homeState).title, 'Guide');
 
   const militaryView = UIStatePresenter.buildMilitaryViewState({
     military: { soldiers: 0, soldierCap: 0, trainingIntervalSeconds: 0 },
@@ -1731,7 +1693,7 @@ test('index.html loads focused state presenters before UIStatePresenter facade',
     'HomePresenter.js',
     'BuildingPresenter.js',
     'EventPresenter.js',
-    'TaskGuidePresenter.js',
+    'TaskPresenter.js',
     'CivilizationPresenter.js',
     'FamousPersonPresenter.js',
     'MilitaryPresenter.js',
@@ -1756,7 +1718,7 @@ test('index.html loads focused state presenters before UIStatePresenter facade',
 
 test('UIStatePresenter facade is installed by delegate registry', () => {
   assert.equal(typeof UIStatePresenter.toNumber, 'function');
-  assert.equal(typeof UIStatePresenter.buildGuidebookViewState, 'function');
+  assert.equal(typeof UIStatePresenter.buildTaskCenterViewState, 'function');
   assert.equal(typeof UIStatePresenter.buildHomeFeatureViewState, 'undefined');
   assert.equal(typeof UIStatePresenter.buildTechViewState, 'function');
   assert.equal(UIStatePresenter.POPULATION_PER_OFFICIAL, 100);

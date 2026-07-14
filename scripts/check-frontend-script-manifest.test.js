@@ -8,13 +8,10 @@ const {
   isIifeWrapped,
   collectTopLevelBindings,
   checkGlobalBindingCollisions,
-  findForbiddenScripts,
 } = require('./check-frontend-script-manifest');
 
 // Classic <script> files share one global scope: a top-level const declared in two
-// files throws at load and silently kills the second file. This guard exists because
-// exactly that shipped once (shared/tutorialFlowConfig.js top-level `const api`
-// colliding in the browser while every node test stayed green).
+// files throws at load and silently kills the second file while node tests stay green.
 
 test('isIifeWrapped recognizes the house wrapper shapes and rejects bare scripts', () => {
   assert.equal(isIifeWrapped("(function (global) { 'use strict'; })(globalThis);"), true);
@@ -36,7 +33,7 @@ test('collectTopLevelBindings finds const/let/class but not indented or var bind
   assert.deepEqual(collectTopLevelBindings(source), ['api', 'counter', 'Thing']);
 });
 
-test('checkGlobalBindingCollisions catches the shipped tutorialFlowConfig-style collision', () => {
+test('checkGlobalBindingCollisions catches a classic-script top-level collision', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'manifest-guard-'));
   try {
     fs.mkdirSync(path.join(dir, 'js'), { recursive: true });
@@ -67,24 +64,6 @@ test('checkGlobalBindingCollisions catches the shipped tutorialFlowConfig-style 
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
-});
-
-test('findForbiddenScripts rejects retired tutorial scripts in index.html', () => {
-  assert.deepEqual(
-    findForbiddenScripts([
-      'js/config/GameConfig.js',
-      'shared/tutorialFlowConfig.js',
-      'js/platform/TutorialActionMatches.js',
-      'js/platform/renderers/TutorialHighlightLayer.js',
-      'app.js',
-    ]),
-    [
-      'shared/tutorialFlowConfig.js',
-      'js/platform/TutorialActionMatches.js',
-      'js/platform/renderers/TutorialHighlightLayer.js',
-    ],
-  );
-  assert.deepEqual(findForbiddenScripts(['js/config/GameConfig.js', 'app.js']), []);
 });
 
 test('the real index.html manifest has zero top-level binding collisions', () => {

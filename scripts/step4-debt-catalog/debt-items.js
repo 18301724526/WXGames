@@ -45,7 +45,7 @@ const DEBT_ITEMS = Object.freeze([
       sourceRef('backend/routes/playerRoutes.js', 108, 148, 'POST /api/player/login projection response assembly', 'server:player-login'),
       sourceRef('scripts/command-owner-step1/inventories.js', 171, 189, 'SERVER_WRITE_ENTRIES server:player-login', 'server:player-login'),
       sourceRef('scripts/command-owner-step1/inventories.js', 798, 804, 'ROUTE_ORCHESTRATION_DEBT server:player-login', 'server:player-login'),
-      sourceRef('docs/architecture/step3-phase2-7-verification-2026-07-10.md', 793, 795, 'Final Self-Audit remaining non-blocking debt server:player-login', 'server:player-login'),
+      sourceRef('docs/architecture/step3-phase2-7-verification-2026-07-10.md', 790, 792, 'Final Self-Audit remaining non-blocking debt server:player-login', 'server:player-login'),
     ],
   },
   {
@@ -63,7 +63,7 @@ const DEBT_ITEMS = Object.freeze([
       sourceRef('backend/routes/adminRoutes.js', 83, 91, 'POST /api/admin/config-releases/publish delegates to ConfigReleaseService.publishRelease', 'admin:config-release-publish'),
       sourceRef('scripts/command-owner-step1/inventories.js', 299, 314, 'SERVER_WRITE_ENTRIES admin:config-release-publish', 'admin:config-release-publish'),
       sourceRef('scripts/command-owner-step1/inventories.js', 798, 804, 'ROUTE_ORCHESTRATION_DEBT admin:config-release-publish', 'admin:config-release-publish'),
-      sourceRef('docs/architecture/step3-phase2-7-verification-2026-07-10.md', 799, 801, 'Final Self-Audit remaining non-blocking debt admin config release', 'admin:config-release-publish'),
+      sourceRef('docs/architecture/step3-phase2-7-verification-2026-07-10.md', 796, 798, 'Final Self-Audit remaining non-blocking debt admin config release', 'admin:config-release-publish'),
     ],
   },
   {
@@ -81,7 +81,7 @@ const DEBT_ITEMS = Object.freeze([
       sourceRef('backend/routes/adminRoutes.js', 94, 102, 'POST /api/admin/config-releases/rollback delegates to ConfigReleaseService.rollbackRelease', 'admin:config-release-rollback'),
       sourceRef('scripts/command-owner-step1/inventories.js', 315, 330, 'SERVER_WRITE_ENTRIES admin:config-release-rollback', 'admin:config-release-rollback'),
       sourceRef('scripts/command-owner-step1/inventories.js', 798, 804, 'ROUTE_ORCHESTRATION_DEBT admin:config-release-rollback', 'admin:config-release-rollback'),
-      sourceRef('docs/architecture/step3-phase2-7-verification-2026-07-10.md', 799, 801, 'Final Self-Audit remaining non-blocking debt admin config release', 'admin:config-release-rollback'),
+      sourceRef('docs/architecture/step3-phase2-7-verification-2026-07-10.md', 796, 798, 'Final Self-Audit remaining non-blocking debt admin config release', 'admin:config-release-rollback'),
     ],
   },
   {
@@ -149,7 +149,7 @@ const DEBT_ITEMS = Object.freeze([
     sourceRefs: [
       sourceRef('backend/routes/clientEventsRoutes.js', 40, 58, 'POST /api/client-events diagnostic ingestion', 'diagnostic:client-events-ingest'),
       sourceRef('scripts/command-owner-step1/inventories.js', 267, 282, 'SERVER_WRITE_ENTRIES diagnostic:client-events-ingest', 'diagnostic:client-events-ingest'),
-      sourceRef('docs/architecture/step3-phase2-7-verification-2026-07-10.md', 802, 804, 'Final Self-Audit remaining non-blocking debt diagnostic writes', 'diagnostic:client-events-ingest'),
+      sourceRef('docs/architecture/step3-phase2-7-verification-2026-07-10.md', 799, 801, 'Final Self-Audit remaining non-blocking debt diagnostic writes', 'diagnostic:client-events-ingest'),
     ],
   },
   {
@@ -166,7 +166,7 @@ const DEBT_ITEMS = Object.freeze([
     sourceRefs: [
       sourceRef('backend/routes/clientEventsRoutes.js', 73, 95, 'POST /api/client-operation-logs diagnostic ingestion', 'diagnostic:client-operation-log-ingest'),
       sourceRef('scripts/command-owner-step1/inventories.js', 283, 298, 'SERVER_WRITE_ENTRIES diagnostic:client-operation-log-ingest', 'diagnostic:client-operation-log-ingest'),
-      sourceRef('docs/architecture/step3-phase2-7-verification-2026-07-10.md', 802, 804, 'Final Self-Audit remaining non-blocking debt diagnostic writes', 'diagnostic:client-operation-log-ingest'),
+      sourceRef('docs/architecture/step3-phase2-7-verification-2026-07-10.md', 799, 801, 'Final Self-Audit remaining non-blocking debt diagnostic writes', 'diagnostic:client-operation-log-ingest'),
     ],
   },
   {
@@ -232,7 +232,7 @@ const DEBT_ITEMS = Object.freeze([
     contracts: ['COP-CLIENT-001', 'COP-AUTHORITY-001', 'COP-TIME-001'],
     sourceRefs: [
       sourceRef('frontend/js/platform/CanvasGameApp.js', 1165, 1195, 'canAdvanceEraNow builds visual civilization view state only', 'frontend:canvas-game-app-advance-era-local-block'),
-      sourceRef('frontend/js/platform/CanvasGameApp.js', 2675, 2700, 'advanceEra directly calls GameAPI.advanceEra without canAdvanceEraNow guard', 'frontend:canvas-game-app-advance-era-local-block'),
+      sourceRef('frontend/js/platform/CanvasGameApp.js', 2666, 2680, 'advanceEra directly calls GameAPI.advanceEra without canAdvanceEraNow guard', 'frontend:canvas-game-app-advance-era-local-block'),
       sourceRef('scripts/command-owner-step1/inventories.js', 590, 625, 'FRONTEND_COMMAND_PATHS retired-step4 advanceEra entry', 'frontend:canvas-game-app-advance-era-local-block'),
       sourceRef('scripts/command-owner-step1/inventories.js', 665, 690, 'CLIENT_LOCAL_BLOCKS retired-step4 advanceEra entry', 'frontend:canvas-game-app-advance-era-local-block'),
     ],
@@ -337,7 +337,7 @@ const DEBT_ITEMS = Object.freeze([
     targetPhase: 4,
     contracts: ['COP-TIME-001'],
     sourceRefs: [
-      sourceRef('frontend/js/platform/CanvasActionController.js', 1028, 1045, 'confirmWorldMarchDeployment routes after warning confirmation', 'frontend:world-march-passability'),
+      sourceRef('frontend/js/platform/CanvasActionController.js', 1027, 1029, 'confirmWorldMarchDeployment routes after warning confirmation', 'frontend:world-march-passability'),
       sourceRef('frontend/js/api/GameAPI.js', 821, 829, 'GameAPI startWorldMarch submits command', 'frontend:world-march-passability'),
       sourceRef('scripts/command-owner-step1/inventories.js', 755, 775, 'CLIENT_LOCAL_BLOCKS world-march-passability', 'frontend:world-march-passability'),
     ],
@@ -363,7 +363,7 @@ const DEBT_ITEMS = Object.freeze([
     sourceRefs: [
       sourceRef('frontend/js/api/GameAPI.js', 813, 819, 'resolveCapture client helper remains a command helper but owner scope is private player-owned', 'COP-OWNER-002: resolveCapture'),
       sourceRef('backend/application/commands/CommandOwnerResolver.js', 20, 22, 'resolveCapture owner declaration', 'COP-OWNER-002: resolveCapture'),
-      sourceRef('docs/architecture/step3-phase2-7-verification-2026-07-10.md', 777, 777, 'Final implementation handoff remaining debt COP-OWNER-002 resolveCapture', 'COP-OWNER-002: resolveCapture'),
+      sourceRef('docs/architecture/step3-phase2-7-verification-2026-07-10.md', 774, 774, 'Final implementation handoff remaining debt COP-OWNER-002 resolveCapture', 'COP-OWNER-002: resolveCapture'),
     ],
   },
   {
@@ -379,7 +379,7 @@ const DEBT_ITEMS = Object.freeze([
     growthPreventionTest: 'scripts/check-step4-final-audit.test.js',
     sourceRefs: [
       sourceRef('backend/application/commands/CommandOwnerResolver.js', 5, 32, 'resolveCapture current player command declarations; no loot/boss route declaration in Step4 scope', 'COP-SHARED-001: loot/boss'),
-      sourceRef('docs/architecture/step3-phase2-7-verification-2026-07-10.md', 778, 778, 'Final implementation handoff remaining debt COP-SHARED-001 loot/boss', 'COP-SHARED-001: loot/boss'),
+      sourceRef('docs/architecture/step3-phase2-7-verification-2026-07-10.md', 775, 775, 'Final implementation handoff remaining debt COP-SHARED-001 loot/boss', 'COP-SHARED-001: loot/boss'),
     ],
   },
   {
@@ -411,7 +411,7 @@ const DEBT_ITEMS = Object.freeze([
     growthPreventionTest: 'scripts/check-projection-write-boundary.test.js',
     sourceRefs: [
       sourceRef('scripts/report-domain-business-candidates.js', 421, 440, 'domain business candidate report-only scanner', 'COP-PROJECTION-001: domain business candidates'),
-      sourceRef('docs/architecture/step3-phase2-7-verification-2026-07-10.md', 787, 787, 'Final implementation handoff remaining debt COP-PROJECTION-001', 'COP-PROJECTION-001: domain business candidates'),
+      sourceRef('docs/architecture/step3-phase2-7-verification-2026-07-10.md', 784, 784, 'Final implementation handoff remaining debt COP-PROJECTION-001', 'COP-PROJECTION-001: domain business candidates'),
     ],
   },
 ]);

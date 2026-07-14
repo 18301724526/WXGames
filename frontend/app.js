@@ -26,8 +26,6 @@ const DEFAULT_STATE = {
   activeBuffs: [],
   military: {},
   territoryState: {},
-  softGuide: null,
-  guideTasks: { visible: false, tasks: [] },
   taskCenter: null,
 };
 

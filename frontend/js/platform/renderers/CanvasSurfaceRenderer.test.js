@@ -193,7 +193,7 @@ test('CanvasSurfaceRenderer preserves hit target priority and modal shield rules
   assert.equal(host.hitTargets.length, 0);
 });
 
-test('CanvasSurfaceRenderer stores named hit target pools and resolves guide then modal then base', () => {
+test('CanvasSurfaceRenderer stores named hit target pools and resolves modal before base', () => {
   const surfaceState = createCanvasSurfaceState();
   const renderer = new CanvasSurfaceRenderer({ host: createHost(), surfaceState });
 
@@ -206,34 +206,24 @@ test('CanvasSurfaceRenderer stores named hit target pools and resolves guide the
       { type: 'panelOutsideClick', panelKey: 'famousPersons', background: true, blocksBaseHitTargets: true },
     );
   });
-  renderer.withHitTargetPool('guide', () => {
-    renderer.addHitTarget({ x: 0, y: 0, width: 100, height: 100 }, { type: 'guideFocus' });
-  });
-
   assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), [
     'returnWorldMarch',
     'panelOutsideClick',
-    'guideFocus',
   ]);
   assert.deepEqual(surfaceState.hitTargetPools.base.map((target) => target.action.type), ['returnWorldMarch']);
   assert.deepEqual(surfaceState.hitTargetPools.modal.map((target) => target.action.type), ['panelOutsideClick']);
-  assert.deepEqual(surfaceState.hitTargetPools.guide.map((target) => target.action.type), ['guideFocus']);
-  assert.deepEqual(renderer.getHitTarget({ x: 10, y: 10 }), { type: 'guideFocus' });
-
-  renderer.setHitTargets([{ x: 0, y: 0, width: 100, height: 100, action: { type: 'openCity' } }], 'base');
-  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), [
-    'openCity',
-    'panelOutsideClick',
-    'guideFocus',
-  ]);
-
-  renderer.clearHitTargetPool('guide');
   assert.deepEqual(renderer.getHitTarget({ x: 10, y: 10 }), {
     type: 'panelOutsideClick',
     panelKey: 'famousPersons',
     background: true,
     blocksBaseHitTargets: true,
   });
+
+  renderer.setHitTargets([{ x: 0, y: 0, width: 100, height: 100, action: { type: 'openCity' } }], 'base');
+  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), [
+    'openCity',
+    'panelOutsideClick',
+  ]);
 
   renderer.clearHitTargetPool('modal');
   assert.deepEqual(renderer.getHitTarget({ x: 10, y: 10 }), { type: 'openCity' });

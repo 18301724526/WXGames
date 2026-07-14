@@ -40,7 +40,7 @@
     <script src="js/ecs/runtime/EcsModeRuntimeBundle.js?v=world-clock-monotonic-v1-uiredo6"></script>
     <script src="js/ecs/foundation/WorldTime.js?v=world-clock-authority-v1"></script>
     <script src="js/ecs/system/WorldMarchProgressSnapshot.js?v=march-actor-facing-v1"></script>
-    <script src="js/state/ChangeEventBus.js?v=northstar-s4-x1"></script>
+    <script src="js/state/ChangeEventBus.js?v=change-event-bus-v1"></script>
     <script src="js/state/StateWriter.js?v=state-writer-deshell-v1"></script>
     <script src="js/state/UiRuntimeStateStore.js?v=ui-runtime-state-store-v1"></script>
     <script src="js/state/TerritoryUiStateStore.js?v=territory-ui-state-store-v1"></script>
@@ -74,7 +74,7 @@
     <script src="js/state/presenters/BuildingPresenter.js?v=architecture-refactor-building-presenter-v1"></script>
     <script src="js/state/presenters/EventPresenter.js?v=architecture-refactor-event-presenter-v1"></script>
     <script src="js/state/presenters/CapturePresenter.js?v=pvpve-capture-panel-v1"></script>
-    <script src="js/state/presenters/TaskGuidePresenter.js?v=architecture-refactor-task-guide-presenter-v1"></script>
+    <script src="js/state/presenters/TaskPresenter.js?v=task-center-v1"></script>
     <script src="js/state/presenters/CivilizationPresenter.js?v=architecture-refactor-civilization-presenter-v1"></script>
     <script src="js/state/presenters/FamousPersonPresenter.js?v=architecture-refactor-famous-person-presenter-v1"></script>
     <script src="js/state/presenters/MilitaryPresenter.js?v=architecture-refactor-military-presenter-v1-vetcamp-uiredo7"></script>
@@ -97,10 +97,10 @@
       <script src="js/platform/renderers/CanvasSurfaceFrameClock.js?v=architecture-refactor-surface-frame-clock-v1"></script>
       <script src="js/platform/renderers/CanvasSurfaceRenderer.js?v=world-march-continuous-v3"></script>
     <script src="js/platform/renderers/ModalPlateRenderer.js?v=modal-plate-painter-v1-uiredo8"></script>
-    <script src="js/platform/renderers/CanvasAssetRenderer.js?v=p2-system-guide-v1"></script>
+    <script src="js/platform/renderers/CanvasAssetRenderer.js?v=canvas-runtime-v1"></script>
     <script src="js/platform/renderers/CanvasPreloadAssetManifest.js?v=unit-sprite-manifest-v1-uiredo6"></script>
     <script src="js/platform/renderers/WorldUnitSpriteRenderer.js?v=world-unit-sprite-v1"></script>
-    <script src="js/platform/renderers/WorldTileWaterCanvasRenderer.js?v=p2-system-guide-v1"></script>
+    <script src="js/platform/renderers/WorldTileWaterCanvasRenderer.js?v=canvas-runtime-v1"></script>
     <script src="js/platform/renderers/WorldActorCanvasRenderer.js?v=world-actor-spine-wiring-v2"></script>
     <script src="js/platform/renderers/WorldActorSpineRenderer.js?v=world-actor-spine-v2"></script>
     <script src="js/platform/renderers/WorldMarchHudCanvasRenderer.js?v=world-march-local-progress-v1"></script>
@@ -142,22 +142,21 @@
     <script src="js/platform/renderers/BattleFloatingTextRenderer.js?v=architecture-refactor-battle-floating-v1"></script>
     <script src="js/platform/renderers/BattleEffectRenderer.js?v=architecture-refactor-battle-effects-v1"></script>
     <script src="js/platform/renderers/BattleCanvasRenderer.js?v=entity-battle-render-context-v1"></script>
-    <script src="js/platform/renderers/BuildingCanvasRenderer.js?v=p2-system-guide-v1"></script>
-    <script src="js/platform/renderers/EventCanvasRenderer.js?v=p2-system-guide-v1"></script>
+    <script src="js/platform/renderers/BuildingCanvasRenderer.js?v=canvas-runtime-v1"></script>
+    <script src="js/platform/renderers/EventCanvasRenderer.js?v=canvas-runtime-v1"></script>
     <script src="js/platform/renderers/CaptureCanvasRenderer.js?v=pvpve-capture-panel-v1"></script>
-    <script src="js/platform/renderers/CivilizationCanvasRenderer.js?v=p2-system-guide-v1-uiredo8"></script>
-    <script src="js/platform/renderers/MilitaryCanvasRenderer.js?v=p2-system-guide-v1-vetcamp2"></script>
-    <script src="js/platform/renderers/ArmyFormationEditorCanvasRenderer.js?v=p2-system-guide-v1"></script>
-    <script src="js/platform/renderers/GuideTaskCanvasRenderer.js?v=p2-system-guide-v1-uiredo8"></script>
+    <script src="js/platform/renderers/CivilizationCanvasRenderer.js?v=canvas-runtime-v1-uiredo8"></script>
+    <script src="js/platform/renderers/MilitaryCanvasRenderer.js?v=canvas-runtime-v1-vetcamp2"></script>
+    <script src="js/platform/renderers/ArmyFormationEditorCanvasRenderer.js?v=canvas-runtime-v1"></script>
+    <script src="js/platform/renderers/TaskCanvasRenderer.js?v=task-center-v1"></script>
     <script src="js/platform/renderers/ResourceTopBarCanvasRenderer.js?v=resource-top-bar-owner-v1-uiredo6"></script>
     <script src="js/platform/renderers/CityPeopleCanvasRenderer.js?v=city-people-renderer-v1"></script>
     <script src="js/platform/renderers/SystemCanvasRenderer.js?v=client-operation-log-export-v1-uiredo8"></script>
-    <script src="js/platform/renderers/CityCanvasRenderer.js?v=p2-system-guide-v1-uiredo6"></script>
-    <script src="js/platform/renderers/OverlayCanvasRenderer.js?v=p2-system-guide-v1"></script>
-    <script src="js/platform/renderers/AdvisorCanvasRenderer.js?v=p2-system-guide-v1-uiredo6"></script>
-    <script src="js/platform/renderers/MapCommandCanvasRenderer.js?v=p2-system-guide-v1-uiredo6"></script>
-    <script src="js/platform/renderers/TabBarCanvasRenderer.js?v=p2-system-guide-v1"></script>
-    <script src="js/platform/renderers/HudTabPageCanvasRenderer.js?v=p2-system-guide-v1"></script>
+    <script src="js/platform/renderers/CityCanvasRenderer.js?v=canvas-runtime-v1-uiredo6"></script>
+    <script src="js/platform/renderers/OverlayCanvasRenderer.js?v=canvas-runtime-v1"></script>
+    <script src="js/platform/renderers/MapCommandCanvasRenderer.js?v=canvas-runtime-v1-uiredo6"></script>
+    <script src="js/platform/renderers/TabBarCanvasRenderer.js?v=canvas-runtime-v1"></script>
+    <script src="js/platform/renderers/HudTabPageCanvasRenderer.js?v=canvas-runtime-v1"></script>
     <script src="js/platform/renderers/HudOverlayCanvasRenderer.js?v=entity-battle-canvas-v1"></script>
     <script src="js/platform/renderers/CanvasFrameRenderer.js?v=entity-battle-canvas-v1-uiredo6"></script>
     <script src="js/platform/CanvasGameRendererCompositionFactory.js?v=architecture-refactor-canvas-game-composition-factory-v1"></script>
@@ -185,7 +184,7 @@
     <script src="js/platform/WorldMarchActionHandler.js?v=godfile-redecomp-slice11-v1"></script>
     <script src="js/platform/TargetPickerActionHandler.js?v=godfile-redecomp-slice11-v1"></script>
     <script src="js/platform/CanvasActionController.js?v=world-map-async-action-contract-v1-vetcamp-uiredo7-famousgate"></script>
-    <script src="js/platform/GameCommandService.js?v=p1-house-guide-v1"></script>
+    <script src="js/platform/GameCommandService.js?v=game-command-v1"></script>
     <script src="js/platform/CanvasGameAppRenderPolicy.js?v=architecture-refactor-game-app-render-policy-v1"></script>
     <script src="js/platform/WorldMapRuntimePolicy.js?v=architecture-refactor-world-map-runtime-policy-v1"></script>
     <script src="js/platform/CanvasGameAppRenderScheduler.js?v=architecture-refactor-game-app-render-scheduler-v1"></script>

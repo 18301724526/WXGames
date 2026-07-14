@@ -174,7 +174,7 @@ function getEraCost(currentEra) {
   return clone(getAdvanceConfig(currentEra)?.cost || {});
 }
 
-function runGuidedMainline() {
+function runMainline() {
   const state = createInitialState();
   const ledger = createLedger();
   addToBucket(ledger.initial, state.resources);
@@ -365,7 +365,7 @@ function directPaybackRows() {
   return rows;
 }
 
-function printGuidedMainline(result) {
+function printMainline(result) {
   const { ledger, state } = result;
   const totalWait = ledger.waits.reduce((sum, wait) => sum + wait.seconds, 0);
   const totalSpend = {};
@@ -442,8 +442,8 @@ function printConclusions() {
 
 function main() {
   console.log(`配置版本：${BuildingConfig.getVersion()}`);
-  const guided = runGuidedMainline();
-  printGuidedMainline(guided);
+  const mainline = runMainline();
+  printMainline(mainline);
   printOrganicCheckpoints(createOrganicCheckpoints());
   printPayback(directPaybackRows());
   printConclusions();

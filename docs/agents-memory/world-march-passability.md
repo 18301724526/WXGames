@@ -15,6 +15,6 @@ metadata:
 - **boats 扩展点不变**：水域禁行仍是陆军临时规则；加船/科技时扩展后端 `canTraverseRouteTile` 按单位能力放行（单源常量可加 per-unit 集合），别在客户端做地形预测。
 - **存档自愈两层**：读侧（decorateTile/normalizeTile）——存量水系地形（ocean/river/shore）永不作权威、按 seed 重算（水系纯 seed 无 context 盐）；**存量陆地必须继续无条件信任**（hills 覆盖存活契约）。DB 侧——WorldMapAuthorityRepository 对水系不一致 blob 惰性重写（capital 污染修复同模式）。
 - **命名警告**：新地形不能叫 'coast'——planning 命名空间已占用（ocean→planning'coast' 沿海城规划档案，TerritoryShared 裸值回退会双命名空间污染）。已加映射 `shore→'coast'`。
-- **保守默认**（待用户拍板放开）：站点/出生点/教程空城不落 shore；沿海建城规划档案（CityPlanningService 'coast'）现成。
+- **保守默认**（待用户拍板放开）：站点/出生点不落 shore；沿海建城规划档案（CityPlanningService 'coast'）现成。
 - **渲染像素不变**：TileMapAssetManifest.shore=ocean 条目逐字段拷贝（TileMapAssetManifest.test.js 锁死）；getTerrainAsset 对未知地形静默回退 plains 是陷阱（漏条目=丢水动画）。
-- 验收：WSL 探针——行军到海岸格心成功→沿岸 shore→shore 成功→对真海格 EXPLORE_ROUTE_BLOCKED；教程全链回归 tutorial-completed。旧"clamp 到岸边"语义（2026-06-25）：对水目标现为直接拒绝；中途截断行为本轮未重验，动它前先查 buildManualRoute。
+- 验收：WSL 探针——行军到海岸格心成功→沿岸 shore→shore 成功→对真海格 EXPLORE_ROUTE_BLOCKED。旧"clamp 到岸边"语义（2026-06-25）：对水目标现为直接拒绝；中途截断行为本轮未重验，动它前先查 buildManualRoute。

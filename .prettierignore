@@ -28,7 +28,6 @@ backend/config/BuildingConfig.js
 backend/config/EraConfig.js
 backend/config/GameConfig.js
 backend/config/TechTreeConfig.js
-backend/config/TutorialFlowConfig.js
 backend/config/defaultTaskDefinitions.json
 backend/domain/Event.js
 backend/ecosystem.config.js
@@ -138,12 +137,6 @@ backend/services/territory/TerritoryScoutResults.js
 backend/services/territory/TerritorySiteMigration.js
 backend/services/territory/TerritoryStateNormalizer.js
 backend/services/territory/TerritoryVisuals.js
-backend/services/tutorial/TutorialActionValidator.js
-backend/services/tutorial/TutorialGrantService.js
-backend/services/tutorial/TutorialProgression.js
-backend/services/tutorial/TutorialSelectors.js
-backend/services/tutorial/TutorialState.js
-backend/services/tutorial/TutorialTabAccess.js
 backend/services/worldExplorer/WorldExplorerActions.js
 backend/services/worldExplorer/WorldExplorerClientState.js
 backend/services/worldExplorer/WorldExplorerDtoMapper.js
@@ -151,7 +144,6 @@ backend/services/worldExplorer/WorldExplorerMissionNormalizer.js
 backend/services/worldExplorer/WorldExplorerProgression.js
 backend/services/worldExplorer/WorldExplorerRoutePlanner.js
 backend/services/worldExplorer/WorldExplorerShared.js
-backend/services/worldExplorer/WorldExplorerTutorial.js
 backend/services/worldMap/WorldMapBatch.js
 backend/services/worldMap/WorldMapConstants.js
 backend/services/worldMap/WorldMapGenerationAuthority.js
@@ -171,7 +163,6 @@ backend/tests/ConfigRuntimeLoader.test.js
 backend/tests/DatabaseRuntime.test.js
 backend/tests/FamousPersonArchitecture.test.js
 backend/tests/GameActionRegistry.test.js
-backend/tests/GameRoutesTutorial.test.js
 backend/tests/GameStateMigrationPipeline.test.js
 backend/tests/GameStateProjectionArchitecture.test.js
 backend/tests/GameStateRepository.test.js
@@ -195,11 +186,8 @@ backend/tests/TaskCenterArchitecture.test.js
 backend/tests/TaskCenterService.test.js
 backend/tests/TaskDefinitionArchitecture.test.js
 backend/tests/TaskDefinitionService.test.js
-backend/tests/TerritoryActionTutorial.test.js
 backend/tests/TerritoryArchitecture.test.js
 backend/tests/TerritoryClientAssembler.test.js
-backend/tests/TutorialArchitecture.test.js
-backend/tests/TutorialProgressService.test.js
 backend/tests/VersionService.test.js
 backend/tests/WorldExplorerArchitecture.test.js
 backend/tests/WorldExplorerDtoMapper.test.js
@@ -295,7 +283,6 @@ frontend/js/platform/CanvasGameApp.js
 frontend/js/platform/CanvasGameApp.test.js
 frontend/js/platform/CanvasGameAppBattleScene.js
 frontend/js/platform/CanvasGameAppCommands.js
-frontend/js/platform/CanvasGameAppGuideUi.js
 frontend/js/platform/CanvasGameAppInputRouter.js
 frontend/js/platform/CanvasGameAppRenderPolicy.js
 frontend/js/platform/CanvasGameAppRenderPolicy.test.js
@@ -314,7 +301,6 @@ frontend/js/platform/CanvasGameRendererPageFacades.test.js
 frontend/js/platform/CanvasGameShell.js
 frontend/js/platform/CanvasGameShell.test.js
 frontend/js/platform/CanvasGameShellCommands.js
-frontend/js/platform/CanvasGameShellGuideUi.js
 frontend/js/platform/CanvasGameShellInputRouter.js
 frontend/js/platform/CanvasGameShellMounting.js
 frontend/js/platform/CanvasGameShellRenderingRuntime.js
@@ -366,8 +352,6 @@ frontend/js/platform/WorldMapVisualPluginRegistry.js
 frontend/js/platform/WorldMapVisualPluginRegistry.test.js
 frontend/js/platform/interactions/TechTreeInteractionModel.js
 frontend/js/platform/interactions/TechTreeInteractionModel.test.js
-frontend/js/platform/renderers/AdvisorCanvasRenderer.js
-frontend/js/platform/renderers/AdvisorCanvasRenderer.test.js
 frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.js
 frontend/js/platform/renderers/ArmyFormationEditorCanvasRenderer.test.js
 frontend/js/platform/renderers/BattleCanvasModel.js
@@ -404,8 +388,6 @@ frontend/js/platform/renderers/FamousCanvasRenderer.test.js
 frontend/js/platform/renderers/FamousPanelCanvasRenderer.js
 frontend/js/platform/renderers/FamousPortraitCanvasRenderer.js
 frontend/js/platform/renderers/FamousSkillCanvasRenderer.js
-frontend/js/platform/renderers/GuideTaskCanvasRenderer.js
-frontend/js/platform/renderers/GuideTaskCanvasRenderer.test.js
 frontend/js/platform/renderers/HudOverlayCanvasRenderer.js
 frontend/js/platform/renderers/HudOverlayCanvasRenderer.test.js
 frontend/js/platform/renderers/HudTabPageCanvasRenderer.js
@@ -426,13 +408,6 @@ frontend/js/platform/renderers/TechCanvasRenderer.js
 frontend/js/platform/renderers/TechCanvasRenderer.test.js
 frontend/js/platform/renderers/TechTreeCanvasRenderer.js
 frontend/js/platform/renderers/TechTreeLayoutModel.js
-frontend/js/platform/renderers/TutorialAdvisorCanvasRenderer.js
-frontend/js/platform/renderers/TutorialAdvisorDialogueRenderer.js
-frontend/js/platform/renderers/TutorialCanvasRenderer.js
-frontend/js/platform/renderers/TutorialCanvasRenderer.test.js
-frontend/js/platform/renderers/TutorialIntroDialogueLayout.js
-frontend/js/platform/renderers/TutorialIntroMarchModel.js
-frontend/js/platform/renderers/TutorialIntroUnitRenderer.js
 frontend/js/platform/renderers/WorldActorCanvasRenderer.js
 frontend/js/platform/renderers/WorldActorCanvasRenderer.test.js
 frontend/js/platform/renderers/WorldFogCanvasRenderer.js
@@ -510,7 +485,6 @@ frontend/js/state/presenters/HomePresenter.js
 frontend/js/state/presenters/MilitaryPresenter.js
 frontend/js/state/presenters/ShellPresenter.js
 frontend/js/state/presenters/TalentPolicyPresenter.js
-frontend/js/state/presenters/TaskGuidePresenter.js
 frontend/js/state/presenters/TechPresenter.js
 frontend/js/state/presenters/WorldSitePresenter.js
 frontend/js/state/presenters/WorldTileMapExplorerNormalizer.js
@@ -519,18 +493,6 @@ frontend/js/state/presenters/WorldTileMapPresenter.js
 frontend/js/state/presenters/WorldTileMapRenderDiagnostics.js
 frontend/js/state/presenters/WorldTileMapTileNormalizer.js
 frontend/js/state/presenters/WorldTileMapTileNormalizer.test.js
-frontend/js/tutorial/TutorialGuideController.js
-frontend/js/tutorial/TutorialGuideController.test.js
-frontend/js/tutorial/TutorialGuidePhaseHighlights.js
-frontend/js/tutorial/TutorialGuidePhaseHighlights.test.js
-frontend/js/tutorial/TutorialGuideStepPolicy.js
-frontend/js/tutorial/TutorialGuideStepPolicy.test.js
-frontend/js/tutorial/TutorialGuideTargetResolver.js
-frontend/js/tutorial/TutorialGuideTargetResolver.test.js
-frontend/js/tutorial/TutorialGuideUiStateCoordinator.js
-frontend/js/tutorial/TutorialGuideUiStateCoordinator.test.js
-frontend/js/tutorial/TutorialIntroOverlay.js
-frontend/js/tutorial/TutorialIntroOverlay.test.js
 frontend/js/ui/H5AuthRuntimeAdapter.js
 frontend/js/ui/H5GameHostSync.test.js
 frontend/js/ui/H5ShellAdapter.js
@@ -547,10 +509,6 @@ frontend/tools/ops-console.html
 frontend/tools/task-table-uploader.html
 frontend/tools/tile-map-lab.html
 frontend/tools/tile-map-lab.js
-frontend/tools/tutorial-advisor-spine-preview.html
-frontend/tools/tutorial-intro-overlay-preview.html
-frontend/tools/tutorial-intro-overlay-preview.js
-frontend/tools/tutorial-spine-tuner.html
 scripts/check-backend-security-audit.js
 scripts/check-backend-security-audit.test.js
 scripts/check-frontend-script-manifest.js
@@ -570,7 +528,6 @@ scripts/plan-legacy-spawn-repair.test.js
 scripts/playtest-online-manual-march-return.js
 scripts/playtest-online-reset-spawn.js
 scripts/playtest-online-spawn-readonly.js
-scripts/playtest-online-tutorial.js
 scripts/profile-h5-performance.js
 scripts/repair-legacy-spawn-account.js
 scripts/repair-legacy-spawn-account.test.js

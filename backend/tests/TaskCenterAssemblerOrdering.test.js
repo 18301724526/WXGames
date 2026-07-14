@@ -50,4 +50,7 @@ test('claimable tasks surface first, completed sink, definition order holds with
     main.map((task) => `${task.id}:${task.status}`),
     ['t-claim-a:claimable', 't-claim-b:claimable', 't-active:active', 't-completed:completed'],
   );
+  assert.equal(Object.hasOwn(main.find((task) => task.id === 't-active'), 'action'), false);
+  assert.equal(Object.hasOwn(main.find((task) => task.id === 't-completed'), 'action'), false);
+  assert.equal(main.find((task) => task.id === 't-claim-a').action.type, 'claimTaskReward');
 });

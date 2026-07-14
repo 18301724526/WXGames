@@ -51,7 +51,7 @@ test('event mirror retirement guard blocks host mirror writes and reads', () => 
 
 test('event mirror retirement guard blocks the setIfChanged and patch-key idioms', () => {
   const findings = findEventMirrorRetirementViolationsInText(
-    'frontend/js/tutorial/TutorialGuideController.js',
+    'frontend/js/platform/LegacyEventCoordinator.js',
     [
       "setIfChanged(game, 'activeEventId', null);",
       "setIfChanged(shell, 'activeEventId', null);",

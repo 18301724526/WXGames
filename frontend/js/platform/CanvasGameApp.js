@@ -334,7 +334,6 @@
             resources: {},
             population: {},
             currentEra: 0,
-            softGuide: null,
           }, { source: 'CanvasGameApp:constructor:init' });
           UiRuntimeStateStore?.ensure?.(this, {
             activeTab: options.activeTab || this.state.currentTab || 'resources',
@@ -360,7 +359,6 @@
           }), { source: 'CanvasGameApp:constructor:home' });
           this.activeCityManagementTab = 'buildings';
           this.activeTaskCenterTab = 'main';
-          this.activeGuidebookTab = 'planning';
           this.famousPersonsPage = 0;
           this.selectedFamousPersonId = '';
           this.buildingOffset = 0;
@@ -435,7 +433,6 @@
           };
           this.requestLogs = [];
           this.recentLogs = [];
-          this.activeAdvisor = null;
           this.activeNamingPrompt = null;
           this.activeNamingPromptKey = null;
           const CommandServiceCtor = options.commandServiceClass || GameCommandServiceBase || null;
@@ -449,7 +446,6 @@
             awaitAsync: true,
             log: (message) => this.log(message),
           }) : null);
-          this.guideController = options.guideController || null;
           this.timer = null;
           this.tapDisposer = null;
           this.dragDisposer = null;
@@ -907,8 +903,6 @@
                   ...nextState,
                   currentTab: homeView.activeTab,
                   militaryView: homeView.militaryView,
-                  softGuide: payload.softGuide ?? nextState.softGuide ?? null,
-                  guideTasks: payload.guideTasks ?? nextState.guideTasks ?? { visible: false, tasks: [] },
                   taskCenter: payload.taskCenter ?? nextState.taskCenter ?? null,
                   eraProgress: payload.eraProgress ?? nextState.eraProgress,
                 }, { source: 'applyState' });
@@ -1282,7 +1276,6 @@
 
     render() {
                 this.renderMilitaryView();
-                this.renderSoftGuide({ skipSurface: true });
                 this.maybeShowNamingPrompt();
                 this.renderCanvasSurface();
               }
@@ -1382,8 +1375,6 @@
                   activeCityManagementTab: this.activeCityManagementTab,
                   showTaskCenter: panel.showTaskCenter,
                   activeTaskCenterTab: this.activeTaskCenterTab,
-                  showGuidebook: panel.showGuidebook,
-                  activeGuidebookTab: this.activeGuidebookTab,
                   showFamousPersons: panel.showFamousPersons,
                   famousPersonsPage: this.famousPersonsPage,
                   selectedFamousPersonId: this.selectedFamousPersonId,
@@ -1458,8 +1449,6 @@
                   activeCityManagementTab: this.activeCityManagementTab,
                   showTaskCenter: panel.showTaskCenter,
                   activeTaskCenterTab: this.activeTaskCenterTab,
-                  showGuidebook: panel.showGuidebook,
-                  activeGuidebookTab: this.activeGuidebookTab,
                   showFamousPersons: panel.showFamousPersons,
                   famousPersonsPage: this.famousPersonsPage,
                   selectedFamousPersonId: this.selectedFamousPersonId,
@@ -1867,7 +1856,6 @@
                 CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCityManagement');
                 this.closeEventSnapshot?.();
                 CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showTaskCenter');
-                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showGuidebook');
                 this.getPanelSurfaceManager()?.closePanel?.('famousPersons', { render: false });
                 this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
                 CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'activeCommandPanel');
@@ -1910,12 +1898,10 @@
                 CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showSubcityList');
                 CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCityManagement');
                 CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showTaskCenter');
-                CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showGuidebook');
                 this.getPanelSurfaceManager()?.closePanel?.('famousPersons', { render: false });
                 this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
                 CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'activeCommandPanel');
                 this.activeTaskCenterTab = 'main';
-                this.activeGuidebookTab = 'planning';
                 this.pageTransition = null;
                 this.buildingTransition = null;
                 if (this.canvasShell) {
@@ -1981,11 +1967,10 @@
                 this.closeEventSnapshot?.();
                 this.renderMilitaryView();
                 this.renderCanvasSurface(this.state.currentTab);
-                this.renderSoftGuide();
               }
 
     getPreferredMilitaryView(tabId) {
-                return CanvasGameAppRenderPolicy.getPreferredMilitaryView(tabId, this.state?.softGuide || {});
+                return CanvasGameAppRenderPolicy.getPreferredMilitaryView(tabId);
               }
 
     switchMilitaryView(view) {
@@ -2811,10 +2796,6 @@
                 }
               }
 
-    async claimGuideTaskReward(_taskId) {
-                return false;
-              }
-
     async claimTaskReward(taskId, category = 'main', _options = {}) {
                 if (!taskId) return false;
                 try {
@@ -3039,103 +3020,10 @@
                 return true;
               }
 
-    moveToCurrentMainTaskTarget() {
-                return false;
-              }
-
-    continueCurrentMainTaskTarget() {
-                return false;
-              }
-
-    getTargetTab(key) {
-                return this.guideController?.getTargetTab?.(key) || null;
-              }
-
-    getGuideState() {
-                return this.state;
-              }
-
-    getGuideActiveTab() {
-                return this.getActiveTab();
-              }
-
-    getGuideCanvasTarget(type, predicate = null) {
-                return this.canvasShell?.getCanvasTarget?.(type, predicate)
-                  || this.getCanvasTarget(type, predicate);
-              }
-
-    renderGuideFrame() {
-                this.renderCanvasSurface(this.state?.currentTab || this.getActiveTab());
-                return true;
-              }
-
-    switchGuideTab(tabId) {
-                this.switchTab(tabId);
-                return true;
-              }
-
-    setGuideMilitaryView(view) {
-                this.militaryView = view || 'army';
-                StateWriter.commit(this, (prev) => ({ ...prev, militaryView: this.militaryView }), { source: 'setGuideMilitaryView' });
-                this.render();
-                return true;
-              }
-
-    getCanvasTarget(type, predicate = null) {
-                const targets = this.canvasShell?.renderer?.hitTargets || this.renderer?.hitTargets || [];
-                const target = targets.find((item) => (
-                  item.action?.type === type
-                  && (typeof predicate !== 'function' || predicate(item.action))
-                ));
-                if (!target) return null;
-                return {
-                  left: target.x,
-                  top: target.y,
-                  width: target.width,
-                  height: target.height,
-                  right: target.x + target.width,
-                  bottom: target.y + target.height,
-                };
-              }
-
-    refreshTaskCenterGuideHighlight(action = {}) {
-                return this.guideController?.refreshTaskCenterGuideHighlight?.(action) || false;
-              }
-
     hasClaimableMainTask() {
-                return false;
-              }
-
-    refreshCurrentGuideHighlight() {
-                return false;
-              }
-
-    ensureGuideTargetVisible() {
-                return false;
-              }
-
-    showGuideHighlight() {
-                return false;
-              }
-
-    hideGuideHighlight() {
-                return false;
-              }
-
-    showGuideControllerHighlight(target, message) {
-                return this.showGuideHighlight(target, message);
-              }
-
-    hideGuideControllerHighlight() {
-                return this.hideGuideHighlight();
-              }
-
-    hasGuideControllerHighlight() {
-                return false;
-              }
-
-    goToGuideTaskTarget() {
-                return false;
+                const tasks = this.state?.taskCenter?.categories?.main?.tasks;
+                return Array.isArray(tasks)
+                  && tasks.some((task) => task?.status === 'claimable' && !task?.claimed);
               }
 
     toggleCitySwitcher() {
@@ -3192,68 +3080,6 @@
 
     closeNamingModal() {
                 this.closeNaming();
-              }
-
-    renderSoftGuide(options = {}) {
-                this.updateAdvisor(this.state?.softGuide || null, { skipSurface: true });
-                this.hideGuideHighlight();
-                if (!options.skipSurface) this.renderCanvasSurface(this.state?.currentTab);
-              }
-
-    getActiveGuideNavigation() {
-                return null;
-              }
-
-    hasActiveGuideTaskTarget() {
-                return false;
-              }
-
-    updateAdvisor(guide, options = {}) {
-                const view = this.presenter?.buildAdvisorViewState?.(guide) || {};
-                this.activeAdvisor = view.activeAdvisor;
-                if (!options.skipSurface) this.renderCanvasSurface(this.state?.currentTab);
-              }
-
-    goToAdvisorTarget() {
-                const target = this.activeAdvisor?.target || this.state?.softGuide?.target || null;
-                const targetMap = {
-                  'btn-advance-era': { kind: 'tab', tabId: 'civilization' },
-                  'card-craftsman': { kind: 'tab', tabId: 'resources' },
-                  'event-card-special': { kind: 'tab', tabId: 'events' },
-                  'btn-claim-event': { kind: 'tab', tabId: 'events' },
-                  'task-center-main-claim': { kind: 'action', action: { type: 'openTaskCenter', tab: 'main', source: 'advisor' } },
-                  'task-center-button': { kind: 'action', action: { type: 'openTaskCenter', tab: 'main', source: 'advisor' } },
-                  'tab-territory': { kind: 'tab', tabId: 'territory' },
-                };
-                const resolution = targetMap[target]
-                  || (String(target || '').startsWith('card-') ? { kind: 'tab', tabId: 'buildings' } : null)
-                  || (String(target || '').startsWith('tab-') ? { kind: 'tab', tabId: String(target).slice(4) } : null);
-                if (resolution?.kind === 'action') {
-                  const action = { ...resolution.action };
-                  CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showAdvisor');
-                  if (this.canvasShell?.actionController?.handle_openTaskCenter) {
-                    this.canvasShell.actionController.handle_openTaskCenter(action);
-                  } else if (this.actionController?.handle_openTaskCenter) {
-                    this.actionController.handle_openTaskCenter(action);
-                  } else {
-                    CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this, 'showTaskCenter', true);
-                    this.activeTaskCenterTab = 'main';
-                    if (this.canvasShell) {
-                      this.canvasShell.activeTaskCenterTab = 'main';
-                    }
-                    this.renderCanvasSurface(this.state?.currentTab);
-                  }
-                  return true;
-                }
-                if (resolution?.kind === 'guideTask') {
-                  return this.canvasShell?.goToGuideTaskTarget?.({
-                    target,
-                    nextAction: { ...resolution.nextAction },
-                  });
-                }
-                const tabId = resolution?.kind === 'tab' ? resolution.tabId : null;
-                if (tabId) this.switchTab(tabId);
-                return Boolean(tabId);
               }
 
     showFloatingText(message) {
@@ -3334,9 +3160,7 @@
                   || this.isBlockingPanelSnapshotOpen('showCitySwitcher')
                   || this.isBlockingPanelSnapshotOpen('showSubcityList')
                   || this.isBlockingPanelSnapshotOpen('showCityManagement')
-                  || this.isBlockingPanelSnapshotOpen('showAdvisor')
                   || this.isBlockingPanelSnapshotOpen('showTaskCenter')
-                  || this.isBlockingPanelSnapshotOpen('showGuidebook')
                   || this.isBlockingPanelSnapshotOpen('showFamousPersons')
                   || this.armyFormationEditor?.open
                   || confirmDialogOpen

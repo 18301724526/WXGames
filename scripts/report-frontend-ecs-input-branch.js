@@ -15,12 +15,6 @@ const EXACT_MODE_SYMBOLS = Object.freeze([
   'activeEventId',
 ]);
 
-const TUTORIAL_SYMBOLS = Object.freeze([
-  'isTutorialInputActive',
-  'isTutorialActionAllowed',
-  'allowedAction',
-]);
-
 const RUNTIME_ROUTE_SYMBOLS = Object.freeze([
   'shouldRouteTapThroughWorldMapRuntime',
   'handleTap',
@@ -96,7 +90,7 @@ function classifySurface(filePath) {
 function extractSymbols(line = '') {
   const symbols = new Set();
   const exactPattern = new RegExp(
-    `\\b(${[...EXACT_MODE_SYMBOLS, ...TUTORIAL_SYMBOLS, ...RUNTIME_ROUTE_SYMBOLS]
+    `\\b(${[...EXACT_MODE_SYMBOLS, ...RUNTIME_ROUTE_SYMBOLS]
       .map(escapeRegExp)
       .join('|')})\\b`,
     'g',
@@ -135,7 +129,6 @@ function hasActionDispatchSignal(line = '') {
 }
 
 function classifyBranchKind(symbols = [], actionTypes = []) {
-  if (symbols.some((symbol) => TUTORIAL_SYMBOLS.includes(symbol))) return 'tutorial';
   if (symbols.some((symbol) => RUNTIME_ROUTE_SYMBOLS.includes(symbol))) return 'runtime-route';
   if (symbols.some((symbol) => symbol.startsWith('show'))) return 'panel';
   if (
@@ -153,7 +146,6 @@ function classifyBranchKind(symbols = [], actionTypes = []) {
 }
 
 function noteForFinding(branchKind, symbols = []) {
-  if (branchKind === 'tutorial') return 'tutorial input gate branch';
   if (branchKind === 'runtime-route') return 'world-map runtime route branch';
   if (branchKind === 'panel') return 'panel/modal input branch';
   if (branchKind === 'mode') return 'mode-dependent input branch';

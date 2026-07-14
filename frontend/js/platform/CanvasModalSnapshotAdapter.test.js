@@ -197,29 +197,26 @@ test('CanvasModalSnapshotAdapter closeBlockingPanelsSnapshot keeps the excepted 
 
   host.openBlockingPanelSnapshot('showSettings', true);
   host.openBlockingPanelSnapshot('showTaskCenter', true);
-  host.openBlockingPanelSnapshot('showGuidebook', true);
   host.openBlockingPanelSnapshot('activeCommandPanel', 'military');
 
   host.closeBlockingPanelsSnapshot(['showTaskCenter']);
 
   assert.equal(host.isBlockingPanelSnapshotOpen('showTaskCenter'), true);
   assert.equal(host.isBlockingPanelSnapshotOpen('showSettings'), false);
-  assert.equal(host.isBlockingPanelSnapshotOpen('showGuidebook'), false);
   assert.equal(host.isBlockingPanelSnapshotOpen('activeCommandPanel'), false);
   assert.equal(host.getCommandPanelValue(), '');
 
   const panel = host.getRendererSnapshot().panel;
   assert.equal(panel.showTaskCenter, true);
   assert.equal(panel.showSettings, false);
-  assert.equal(panel.showGuidebook, false);
   assert.equal(panel.activeCommandPanel, '');
 });
 
-test('CanvasModalSnapshotAdapter buildBlockingPanelFacts returns the flat-12 panel facts', () => {
+test('CanvasModalSnapshotAdapter buildBlockingPanelFacts returns the panel facts', () => {
   class Host extends CanvasModalOwnerTestHost {}
   const host = new Host();
 
-  // All-closed baseline: 11 booleans false + activeCommandPanel ''.
+  // All-closed baseline.
   assert.deepEqual(host.buildBlockingPanelFacts(), {
     showSettings: false,
     showLogs: false,
@@ -227,9 +224,7 @@ test('CanvasModalSnapshotAdapter buildBlockingPanelFacts returns the flat-12 pan
     showCitySwitcher: false,
     showSubcityList: false,
     showCityManagement: false,
-    showAdvisor: false,
     showTaskCenter: false,
-    showGuidebook: false,
     showFamousPersons: false,
     activeCommandPanel: '',
     techDetailOpen: false,
@@ -247,9 +242,7 @@ test('CanvasModalSnapshotAdapter buildBlockingPanelFacts returns the flat-12 pan
     showCitySwitcher: false,
     showSubcityList: false,
     showCityManagement: false,
-    showAdvisor: false,
     showTaskCenter: false,
-    showGuidebook: false,
     showFamousPersons: true,
     activeCommandPanel: 'capital',
     techDetailOpen: true,

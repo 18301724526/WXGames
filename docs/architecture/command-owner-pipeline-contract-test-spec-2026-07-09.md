@@ -75,7 +75,7 @@ The current backend already has strong pieces: player state locks, revision conf
    selected commands.
 6. `COP-CLIENT-001`: Frontend may block duplicate in-flight transport for the
    same command key, but it must not block server commands based on domain
-   eligibility such as resources, tutorial step, cooldown, era, march arrival,
+   eligibility such as resources, cooldown, era, march arrival,
    or candidate availability.
 7. `COP-TIME-001`: Client time is never authoritative. Server time and persisted
    revisions are authoritative.
@@ -251,7 +251,7 @@ Behavior:
 - Same `idempotencyKey` while in progress: return `202 IN_PROGRESS` or `409 COMMAND_IN_FLIGHT`.
 - Same `idempotencyKey` after commit: return the recorded response, not execute again.
 - Same key with different payload digest: reject as `409 IDEMPOTENCY_KEY_CONFLICT`.
-- Retry after network timeout must not duplicate resource spend, reward grant, tutorial progress, or ownership transfer.
+- Retry after network timeout must not duplicate resource spend, reward grant, or ownership transfer.
 
 ### 4.6 DomainValidator and DomainHandler
 
@@ -330,7 +330,6 @@ This lock is not a business rule. It only prevents duplicate transport for the s
 The client must not block writes based on domain eligibility:
 
 - resources are insufficient
-- tutorial step is not reached
 - era cannot advance
 - tech cannot research
 - cooldown has not ended
@@ -407,7 +406,7 @@ Client local in-flight blocking must be logged to `ClientOperationLog` with:
 - reason: `IN_FLIGHT`, `DUPLICATE_COMMAND_ID`, `PAYLOAD_SHAPE`, or `UI_NOT_READY`
 - no domain reason
 
-If a local block reason contains domain words like `resources`, `tutorial`, `era`, `cooldown`, `research`, `march`, `candidate`, or `territory`, it is a violation.
+If a local block reason contains domain words like `resources`, `era`, `cooldown`, `research`, `march`, `candidate`, or `territory`, it is a violation.
 
 ## 8. Acceptance Tests
 
@@ -522,11 +521,11 @@ These are kept. The target is to make them universal.
 ### 10.2 Server Gaps
 
 1. `/api/game/action` still performs command orchestration directly in `backend/routes/gameRoutes.js`.
-   - It loads state, syncs tutorial, validates tutorial, executes registry action, writes tutorial, saves state, and builds response in the route.
+   - It loads state, validates, executes registry actions, saves state, and builds responses in the route.
    - This should move into `CommandExecutionPipeline`.
 
 2. `backend/routes/buildingRoutes.js` still has a legacy write route.
-   - It calls `BuildingActionService.build`, writes `gameState.tutorial`, saves, and builds response locally.
+   - It calls `BuildingActionService.build`, saves, and builds the response locally.
    - This duplicates the command-handler path and should be retired or routed into the same pipeline.
 
 3. `GameActionRegistry` maps action strings to handlers but does not declare owner keys.
@@ -552,7 +551,7 @@ These are kept. The target is to make them universal.
 
 2. `CanvasGameApp.advanceEra()` blocks the command using local domain eligibility.
    - The command path calls `canAdvanceEraNow()` and returns before contacting the server.
-   - Under this spec, that is not allowed. The client may display a disabled hint, but command submission must not be blocked by era/tutorial/resource eligibility.
+   - Under this spec, that is not allowed. The client may display a disabled hint, but command submission must not be blocked by era/resource eligibility.
 
 3. Write command execution is spread across `CanvasGameApp`, `CanvasActionController`, panel flows, and `GameAPI`.
    - There is no single `ClientCommandSender`.

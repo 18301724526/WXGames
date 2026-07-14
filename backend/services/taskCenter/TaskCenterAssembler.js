@@ -11,16 +11,15 @@ function buildTaskView(gameState, task) {
     category: task.category,
     title: task.title,
     description: task.description,
-    target: task.target,
     status,
     claimed,
     progress: conditionMet ? 1 : 0,
     progressText: conditionMet ? '已达成' : '进行中',
     reward: task.reward,
     rewardText: task.rewardText,
-    action: status === 'claimable'
-      ? { type: 'claimTaskReward', taskId: task.id, category: task.category }
-      : (task.action || { type: 'goToGuideTaskTarget', taskId: task.id, target: task.target }),
+    ...(status === 'claimable' ? {
+      action: { type: 'claimTaskReward', taskId: task.id, category: task.category },
+    } : {}),
   };
 }
 

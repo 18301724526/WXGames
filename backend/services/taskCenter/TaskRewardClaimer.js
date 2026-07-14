@@ -72,10 +72,13 @@ function applyTaskReward(gameState, reward = {}) {
 }
 
 function buildRewardReveal(task, resources) {
+  const hasResources = Object.values(resources || {}).some((value) => Number(value) > 0);
+  const rewardText = String(task.rewardText || '').trim();
+  if (!hasResources && (!rewardText || rewardText.toLowerCase() === 'none')) return null;
   return {
     title: '任务奖励',
     subtitle: task.title,
-    rewardText: task.rewardText,
+    rewardText,
     resources,
     createdAt: Date.now(),
   };

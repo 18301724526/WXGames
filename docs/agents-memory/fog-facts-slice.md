@@ -19,6 +19,6 @@ metadata:
 **关键坑**：
 - [[bitecs-ecs-standard]] bitecs 模块**不能裸 script 加载**（EcsCoreBoundary 是 bundle-only）——必须加进 EcsModeRuntimeEntry requires 进 bundle；裸加载会 load-throw（fail-closed 当场抓到，playtest pageErrors 可见）。
 - 特征测试写法：给 mission 烘焙 core 现算值可让夹具在手术前后等价（WorldFogVisionModel.test.js）；去重键 last-write-wins 会让 q=1 满强度点被前沿 0.5 采样覆盖（无害怪癖已记录在测试注释）。
-- 行为终验用 playtest harness（PLAYTEST_GAME_URL/API_BASE 指 WSL，默认重置 codexqa；白名单外账号 403）；雾平滑探针 tmp/fog-smooth-probe3.js（教程通关后行军门开，采 fog 面 alpha 序列）。
+- 行为终验使用本地 playtest harness；雾平滑探针 `tmp/fog-smooth-probe3.js` 采集 fog 面 alpha 序列。
 
-**终验结果（2026-07-04）**：教程全通（tutorialCompleted=true、pageErrors=0）+ 探针 VERDICT: SMOOTH（20s 窗口 25 次连续小步递减，静止观战雾实时跟随行军）。教程卡点绕行序列（API 直发，harness 卡住时用）：`startConquest→claimConquest→renameCity(payload 键是 name 不是 cityName)→renamePolity`。两个非本切片遗留已建 chip：harness 行军等待误报（服务器实际已完成，工具报 no-progress）；教程 firstCityDiscovered 步刷新页面后目标选择器被引导盾锁死（42295efa 只修了不刷新流程）。
+**终验结果（2026-07-04）**：探针 `VERDICT: SMOOTH`，20 秒窗口内记录到 25 次连续小步递减，静止观战时雾面会实时跟随行军。另记录一个 harness 行军等待误报：服务器已经完成，工具仍报告 no-progress。

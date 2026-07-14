@@ -135,11 +135,6 @@
       "count": 1
     }
   },
-  "frontend/js/platform/renderers/GuideTaskCanvasRenderer.js": {
-    "no-unused-vars": {
-      "count": 3
-    }
-  },
   "frontend/js/platform/renderers/HudOverlayCanvasRenderer.js": {
     "no-unused-vars": {
       "count": 1
@@ -250,11 +245,6 @@
       "count": 1
     }
   },
-  "frontend/js/state/presenters/TaskGuidePresenter.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "frontend/js/state/presenters/WorldTileMapExplorerNormalizer.js": {
     "no-unused-vars": {
       "count": 3
@@ -294,11 +284,6 @@
     },
     "no-unused-vars": {
       "count": 1
-    }
-  },
-  "scripts/playtest-online-tutorial.js": {
-    "no-empty": {
-      "count": 6
     }
   },
   "scripts/profile-h5-performance.js": {

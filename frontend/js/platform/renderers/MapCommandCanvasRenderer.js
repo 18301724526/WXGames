@@ -99,9 +99,7 @@
     }
 
     // UI-REDO dock item set (layout-reference-v2): two round edge badges
-    // (capital / tasks) + four square center buttons. The former 'more'
-    // (openGuidebook) dock item was removed with the redesign; the
-    // openGuidebook action handler stays intact.
+    // (capital / tasks) + four square center buttons.
     getDockCommandItems(state = {}) {
       return {
         capital: {

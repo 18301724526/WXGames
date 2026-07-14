@@ -22,7 +22,6 @@ test('task definition normalizer accepts planner-friendly Chinese headers', () =
         任务名称: '中文任务',
         任务描述: '策划表头可以直接使用中文',
         任务分类: 'main',
-        目标: 'buildings',
         条件类型: 'buildingLevel',
         建筑ID: 'house',
         数量: 1,

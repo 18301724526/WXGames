@@ -1,15 +1,15 @@
 ---
 name: march-spine-four-direction
-description: 行军spine接入+四方向行走+兵种系统。SPINE-1四方向DONE；SPINE-2/3(spine渲染+教程)待做，含单上下文多skeleton渲染器等硬点。
+description: 行军 spine 接入、四方向行走和兵种系统。SPINE-1 四方向已完成；SPINE-2 渲染仍待完成，重点是单上下文多 skeleton 渲染器。
 metadata: 
   node_type: memory
   type: project
   originSessionId: 2992377e-0795-4820-a4df-9cbb32be926b
 ---
 
-用户 2026-07-05：世界行军序列帧→spine(导出野蛮步兵，动画1/2/3/4=四方向)、加兵种系统、教程走主城也用步兵spine、行走改四方向禁抄近道。设计文档 docs/architecture/march-spine-four-direction-design-2026-07-05.md。勘察 workflow=wlyye77q3。
+用户 2026-07-05：世界行军序列帧→spine(导出野蛮步兵，动画1/2/3/4=四方向)、加兵种系统、行走改四方向禁抄近道。设计文档 docs/architecture/march-spine-four-direction-design-2026-07-05.md。勘察 workflow=wlyye77q3。
 
-**素材已放规范目录**：`frontend/assets/art/spine/march/barbarian/infantry/barbarian_infantry.{json,atlas,png}`(spine 3.8.99，动画'1'/'2'/'3'/'4'，atlas贴图引用已改名对齐)。规范=`spine/march/<时代>/<兵种>/`。**项目已有 spine-webgl 3.8 运行时**(index.html:178 vendor/spine-3.8)+ SpineWebglPlayer + 教程立绘在用。
+**素材已放规范目录**：`frontend/assets/art/spine/march/barbarian/infantry/barbarian_infantry.{json,atlas,png}`(spine 3.8.99，动画'1'/'2'/'3'/'4'，atlas贴图引用已改名对齐)。规范=`spine/march/<时代>/<兵种>/`。**项目已有 spine-webgl 3.8 运行时**(index.html:178 vendor/spine-3.8)+ SpineWebglPlayer 已在项目中使用。
 
 **投影映射(数值已核)**：screenX=(q−r)stepX, screenY=(q+r)stepY(Y下)。-r→右上→anim'1'、-q→左上→'2'、+q→右下→'3'、+r→左下→'4'。与用户规格精确一致。
 
@@ -32,7 +32,6 @@ metadata:
 
 **SPINE-2b 接线断链 BUG + 修复**(design `c887927e` / refactor `c0be224a`)：用户真机报"还是老序列完全没变化"。根因(4-追踪器 workflow `we67t0w3c` 定位)：**渲染宿主链在 `H5CanvasGameRenderer` 处终结**——它既无 `getWorldActorSpineRenderer` 也无 `.host/.shell` 回引,`WorldActorCanvasRenderer.getWorldActorSpineRenderer()` 每帧解析成 null → 全回落 2d。实链 `WorldActorCanvasRenderer.host=WorldMapCanvasRenderer → .host=H5CanvasGameRenderer(RendererCtor=global.H5CanvasGameRenderer, CanvasGameShell:584, 三处构造 611/641/720 都没传 host) → 断`。shell 是 spine 渲染器唯一 live owner。修复(抗纠缠链)：①H5CanvasGameRenderer 存 shell 传入的 `getWorldActorSpineRenderer`(沿用它已有的 ensureCanvasLayer/setCanvasLayerVisible 绑定 shell 方法惯用法)；②CanvasGameShell 三处 H5 构造传 `getWorldActorSpineRenderer: this.getWorldActorSpineRenderer?.bind(this)`；③WorldActorCanvasRenderer 用**宿主链 walk**(`.host||.shell` 跳 ≤8 跳,首个非 null,跳过返回 null 的中间 forwarder)取代单跳；④一次性 `[spine-probe]` 诊断(仅浏览器+仅解析成 null 时打宿主链一行,健康即静默)。**坑:传 `host: this` 不行(WorldMapCanvasRenderer 会把 shell 当渲染宿主破坏 ctx/canvas getter),要用专门方法注入/回引。** 次因(非"永不显示")：canRenderActor 在 skeleton 异步加载的亚秒窗口返 false→先 2d,加载完 requestOverlayRenderFrame 重绘翻 spine。教训见 [[render-host-delegation-observability-debt]]（三宿主镜像=难一步定位,这次靠并行追踪+walk+probe 破解）。
 
-**SPINE-3 教程走主城(待做，纪律性推迟)**：独立贝塞尔演出，SPINE-2不会自动带上。**故意等 SPINE-2 真机确认步兵渲染正确后再做**——SPINE-3 复用同一 spine 渲染方式，先验证再复制(带校准值)。改 TutorialCanvasRenderer.renderTutorialIntroUnit:259(用 `tutorial_intro_soldier`，已有 spine 描述)，stock SpineWebglPlayer 即可(单单位 screen-space，仿 advisor 层)；勿强塞 world 渲染器(z 序会被教程层遮挡)。
 
 **SPINE-2b 校准(接线通后真机)**(design `809b38f7` / refactor `131995fd`)：spine 出来了但①锚点偏②尺寸大③动画 3/4 反。
 - **坐标空间坑(关键)**：worldMap/worldActor/worldFog 层的 draw surface 被 **drag-cache pan padding=200px** 撑大(`getWorldMapLayerPadding`→`WorldMapRuntimePolicy.getLayerPadding`=200),actor 的 `point`(getActorScreenPoint)算在**含 padding 的层坐标系**里(setTransform(pixelRatio) 无平移、clip frame.x=padding 证实),合成器 `compositeStage` 再按 `sourceX=(padding-translateX)` 裁掉。我原 worldActorSpine 层 padding=0 + 用 host 视口尺寸 → 骨骼偏约 200px。**修法=spine 层镜像 worldActor**：`ensureCanvasLayer(padding=getWorldMapLayerPadding())` + 相机/gl.viewport/Y翻转全用 **surface 实际 backing 尺寸**(`canvas.width/height`,runtime 已尺寸到 padded；未尺寸时回退 `(host+2*pad)*ratio`)+ skeleton.x=point.x、skeleton.y=cssH-point.y(root=脚底直接压路线)。**并把 worldActorSpine 加进 CanvasGameShell pan translate(:2262)/clear(:2068)**,拖拽跟随。任何新世界 webgl 层都要这样镜像 padding+translate,否则偏 200px。

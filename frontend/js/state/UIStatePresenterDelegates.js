@@ -6,7 +6,7 @@
     BuildingPresenter: './presenters/BuildingPresenter',
     HomePresenter: './presenters/HomePresenter',
     EventPresenter: './presenters/EventPresenter',
-    TaskGuidePresenter: './presenters/TaskGuidePresenter',
+    TaskPresenter: './presenters/TaskPresenter',
     CivilizationPresenter: './presenters/CivilizationPresenter',
     MilitaryPresenter: './presenters/MilitaryPresenter',
     WorldSitePresenter: './presenters/WorldSitePresenter',
@@ -32,8 +32,6 @@
       'canUseMapHome',
       'resolveMapHomeViewState',
       'buildTabLockViewState',
-      'buildAdvisorViewState',
-      'getAdvisorTargetTab',
       'buildNamingPromptViewState',
       'buildRecentLogViewState',
       'buildRequestLogViewState',
@@ -48,7 +46,7 @@
       'buildPopulationViewState',
       'buildCitySwitcherViewState',
     ]),
-    TaskGuidePresenter: Object.freeze([
+    TaskPresenter: Object.freeze([
       'buildTaskCenterViewState',
     ]),
     FamousPersonPresenter: Object.freeze([
@@ -269,12 +267,6 @@
     defineStaticMethod(UIStatePresenter, 'buildTabLockViewState', function buildTabLockViewState(...args) {
       return ShellPresenter.buildTabLockViewState(...args);
     });
-    defineStaticMethod(UIStatePresenter, 'buildAdvisorViewState', function buildAdvisorViewState(...args) {
-      return ShellPresenter.buildAdvisorViewState(...args);
-    });
-    defineStaticMethod(UIStatePresenter, 'getAdvisorTargetTab', function getAdvisorTargetTab(...args) {
-      return ShellPresenter.getAdvisorTargetTab(...args);
-    });
     defineStaticMethod(UIStatePresenter, 'buildNamingPromptViewState', function buildNamingPromptViewState(...args) {
       return ShellPresenter.buildNamingPromptViewState(...args);
     });
@@ -309,9 +301,9 @@
     defineStaticMethod(UIStatePresenter, 'buildCitySwitcherViewState', function buildCitySwitcherViewState(...args) {
       return HomePresenter.buildCitySwitcherViewState(...args);
     });
-    const TaskGuidePresenter = dependencies.TaskGuidePresenter;
+    const TaskPresenter = dependencies.TaskPresenter;
     defineStaticMethod(UIStatePresenter, 'buildTaskCenterViewState', function buildTaskCenterViewState(...args) {
-      return TaskGuidePresenter.buildTaskCenterViewState(...args);
+      return TaskPresenter.buildTaskCenterViewState(...args);
     });
     const FamousPersonPresenter = dependencies.FamousPersonPresenter;
     defineStaticMethod(UIStatePresenter, 'formatFamousPersonSource', function formatFamousPersonSource(...args) {
@@ -694,19 +686,9 @@
     return methods;
   }
 
-  function buildCustomDelegates(dependencies, baseMethods) {
-    const UIStatePresenter = baseMethods;
+  function buildCustomDelegates(dependencies) {
     const methods = {};
-    const { TaskGuidePresenter, TechPresenter } = dependencies;
-    defineStaticMethod(methods, 'buildGuidebookViewState', function buildGuidebookViewState(state = {}, options = {}) {
-      const presenter = this && typeof this.buildCityPlanningViewState === 'function'
-        ? this
-        : UIStatePresenter;
-      return TaskGuidePresenter.buildGuidebookViewState(state, {
-        ...options,
-        buildCityPlanningViewState: (sourceState) => presenter.buildCityPlanningViewState(sourceState),
-      });
-    });
+    const { TechPresenter } = dependencies;
     defineStaticMethod(methods, 'buildTechViewState', function buildTechViewState(state = {}) {
       if (TechPresenter && typeof TechPresenter.buildTechViewState === 'function') {
         return TechPresenter.buildTechViewState(state);
@@ -719,7 +701,7 @@
   function createStaticMethods(overrides = {}) {
     const dependencies = createDependencies(overrides);
     const directMethods = buildDirectDelegates(dependencies);
-    const customMethods = buildCustomDelegates(dependencies, directMethods);
+    const customMethods = buildCustomDelegates(dependencies);
     return Object.freeze({ ...directMethods, ...customMethods });
   }
 

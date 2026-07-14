@@ -55,7 +55,6 @@ test('input intent spine guard scopes to input-router mode/runtime-route branche
   assert.equal(isInScopeFinding({ surface: 'input-router', branchKind: 'mode' }), true);
   assert.equal(isInScopeFinding({ surface: 'input-router', branchKind: 'runtime-route' }), true);
   assert.equal(isInScopeFinding({ surface: 'input-router', branchKind: 'panel' }), false);
-  assert.equal(isInScopeFinding({ surface: 'input-router', branchKind: 'tutorial' }), false);
   assert.equal(isInScopeFinding({ surface: 'input-router', branchKind: 'action' }), false);
   assert.equal(isInScopeFinding({ surface: 'command-handler', branchKind: 'mode' }), false);
 });

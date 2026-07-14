@@ -27,19 +27,16 @@ function createHost(overrides = {}) {
     collectMapHomeWorldSiteHitTargets(...args) { calls.push(['collectMapHomeWorldSiteHitTargets', args]); },
     endFrame(options) { calls.push(['endFrame', options]); },
     renderMapHomeExplorerHud(...args) { calls.push(['renderMapHomeExplorerHud', args]); },
-    renderAdvisorPanel(...args) { calls.push(['renderAdvisorPanel', args]); },
     renderArmyFormationEditor(...args) { calls.push(['renderArmyFormationEditor', args]); },
     renderBattleSceneOverlay(...args) { calls.push(['renderBattleSceneOverlay', args]); },
     renderCitySwitcherMenu(...args) { calls.push(['renderCitySwitcherMenu', args]); },
     renderEntityBattleOverlay(...args) { calls.push(['renderEntityBattleOverlay', args]); },
     renderEventModal(...args) { calls.push(['renderEventModal', args]); },
     renderFamousPersonsPanel(...args) { calls.push(['renderFamousPersonsPanel', args]); },
-    renderFloatingAdvisorButton(...args) { calls.push(['renderFloatingAdvisorButton', args]); },
     renderFloatingAccountButton(...args) { calls.push(['renderFloatingAccountButton', args]); },
     renderFloatingEventButton(...args) { calls.push(['renderFloatingEventButton', args]); },
     renderFloatingSubcityButton(...args) { calls.push(['renderFloatingSubcityButton', args]); },
     renderFloatingTexts(...args) { calls.push(['renderFloatingTexts', args]); },
-    renderGuidebookPanel(...args) { calls.push(['renderGuidebookPanel', args]); },
     renderHudTabPageWithTransition(...args) { calls.push(['renderHudTabPageWithTransition', args]); },
     renderLoadingScreen(...args) { calls.push(['renderLoadingScreen', args]); },
     renderLoginPanel(...args) { calls.push(['renderLoginPanel', args]); },
@@ -130,7 +127,6 @@ test('HudOverlayCanvasRenderer preserves map-home HUD overlay sequence', () => {
   assert.equal(names.includes('renderFloatingSubcityButton'), true);
   assert.equal(names.includes('renderFloatingEventButton'), true);
   assert.equal(names.includes('renderFloatingAccountButton'), true);
-  assert.equal(names.includes('renderFloatingAdvisorButton'), false);
   assert.equal(names.includes('renderResourceDetailsPanel'), false);
   assert.equal(names.at(-1), 'endFrame');
 });
@@ -294,9 +290,7 @@ test('HudOverlayCanvasRenderer preserves standard overlay and tech detail flow',
     showSettings: true,
     showLogs: true,
     showCitySwitcher: true,
-    showAdvisor: true,
     showTaskCenter: true,
-    showGuidebook: true,
     showFamousPersons: true,
     armyFormationEditor: { open: true },
     activeEventId: 'event-1',

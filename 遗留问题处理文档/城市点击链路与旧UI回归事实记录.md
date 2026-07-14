@@ -53,7 +53,6 @@
 
    - 非 background 的前景目标会优先返回。
    - `openWorldSite` 不是优先级 action，但只要它没有被后注册的遮罩或其他前景目标挡住，就应该被返回。
-   - 教程遮罩存在时，只有匹配 allowed action 的目标能穿透。
 
 5. `frontend/js/platform/CanvasGameShellInputRouter.js`
 
@@ -112,7 +111,6 @@
 - 首都视觉上显示了，但点击区域没有覆盖实际视觉位置。
 - `openWorldSite` hit target 被更晚注册的前景目标、遮罩或旧面板挡住。
 - `openWorldSite` 成功处理，但 `renderWorldSiteModal()` 没有在 `territoryState.territories` 里找到 `selectedSiteId` 对应的 detail。
-- 教程遮罩或高亮存在时，实际点击 action 没有匹配 allowed action，所以被挡。
 
 需要注意：当前 H5 实际通过 `CanvasGameShell.mount(... previewEnabled: true)` 进入 Shell 渲染。Shell 渲染会合并 `TerritoryController.uiState`、`CanvasGameApp.territoryUiState`、`CanvasGameShell.territoryUiState`。所以这次不能简单归因成“controller 设置了 selectedSiteId，但 renderer 只看 app 的另一个对象”。
 
@@ -211,14 +209,13 @@ if (options.isMapHome) return this.renderMapHomeTopBar(state);
 - `renderSubcityListPanel()`
 - `renderCitySwitcherMenu()`
 - `renderTaskCenterPanel()`
-- `renderGuidebookPanel()`
 - `renderWorldSiteModal()`
 - `renderCityManagementPanel()`
 
 事实含义：
 
 - 地图首页并不是只承载世界地图 HUD。
-- 旧分城列表、旧城市切换、任务中心、攻略面板仍可能作为 overlay 出现在地图首页。
+- 旧分城列表、旧城市切换和任务中心仍可能作为 overlay 出现在地图首页。
 - 这些入口如果没有被明确归属和门禁锁住，就会继续把旧链路带回当前游戏流程。
 
 ## 七、上次测试没有覆盖真实失败路径
@@ -341,65 +338,8 @@ if (options.isMapHome) return this.renderMapHomeTopBar(state);
 本次没有处理的范围：
 
 - 没有删除旧宽资源栏代码。
-- 没有删除旧分城列表、任务、攻略等 overlay 入口。
+- 没有删除旧分城列表、任务等 overlay 入口。
 - 没有修改 `jumpToSubcity/selectCity/switchCity` 旧链路。
 - 没有把所有旧页面彻底迁移或删除。
 
 这些仍属于后续“旧入口归属与删除”任务，不能把本次命中目标修复误认为旧 UI 清理已经完成。
-
-## 九、2026-06-14：第 29-31 步人才/方针引导旧 resources 壳回归修复事实
-
-用户复现的新现象：
-
-- 进入游戏后看到旧宽资源栏和旧底部 Tab。
-- 点击“重置账号”后取消，界面会临时变成正确的窄资源栏和正确底部 dock。
-- 再点击已占领城市 `123`，旧宽资源栏和旧底部 Tab 又会回来。
-
-确认事实：
-
-- `test1` 账号服务端状态是 `tutorial.currentStep = 31`，`tutorial.completed = false`。
-- 第 31 步属于 `talentPolicyApplied`，也就是人才/方针后的手动人才分配引导阶段。
-- 原代码里的 `TutorialGuideUiStateCoordinator.ensureCityPeopleGuideVisible()` 会主动设置：
-  - `mapHomeActive = false`
-  - `currentTab = 'resources'`
-  - `militaryView = 'army'`
-  - `renderReadOnly(..., 'resources', { forceMapHome: false, allowDefaultMapHome: false })`
-- 这不是缓存问题，也不是简单入口隐藏问题，而是教程架构仍把第 29-31 步目标写成旧 `resources` 壳。
-
-本次修复事实：
-
-- `frontend/js/tutorial/TutorialGuideUiStateCoordinator.js`
-  - 第 29-31 步人才/方针引导现在保持 `mapHomeActive = true`。
-  - 引导目标页签改为 `currentTab = 'military'`、`militaryView = 'world'`。
-  - 渲染入口改为 `renderReadOnly(..., 'military', { forceMapHome: true, isMapHome: true })`。
-  - 高亮刷新选项同步改为 `renderActiveTab: 'military'` 和 map-home 强制选项。
-- `frontend/js/tutorial/TutorialGuideStepPolicy.js`
-  - 第 29-31 步客户端 tab gate 从只允许 `resources` 改为只允许 `military`。
-- `backend/services/tutorial/TutorialTabAccess.js`
-  - 后端教程 tab gate 同步从只允许 `resources` 改为只允许 `military`。
-
-已加门禁：
-
-- `frontend/js/tutorial/TutorialGuideController.test.js`
-  - `TutorialGuideController keeps map home while opening city people guide directly`
-  - 覆盖第 29-31 步打开城市管理人才页时必须保持 `military/world/mapHomeActive=true`。
-- `frontend/js/platform/CanvasGameShell.test.js`
-  - `CanvasGameShell keeps highlighted city people guides on map home`
-  - 覆盖教程高亮重渲染不得把状态改回 `resources/army/mapHomeActive=false`。
-- `frontend/js/tutorial/TutorialGuideStepPolicy.test.js`
-  - 覆盖第 29-31 步客户端 gate 允许 `military`。
-- `backend/tests/TutorialProgressService.test.js`
-  - 覆盖第 29-31 步服务端 gate 允许 `military`、拒绝 `resources`。
-
-已验证：
-
-- `node --test frontend/js/tutorial/TutorialGuideController.test.js frontend/js/tutorial/TutorialGuideStepPolicy.test.js frontend/js/platform/CanvasGameShell.test.js backend/tests/TutorialProgressService.test.js`
-- `node --test frontend/js/tutorial/*.test.js backend/tests/Tutorial*.test.js backend/tests/TerritoryActionTutorial.test.js`
-- `node --test frontend/js/platform/CanvasCityActionHandlers.test.js frontend/js/platform/renderers/CanvasFrameRenderer.test.js frontend/js/platform/renderers/CityCanvasRenderer.test.js frontend/js/platform/renderers/HudOverlayCanvasRenderer.test.js`
-
-本次没有处理的范围：
-
-- 没有删除 `CanvasFrameRenderer` 的 standard frame / 旧 resources 渲染代码。
-- 没有删除旧 `jumpToSubcity/selectCity/switchCity` 链路。
-- 没有删除其它仍可能存在的旧 resources 业务入口。
-- 本次只把已复现的第 29-31 步教程回归链路从旧 resources 壳迁到 map-home 城市管理浮层，并用测试锁住。

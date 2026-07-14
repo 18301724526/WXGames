@@ -70,7 +70,6 @@ facts. The guard compares by `file + symbol` count and blocks growth.
 | `showCityManagement`  | `frontend/js/platform/CanvasGameAppRenderingRuntime.js`          |     1 |
 | `showCitySwitcher`    | `frontend/js/platform/CanvasGameAppRenderingRuntime.js`          |     1 |
 | `showFamousPersons`   | `frontend/js/platform/CanvasGameAppRenderingRuntime.js`          |     1 |
-| `showGuidebook`       | `frontend/js/platform/CanvasGameAppRenderingRuntime.js`          |     1 |
 | `showResourceDetails` | `frontend/js/platform/CanvasGameAppRenderingRuntime.js`          |     1 |
 | `showSubcityList`     | `frontend/js/platform/CanvasGameAppRenderingRuntime.js`          |     1 |
 | `showTaskCenter`      | `frontend/js/platform/CanvasGameAppRenderingRuntime.js`          |     1 |
@@ -82,11 +81,9 @@ facts. The guard compares by `file + symbol` count and blocks growth.
 | `confirmDialog`       | `frontend/js/platform/CanvasGameShellRenderingRuntime.js`        |     1 |
 | `naming`              | `frontend/js/platform/CanvasGameShellRenderingRuntime.js`        |     1 |
 | `rewardReveal`        | `frontend/js/platform/CanvasGameShellRenderingRuntime.js`        |     1 |
-| `showAdvisor`         | `frontend/js/platform/CanvasGameShellRenderingRuntime.js`        |     1 |
 | `showCityManagement`  | `frontend/js/platform/CanvasGameShellRenderingRuntime.js`        |     1 |
 | `showCitySwitcher`    | `frontend/js/platform/CanvasGameShellRenderingRuntime.js`        |     1 |
 | `showFamousPersons`   | `frontend/js/platform/CanvasGameShellRenderingRuntime.js`        |     1 |
-| `showGuidebook`       | `frontend/js/platform/CanvasGameShellRenderingRuntime.js`        |     1 |
 | `showLogs`            | `frontend/js/platform/CanvasGameShellRenderingRuntime.js`        |     1 |
 | `showResourceDetails` | `frontend/js/platform/CanvasGameShellRenderingRuntime.js`        |     1 |
 | `showSettings`        | `frontend/js/platform/CanvasGameShellRenderingRuntime.js`        |     1 |
@@ -101,11 +98,9 @@ facts. The guard compares by `file + symbol` count and blocks growth.
 | `confirmDialog`       | `frontend/js/platform/renderers/CanvasFrameRenderer.js`          |     1 |
 | `naming`              | `frontend/js/platform/renderers/CanvasFrameRenderer.js`          |     4 |
 | `rewardReveal`        | `frontend/js/platform/renderers/CanvasFrameRenderer.js`          |     1 |
-| `showAdvisor`         | `frontend/js/platform/renderers/CanvasFrameRenderer.js`          |     1 |
 | `showCityManagement`  | `frontend/js/platform/renderers/CanvasFrameRenderer.js`          |     1 |
 | `showCitySwitcher`    | `frontend/js/platform/renderers/CanvasFrameRenderer.js`          |     2 |
 | `showFamousPersons`   | `frontend/js/platform/renderers/CanvasFrameRenderer.js`          |     2 |
-| `showGuidebook`       | `frontend/js/platform/renderers/CanvasFrameRenderer.js`          |     2 |
 | `showResourceDetails` | `frontend/js/platform/renderers/CanvasFrameRenderer.js`          |     2 |
 | `showSettings`        | `frontend/js/platform/renderers/CanvasFrameRenderer.js`          |     1 |
 | `showSubcityList`     | `frontend/js/platform/renderers/CanvasFrameRenderer.js`          |     1 |
@@ -116,10 +111,8 @@ facts. The guard compares by `file + symbol` count and blocks growth.
 | `confirmDialog`       | `frontend/js/platform/renderers/HudOverlayCanvasRenderer.js`     |     2 |
 | `naming`              | `frontend/js/platform/renderers/HudOverlayCanvasRenderer.js`     |     2 |
 | `rewardReveal`        | `frontend/js/platform/renderers/HudOverlayCanvasRenderer.js`     |     2 |
-| `showAdvisor`         | `frontend/js/platform/renderers/HudOverlayCanvasRenderer.js`     |     1 |
 | `showCitySwitcher`    | `frontend/js/platform/renderers/HudOverlayCanvasRenderer.js`     |     1 |
 | `showFamousPersons`   | `frontend/js/platform/renderers/HudOverlayCanvasRenderer.js`     |     1 |
-| `showGuidebook`       | `frontend/js/platform/renderers/HudOverlayCanvasRenderer.js`     |     1 |
 | `showLogs`            | `frontend/js/platform/renderers/HudOverlayCanvasRenderer.js`     |     1 |
 | `showResourceDetails` | `frontend/js/platform/renderers/HudOverlayCanvasRenderer.js`     |     1 |
 | `showSettings`        | `frontend/js/platform/renderers/HudOverlayCanvasRenderer.js`     |     1 |
@@ -133,7 +126,6 @@ facts. The guard compares by `file + symbol` count and blocks growth.
 | `showTaskCenter`      | `frontend/js/platform/renderers/MapCommandCanvasRenderer.js`     |     1 |
 | `naming`              | `frontend/js/platform/renderers/OverlayCanvasRenderer.js`        |     3 |
 | `showFamousPersons`   | `frontend/js/platform/renderers/TabBarCanvasRenderer.js`         |     1 |
-| `showAdvisor`         | `frontend/js/platform/renderers/TutorialCanvasRenderer.js`       |     1 |
 | `territoryUiState`    | `frontend/js/platform/renderers/WorldMapLayerCanvasRenderer.js`  |     3 |
 | `territoryUiState`    | `frontend/js/platform/renderers/WorldMapCacheCoordinator.js`     |     1 |
 | `territoryUiState`    | `frontend/js/platform/renderers/WorldMapHitTargetCollector.js`   |     1 |

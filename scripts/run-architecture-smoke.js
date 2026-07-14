@@ -92,12 +92,7 @@ const CHECK_FILES = Object.freeze([
   'scripts/check-step4-final-audit.test.js',
   'scripts/check-ui-runtime-field-ownership.js',
   'scripts/check-ui-runtime-field-ownership.test.js',
-  'scripts/check-tutorial-demolition-retirements.js',
-  'scripts/check-tutorial-demolition-retirements.test.js',
-  'scripts/check-game-tutorial-awareness.js',
-  'scripts/check-game-tutorial-awareness.test.js',
   'scripts/playtest-game-smoke.js',
-  'scripts/playtest-online-tutorial.js',
   'scripts/check-step5-action-descriptor-coverage.js',
   'scripts/check-step5-action-descriptor-coverage.test.js',
   'scripts/verify-step4-phase3-real-server.js',
@@ -713,8 +708,6 @@ const TEST_FILES = Object.freeze([
   'scripts/check-step4-blocking-map.test.js',
   'scripts/check-step4-final-audit.test.js',
   'scripts/check-ui-runtime-field-ownership.test.js',
-  'scripts/check-tutorial-demolition-retirements.test.js',
-  'scripts/check-game-tutorial-awareness.test.js',
   'scripts/check-step5-action-descriptor-coverage.test.js',
   'scripts/verify-step4-phase3-real-server.test.js',
 ]);
@@ -848,12 +841,6 @@ function main() {
   ]);
   run('ui runtime field ownership blocking guard', process.execPath, [
     'scripts/check-ui-runtime-field-ownership.js',
-  ]);
-  run('tutorial demolition retirement declarations blocking guard', process.execPath, [
-    'scripts/check-tutorial-demolition-retirements.js',
-  ]);
-  run('game tutorial awareness zero blocking guard', process.execPath, [
-    'scripts/check-game-tutorial-awareness.js',
   ]);
   run('Step5 action descriptor coverage blocking guard', process.execPath, [
     'scripts/check-step5-action-descriptor-coverage.js',

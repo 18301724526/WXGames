@@ -402,7 +402,7 @@ test('CanvasActionController syncs opened event id across shell and game hosts',
   assert.deepEqual(ownerCalls, [['openEventSnapshot', 'event-1'], ['closeEventSnapshot']]);
 });
 
-test('CanvasActionController opens task center above city management after lumbermill guide', () => {
+test('CanvasActionController opens task center above city management', () => {
   const calls = [];
   const ownerCalls = [];
   const eventStore = { snapshot: { eventId: 'event-1', visible: true } };
@@ -556,7 +556,7 @@ test('CanvasActionController keeps local world site HUD open after forwarded act
   assert.deepEqual(calls, [['forward', 'openWorldSite', 'site_0_-8']]);
 });
 
-test('CanvasActionController centers far guided world sites inside the map viewport', () => {
+test('CanvasActionController centers far world sites inside the map viewport', () => {
   const calls = [];
   const host = {
     runtime: { width: 420, height: 747 },

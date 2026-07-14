@@ -33,12 +33,6 @@ const REQUIRED_SCRIPTS = [
   'auth.js',
 ];
 
-const FORBIDDEN_SCRIPTS = [
-  'shared/tutorialFlowConfig.js',
-  'js/platform/TutorialActionMatches.js',
-  'js/platform/renderers/TutorialHighlightLayer.js',
-];
-
 const REQUIRED_ORDER_PAIRS = [
   ['js/state/ChangeEventBus.js', 'js/state/StateWriter.js'],
   ['js/state/ChangeEventBus.js', 'js/state/ModalStore.js'],
@@ -121,11 +115,6 @@ function extractScripts(html) {
 
 function stripQuery(src) {
   return String(src || '').split('?')[0];
-}
-
-function findForbiddenScripts(scriptPaths, forbiddenScripts = FORBIDDEN_SCRIPTS) {
-  const present = new Set(scriptPaths);
-  return forbiddenScripts.filter((scriptPath) => present.has(scriptPath));
 }
 
 function getQueryVersion(src) {
@@ -252,11 +241,6 @@ function checkManifest(options = {}) {
   if (mismatchedVersion.length > 0) fail('local assets do not use required cache-busting version', mismatchedVersion);
   if (missingFiles.length > 0) fail('local asset files missing on disk', missingFiles);
 
-  const forbiddenScripts = findForbiddenScripts(scriptPaths);
-  if (forbiddenScripts.length > 0) {
-    fail('retired tutorial scripts must not be restored to index.html', forbiddenScripts);
-  }
-
   const orderPositions = REQUIRED_SCRIPTS.map((scriptPath) => ({
     scriptPath,
     index: scriptPaths.indexOf(scriptPath),
@@ -306,5 +290,4 @@ module.exports = {
   isIifeWrapped,
   collectTopLevelBindings,
   checkGlobalBindingCollisions,
-  findForbiddenScripts,
 };

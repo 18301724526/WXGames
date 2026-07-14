@@ -45,13 +45,6 @@ function createHost(overrides = {}) {
           },
         };
       },
-      getTutorialIntroUnitRenderer() {
-        return {
-          renderUnit(...args) {
-            calls.push(['renderUnit', ...args]);
-          },
-        };
-      },
       getWorldTime() {
         return {
           toEpochMs(input, fallback) {

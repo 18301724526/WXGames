@@ -162,26 +162,21 @@ test('live child renderers share the same surfaceState as the accessor surface',
   assert.deepEqual(renderer.hitTargets, [{ x: 1, y: 1, width: 2, height: 2, action }]);
 });
 
-test('hit target pool facades isolate base, modal, and guide targets on the shared surface state', () => {
+test('hit target pool facades isolate base and modal targets on the shared surface state', () => {
   const renderer = createRenderer();
   renderer.setHitTargets([{ x: 0, y: 0, width: 100, height: 100, action: { type: 'base' } }]);
   renderer.withHitTargetPool('modal', () => {
     renderer.addHitTarget({ x: 0, y: 0, width: 100, height: 100 }, { type: 'modal' });
   });
-  renderer.withHitTargetPool('guide', () => {
-    renderer.addHitTarget({ x: 0, y: 0, width: 100, height: 100 }, { type: 'guide' });
-  });
-
-  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['base', 'modal', 'guide']);
+  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['base', 'modal']);
   assert.deepEqual(renderer.getHitTargetPool('base').map((target) => target.action.type), ['base']);
   assert.deepEqual(renderer.getHitTargetPool('modal').map((target) => target.action.type), ['modal']);
-  assert.deepEqual(renderer.getHitTargetPool('guide').map((target) => target.action.type), ['guide']);
-  assert.deepEqual(renderer.getHitTarget({ x: 10, y: 10 }), { type: 'guide' });
-
-  renderer.clearHitTargetPool('guide');
   assert.deepEqual(renderer.getHitTarget({ x: 10, y: 10 }), { type: 'modal' });
+
+  renderer.clearHitTargetPool('modal');
+  assert.deepEqual(renderer.getHitTarget({ x: 10, y: 10 }), { type: 'base' });
   renderer.setHitTargets([{ x: 0, y: 0, width: 100, height: 100, action: { type: 'base2' } }]);
-  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['base2', 'modal']);
+  assert.deepEqual(renderer.hitTargets.map((target) => target.action.type), ['base2']);
 });
 
 test('setHitTargets falls back to the local surfaceState write without a surfaceRenderer', () => {

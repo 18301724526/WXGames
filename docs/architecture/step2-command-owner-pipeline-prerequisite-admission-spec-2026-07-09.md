@@ -167,7 +167,6 @@ allowed reasons:
 The prerequisite spec must forbid command submission blocks based on:
 
 - resources or costs
-- tutorial progression
 - era eligibility
 - tech availability
 - cooldowns
@@ -189,7 +188,6 @@ until the route has genuinely migrated into the command pipeline.
 The route inventory and reports must detect:
 
 - state load
-- tutorial sync
 - domain validation
 - registry or handler execution
 - state mutation
@@ -231,7 +229,6 @@ Required initial owner decisions include:
 | `advanceEra` | `player:{playerId}` |
 | `research` | `player:{playerId}` |
 | `assign` | `player:{playerId}` |
-| `tutorialAdvance` | `player:{playerId}` |
 | `claimTaskReward` | `player:{playerId}` |
 | `claimEvent` | `player:{playerId}` unless event target becomes shared |
 | `applyTalentPolicy` | `player:{playerId}` |
@@ -383,7 +380,6 @@ Required debt entries:
 - civilization advance uses display eligibility as command eligibility
 - tech research uses local `canResearch` as command disabled state
 - building actions use local cost/max/unlock state as command disabled state
-- building command flow calls tutorial controller before server command submit
 - famous-person flow can rely on local candidate presentation state
 - territory site presenter only exposes claim/conquest actions from local
   mission status

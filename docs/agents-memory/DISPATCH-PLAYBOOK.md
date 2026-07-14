@@ -5,8 +5,7 @@
 ## 一、发单前三查(铁律,缺一不发)
 
 1. **环境四点烟测**:`bash scripts/dev-env-smoke.sh <目录> <后端端口> <预览端口>` 必须 4/4——①后端起+/api/version;②直连登录拿 token;③代理登录拿 token;④**用③的 token**经代理拿 game/state(过发布门)。注意后端**单会话强制**:旧 token 会被新登录顶掉(SESSION_REPLACED)。
-2. **门禁交叉核对**:改动会穿过哪些门?(lint 门/纯度门 EXPECTED_RULE_IDS/事件契约 sha/hit-target 库存新鲜度/S6 "平台文件 refreshCurrentHighlight≤1 且仅 CanvasActionController"/command-owner 策展库存)。题面写明合规通道:优先总线 emit 或调 CanvasActionController.notifyTutorialAfterEventAction;需豁免必须题面明说"唯一精确豁免+理由"。
-3. **判据可机械复核**:每单预写通过判据(测试数字/文件存在/grep 计数),执行席只报所见。
+2. **判据可机械复核**:每单预写通过判据(测试数字/文件存在/grep 计数),执行席只报所见。
 
 ## 二、席位路由(实战定级)
 
@@ -46,8 +45,7 @@
 你是 <X> 验证员,机械执行,禁止自主分析。工作目录:<worktree 路径>(一次性,可改)。禁公网;禁 commit/push;禁 npm install/ci;除指定改动外不碰源码。
 1. <精确到行的改动+node --check>。
 2. 后端 PORT=<P> DB_PATH=tmp/<x>.db node backend/server.js(后台);预览 LOCAL_PREVIEW_PORT=<P2> LOCAL_PREVIEW_API_BASE=http://127.0.0.1:<P>(后台)。
-3. PLAYTEST_USERNAME=<test1-3> PLAYTEST_MAX_ACTIONS=400 node scripts/playtest-online-tutorial.js --target=local --game-url=http://127.0.0.1:<P2>/ --api-base=http://127.0.0.1:<P>/api
-   3 分钟无输出=挂死杀进程如实报;行军等待数分钟正常。预算 40 分钟。
+3. 执行题面指定的本地验证命令；3 分钟无输出则终止进程并如实报告，正常长耗时步骤按题面预算等待。
 4. 报告 tmp/verify-<X>.md:summary 原样+里程碑逐项+停点 outcome 原样。只报所见,写完即停,收尾杀进程。
 ```
 
@@ -65,4 +63,4 @@ PowerShell: New-Item -ItemType Junction 联结 根node_modules 和 backend/node_
 
 ## 五、部署
 
-推 `private` 远程(自动部署)。前置:npm run lint(已提交文件零错)+ npm test 全量绿 + 教程域门禁绿(纯度/事件契约/hit-target 新鲜度)。command-owner 策展棘轮属另一工作流,不挡部署但要记账。禁推 origin(公司拉不了)。健康检查:47.116.32.216 的 /wxgame-refactor-api 路径(后端 3003)。
+推 `private` 远程(自动部署)。前置:npm run lint(已提交文件零错)+ npm test 全量绿。command-owner 策展棘轮属另一工作流,不挡部署但要记账。禁推 origin(公司拉不了)。健康检查:47.116.32.216 的 /wxgame-refactor-api 路径(后端 3003)。

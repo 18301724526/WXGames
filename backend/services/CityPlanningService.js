@@ -198,56 +198,6 @@ function getClientPlanning(city = {}) {
   };
 }
 
-function getGuidebookCategories() {
-  return [
-    {
-      id: 'resources',
-      label: '资源',
-      title: '资源产出',
-      lines: [
-        '粮食支撑人口，木材支撑建设，知识推动时代。',
-        '不同岗位会改变产出侧重，方针能帮助你快速调整人才。',
-      ],
-    },
-    {
-      id: 'planning',
-      label: '规划',
-      title: '城市规划',
-      lines: [
-        '宜居度来自建筑搭配与城市地理，不同城市适合不同建设方向。',
-        '民居需要粮食和生活空间配套，生产与军事建筑过密会让城市更紧张，并拖慢人口成长。',
-      ],
-    },
-    {
-      id: 'policy',
-      label: '方针',
-      title: '人才方针',
-      lines: [
-        '方针会按照当前已解锁职业重新分配人才。',
-        '自定义微调基于系统方针，不需要记精确比例。',
-      ],
-    },
-    {
-      id: 'military',
-      label: '军事',
-      title: '军事扩张',
-      lines: [
-        '兵营会训练士兵，行军探索与占领会逐步打开更大的世界。',
-        '边境和古典阶段会更需要稳定资源、士兵和城市规划共同支撑。',
-      ],
-    },
-    {
-      id: 'events',
-      label: '事件',
-      title: '事件威胁',
-      lines: [
-        '普通事件提供机会，威胁事件考验城市守备。',
-        '及时处理事件能减少损失，也会带来额外发展机会。',
-      ],
-    },
-  ];
-}
-
 module.exports = {
   TERRAIN_DEFINITIONS,
   normalizeTerrainId,
@@ -256,5 +206,4 @@ module.exports = {
   calculateHabitability,
   applyPlanningToCity,
   getClientPlanning,
-  getGuidebookCategories,
 };

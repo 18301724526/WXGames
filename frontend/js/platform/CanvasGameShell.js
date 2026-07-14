@@ -422,7 +422,6 @@ constructor(options = {}) {
       this.effectTimer = null;
       this.floatTimer = null;
       this.activeTaskCenterTab = 'main';
-      this.activeGuidebookTab = 'planning';
       this.techTreePanX = 0;
       this.techTreePanY = 0;
       this.techTreeZoom = 1;
@@ -912,9 +911,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             || this.isBlockingPanelSnapshotOpen('showCitySwitcher')
             || this.isBlockingPanelSnapshotOpen('showSubcityList')
             || this.isBlockingPanelSnapshotOpen('showCityManagement')
-            || this.isBlockingPanelSnapshotOpen('showAdvisor')
             || this.isBlockingPanelSnapshotOpen('showTaskCenter')
-            || this.isBlockingPanelSnapshotOpen('showGuidebook')
             || this.armyFormationEditor?.open
             || confirmDialogOpen
             || this.getCommandPanelValue()
@@ -991,9 +988,7 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             || this.isBlockingPanelSnapshotOpen('showCitySwitcher')
             || this.isBlockingPanelSnapshotOpen('showSubcityList')
             || this.isBlockingPanelSnapshotOpen('showCityManagement')
-            || this.isBlockingPanelSnapshotOpen('showAdvisor')
             || this.isBlockingPanelSnapshotOpen('showTaskCenter')
-            || this.isBlockingPanelSnapshotOpen('showGuidebook')
             || this.armyFormationEditor?.open
             || confirmDialogOpen
             || (this.getCommandPanelValue() && this.getCommandPanelValue() !== 'tech')
@@ -1470,7 +1465,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           this.techTreeDragStart = null;
           this.buildingTransition = null;
           this.closeEventSnapshot?.();
-          CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showGuidebook');
           this.getPanelSurfaceManager?.()?.closePanel?.('famousPersons', { render: false });
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCityManagement');
           this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
@@ -1503,14 +1497,11 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCitySwitcher');
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showSubcityList');
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCityManagement');
-          CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showAdvisor');
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showTaskCenter');
-          CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showGuidebook');
           this.getPanelSurfaceManager?.()?.closePanel?.('famousPersons', { render: false });
           this.armyFormationEditor = { open: false, cityId: '', slot: 1, memberIds: [], soldierAssignments: {}, soldierDraftAssignments: {}, page: 0, saving: false };
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'activeCommandPanel');
           this.activeTaskCenterTab = 'main';
-          this.activeGuidebookTab = 'planning';
           const game = this.lastGame;
           if (game?.state && typeof game.state === 'object') {
             StateWriter.commit(this, (prev) => ({
@@ -1590,46 +1581,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             return this.renderReadOnly(this.lastGame?.state, this.getActiveTab()) !== false;
           }
           return this.renderActive({ invalidateWorldTileView: false }) !== false;
-        }
-
-    getCanvasTarget(type, predicate = null) {
-          if (!this.renderer || !Array.isArray(this.renderer.hitTargets)) return null;
-          let target = null;
-          for (let index = this.renderer.hitTargets.length - 1; index >= 0; index -= 1) {
-            const item = this.renderer.hitTargets[index];
-            if (
-              item.action?.type === type
-              && (typeof predicate !== 'function' || predicate(item.action))
-            ) {
-              target = item;
-              break;
-            }
-          }
-          if (!target) return null;
-          return {
-            x: target.x,
-            y: target.y,
-            width: target.width,
-            height: target.height,
-            action: target.action,
-            getRect: () => ({
-              left: target.x,
-              top: target.y,
-              width: target.width,
-              height: target.height,
-              right: target.x + target.width,
-              bottom: target.y + target.height,
-            }),
-            getBoundingClientRect: () => ({
-              left: target.x,
-              top: target.y,
-              width: target.width,
-              height: target.height,
-              right: target.x + target.width,
-              bottom: target.y + target.height,
-            }),
-            scrollIntoView() {},
-          };
         }
 
     syncWorldMapRendererLayerMetrics() {
@@ -2583,11 +2534,8 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
             showSubcityList: panel.showSubcityList,
             showCityManagement: panel.showCityManagement,
             activeCityManagementTab: uiOwner.activeCityManagementTab,
-            showAdvisor: panel.showAdvisor,
             showTaskCenter: panel.showTaskCenter,
             activeTaskCenterTab: this.activeTaskCenterTab,
-            showGuidebook: panel.showGuidebook,
-            activeGuidebookTab: this.activeGuidebookTab,
             showFamousPersons: panel.showFamousPersons,
             famousPersonsPage: uiOwner.famousPersonsPage,
             selectedFamousPersonId: uiOwner.selectedFamousPersonId,
@@ -3031,7 +2979,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCitySwitcher');
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showSubcityList');
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCityManagement');
-          CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showAdvisor');
           this.getPanelSurfaceManager?.()?.closePanel?.('famousPersons', { render: false });
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'activeCommandPanel');
           this.closeEventSnapshot?.();
@@ -3263,7 +3210,6 @@ createDebugOverlaySnapshot(context = {}, options = {}) {
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCitySwitcher');
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showSubcityList');
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showCityManagement');
-          CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'showAdvisor');
           this.getPanelSurfaceManager?.()?.closePanel?.('famousPersons', { render: false });
           CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this, 'activeCommandPanel');
           this.closeEventSnapshot?.();

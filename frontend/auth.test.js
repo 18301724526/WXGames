@@ -44,9 +44,6 @@ test('resetGame closes the reset confirmation before showing success feedback', 
           calls.push(['resetWorldMapCamera', options]);
         },
       },
-      maybeStartTutorialIntro() {
-        calls.push('maybeStartTutorialIntro');
-      },
       resetLocalViewToResources() {
         calls.push('gameResetLocalViewToResources');
       },
@@ -68,9 +65,6 @@ test('resetGame closes the reset confirmation before showing success feedback', 
         },
       },
       authStorage: {
-        clearTutorialStorage() {
-          calls.push('clearTutorialStorage');
-        },
         getCredentialSnapshot() {
           return {};
         },

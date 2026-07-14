@@ -2,10 +2,8 @@ const TRACKED_FIELDS = Object.freeze([
   'category',
   'title',
   'description',
-  'target',
   'condition',
   'reward',
-  'action',
   'sortOrder',
 ]);
 
@@ -30,16 +28,6 @@ function getFieldValue(task = {}, field) {
       formulas: task.reward?.formulas || [],
       rewardText: task.rewardText || '',
     };
-  }
-  if (field === 'action') {
-    const action = task.action || {};
-    if (action.type === 'claimTaskReward') {
-      return {
-        type: action.type,
-        taskId: action.taskId || task.id,
-        category: action.category || task.category,
-      };
-    }
   }
   return task[field];
 }

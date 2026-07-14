@@ -1,6 +1,6 @@
 ---
 name: march-settlement-architecture
-description: 行军结算三条腿架构（worker=离线、心跳=在线挂机、动作写=交互中）+ 教程步收敛推进；纯等待会话曾饿死结算的完整证据链与修复。
+description: 行军结算三条腿架构（worker=离线、心跳=在线挂机、动作写=交互中）；纯等待会话曾饿死结算的完整证据链与修复。
 metadata: 
   node_type: memory
   type: project
@@ -9,12 +9,11 @@ metadata:
 
 2026-07-04 下午，fog 切片终验连环挖出两个服务器端结构缺陷（提交 `ebf90103`/`5576645f` 收敛推进 + `dfcc4c4e`/`31e06676` 心跳结算，双分支已部署已验证）。
 
-**缺陷1（一次性副作用）**：`WorldExplorerProgression.advanceExploreMissions` 的教程步推进（scoutExploreStarted→firstCityDiscovered）只在 mission 翻 idle 的**那一个 tick** 评估，idle mission 被 `continue` 跳过——写入竞态丢一次就永久搁浅。修复=`advanceTutorialAfterGuidedExplore` 对 idle+全揭示 mission **每 pass 重评**（manualAdvance 单调幂等所以安全），搁浅态下个 tick 自愈。
 
-**缺陷2（结算单点依赖 worker）**：`players.lastActiveAt` 只由登录 + 心跳持久化（**60s 节流**）更新，worker 活跃窗口 **120s**；纯等待会话（看行军不点操作）会掉出 worker 活跃集 → 行军到达结算（reveal 持久化/站点发现/教程推进）没人做。真人没感知是因为任意点击的动作写路径 `loadProgressedGameState→advanceRuntimeState→save` 顺带结算；无人值守（harness march-wait）必死。修复=心跳 handler `settleDueMarchesOnHeartbeat`：raw state 有 active mission 过 `nextStepAt` 时 advance+save（revision 冲突容忍，下次心跳/worker 重试）。**三条腿**：worker=关页会话、心跳=在线挂机、动作写=交互中；读路径永不推进不落库。
+**缺陷2（结算单点依赖 worker）**：`players.lastActiveAt` 只由登录 + 心跳持久化（**60s 节流**）更新，worker 活跃窗口 **120s**；纯等待会话（看行军不点操作）会掉出 worker 活跃集 → 行军到达结算（reveal 持久化/站点发现）没人做。真人没感知是因为任意点击的动作写路径 `loadProgressedGameState→advanceRuntimeState→save` 顺带结算；无人值守（harness march-wait）必死。修复=心跳 handler `settleDueMarchesOnHeartbeat`：raw state 有 active mission 过 `nextStepAt` 时 advance+save（revision 冲突容忍，下次心跳/worker 重试）。**三条腿**：worker=关页会话、心跳=在线挂机、动作写=交互中；读路径永不推进不落库。
 
 **排查坑（很贵的教训）**：
-- `/game/state` 的 DTO 是时间投影（deriveMissionForTime）——mission 显示 idle **不证明** worker 活着/结算已持久化；判结算要看 revealedTileIds 持久数+教程步。
+- `/game/state` 的 DTO 是时间投影（deriveMissionForTime）——mission 显示 idle **不证明** worker 活着/结算已持久化；判结算要看 revealedTileIds 持久数。
 - 我的探针 login 会顶掉 harness 的单会话 token（互相污染实验）；也会经登录写路径把搁浅态"治好"——观察者效应两连。
 - worker 日志静默≠死：tick 摘要只在 errorCount||slow 时打印；`started {running:false}` 横幅正常（tick 间隙态）。
 - `database is locked` 不在 worker 的 revision-conflict 重试范围内（直接抛）——遗留观察点。
@@ -24,4 +23,4 @@ metadata:
 
 **行军路线双写(套壳)→回弹伏笔 + 门禁**：SPINE-1 把服务器 planner + 客户端预览切格轴,漏改**客户端乐观 `MarchCommandBuilder.buildLinearRoute`**(仍自造对角线走法)→乐观/权威路线签名不符、对账反复修正。修 `254d1433`：删自造走法委托 `WorldMarchCore.evaluateLinearMarchRoute`(逐字对齐服务器 options)。门禁 `786ca172`：`scripts/check-duplicate-march-builders.js`(architecture-smoke) 禁 `remainingQ/remainingR` 走法变量对出现在 canonical(worldMarchCore+adapter)之外——回答"门禁怎么过双写":之前无防算法重复的门禁。委托包装放行,复制走法拦截。**剩余单源债(未做,跨切/后端风险,建议在场做)**：①地图尺寸 1024 硬编码于 MarchCommandBuilder+WorldMarchRoutePolicy+WorldChunkAddress(vs 服务器 WorldMapConstants/WorldMapTopology,当前全=1024 非 bug,真单源需服务器经 DTO 下发、客户端消费);②后端 reveal-tile helper(createRouteTileAliasMap/createRevealedTileSet)三处(worldMarchCore/WorldExplorerDtoMapper/WorldExplorerMissionNormalizer)。
 
-相关：[[overnight-ssot-server-perf]]（worker 饿死第一章）、[[fog-facts-slice]]、[[world-march-tutorial-403-by-design]]、[[march-spine-four-direction]]、[[playtest-march-wait-server-truth]]。
+相关：[[overnight-ssot-server-perf]]（worker 饿死第一章）、[[fog-facts-slice]]、[[march-spine-four-direction]]、[[playtest-march-wait-server-truth]]。

@@ -1060,10 +1060,7 @@ test('CanvasGameRenderer renders occupied city HUD through world map renderer', 
   renderer.renderTabs = () => {};
   renderer.renderFloatingSubcityButton = () => {};
   renderer.renderFloatingEventButton = () => {};
-  renderer.renderFloatingAdvisorButton = () => {};
   renderer.collectMapHomeWorldSiteHitTargets = () => {};
-  renderer.renderTutorialIntro = () => {};
-  renderer.renderTutorialHighlight = () => {};
   renderer.renderFloatingTexts = () => {};
   renderer.renderRewardReveal = () => {};
   renderer.renderNetworkOverlay = () => {};

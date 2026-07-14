@@ -106,9 +106,9 @@ test('blocking-panel mirror guard flags a patch-mirror in a non-owner ecs file',
 
 test('blocking-panel mirror guard blocks the setIfChanged and patch-key idioms', () => {
   const findings = findBlockingPanelMirrorRetirementViolationsInText(
-    'frontend/js/tutorial/TutorialGuideUiStateCoordinator.js',
+    'frontend/js/platform/LegacyPanelCoordinator.js',
     [
-      "setIfChanged(host, 'showAdvisor', false);",
+      "setIfChanged(host, 'showSettings', false);",
       'showCityManagement: false,',
       "activeCommandPanel: '',",
       'techDetailOpen: false,',
@@ -131,8 +131,8 @@ test('blocking-panel mirror guard allows adapter calls, snapshot, options, and p
       "if (this.getCommandPanelValue() === 'tech') return true;",
       'const panel = this.getRendererSnapshot()?.panel || {};',
       'showSettings: panel.showSettings,',
-      'if (options.showGuidebook) this.renderGuidebook(options);',
-      'if (snapshot.panel.showAdvisor) return false;',
+      'if (options.showLogs) this.renderLogs(options);',
+      'if (snapshot.panel.showSettings) return false;',
       'techDetailOpen: panel.techDetailOpen || Boolean(this.state?.techUiState?.detailOpen),',
     ].join('\n'),
   );

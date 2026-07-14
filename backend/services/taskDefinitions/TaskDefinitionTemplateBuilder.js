@@ -6,7 +6,6 @@ function buildTemplateWorkbookBuffer(definitions) {
     category: task.category,
     title: task.title,
     description: task.description,
-    target: task.target,
     'condition.type': task.condition?.type || 'always',
     'condition.target': task.condition?.buildingId || task.condition?.eventId || task.condition?.era || '',
     'condition.grantType': task.condition?.grantType || '',

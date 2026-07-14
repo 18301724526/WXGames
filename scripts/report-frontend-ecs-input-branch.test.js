@@ -32,10 +32,6 @@ test('input branch report extracts symbols and action types', () => {
     extractSymbols('if (this.activeTab === "military" && this.showTaskCenter) return;'),
     ['activeTab', 'showTaskCenter'],
   );
-  assert.deepEqual(extractSymbols('if (this.isTutorialInputActive()) return allowedAction;'), [
-    'allowedAction',
-    'isTutorialInputActive',
-  ]);
   assert.deepEqual(extractActionTypes('case "saveFormation": return dispatch(action);'), [
     'saveFormation',
   ]);
@@ -43,32 +39,26 @@ test('input branch report extracts symbols and action types', () => {
 });
 
 test('input branch report classifies branch kinds', () => {
-  assert.equal(classifyBranchKind(['isTutorialActionAllowed'], []), 'tutorial');
   assert.equal(classifyBranchKind(['shouldRouteTapThroughWorldMapRuntime'], []), 'runtime-route');
   assert.equal(classifyBranchKind(['showTaskCenter'], []), 'panel');
   assert.equal(classifyBranchKind(['activeTab'], []), 'mode');
   assert.equal(classifyBranchKind(['action.type'], ['saveFormation']), 'action');
 });
 
-test('input branch report detects mode, tutorial, and dispatch rows', () => {
+test('input branch report detects mode and dispatch rows', () => {
   const findings = findInputBranchesInText(
     'frontend/js/platform/CanvasGameAppInputRouter.js',
     [
       'if (this.activeTab === "military") return false;',
-      'if (this.isTutorialInputActive() && !this.isTutorialActionAllowed(action)) return false;',
       'switch (action.type) {',
       'case "saveFormation": return true;',
       '}',
     ].join('\n'),
   );
 
-  assert.equal(findings.length, 4);
+  assert.equal(findings.length, 3);
   assert.equal(
     findings.some((finding) => finding.branchKind === 'mode'),
-    true,
-  );
-  assert.equal(
-    findings.some((finding) => finding.branchKind === 'tutorial'),
     true,
   );
   assert.equal(

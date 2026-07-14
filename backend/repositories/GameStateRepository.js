@@ -15,6 +15,9 @@ const {
   GAME_STATE_BASELINE_MIGRATION,
   TASK_REWARD_GRANTS_MIGRATION,
 } = require('../migrations/immutableGameStateMigrations');
+const {
+  CURRENT_GAME_STATE_SCHEMA_MIGRATION,
+} = require('../migrations/currentGameStateSchemaMigration');
 
 function createGameStateSchemaMigrations() {
   return [GAME_STATE_BASELINE_MIGRATION, {
@@ -96,7 +99,7 @@ function createGameStateSchemaMigrations() {
           ON command_idempotency(commandId);
       `);
     },
-  }, TASK_REWARD_GRANTS_MIGRATION];
+  }, TASK_REWARD_GRANTS_MIGRATION, CURRENT_GAME_STATE_SCHEMA_MIGRATION];
 }
 
 function parseJsonField(value, fallback) {

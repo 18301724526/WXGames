@@ -109,7 +109,7 @@ Output:
 
 Verification:
 
-- Tests fail if resources, tutorial, era, cooldown, march, candidate, territory,
+- Tests fail if resources, era, cooldown, march, candidate, territory,
   reward, encounter, loot, or boss state appears as a command-submit block.
 
 ## 5. Phase 2: Universal Client Command Sender

@@ -23,16 +23,8 @@
     return TAB_ORDER.slice();
   }
 
-  function getPreferredMilitaryView(tabId, guide = {}) {
+  function getPreferredMilitaryView(tabId) {
     if (tabId === 'territory') return 'world';
-    if (tabId !== 'military') return null;
-    const target = guide.target || '';
-    const message = String(guide.message || '');
-    if (target === 'scout-action-first') return 'scout';
-    if (target === 'tab-territory') return 'world';
-    if (target !== 'tab-military') return null;
-    if (/侦察|探索|侦察|探索/.test(message)) return 'scout';
-    if (/领土|疆域|世界|占领|领土|疆域|世界|占领/.test(message)) return 'world';
     return null;
   }
 

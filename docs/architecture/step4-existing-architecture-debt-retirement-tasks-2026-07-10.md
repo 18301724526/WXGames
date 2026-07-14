@@ -615,7 +615,7 @@ Step4 仅在 Step3 验证完成后才能开始。如果 Step4 任务发现 Step3
 
 **所需行为变更:**
 - 对于每个条目，要么 (a) 从命令提交代码路径中结构性移除领域资格检查，要么 (b) 结构性隔离为 `visualDisabled`，位于可证明与命令派发分离的代码路径上。
-- 任何领域形态的值（resources、tutorial、era、cooldown、march、candidate、territory、reward、encounter、loot、boss）不得被命令提交代码作为阻塞原因消费。
+- 任何领域形态的值（resources、era、cooldown、march、candidate、territory、reward、encounter、loot、boss）不得被命令提交代码作为阻塞原因消费。
 
 **所需测试/门禁:**
 - 按条目测试: 命令提交路径不基于领域信号阻塞。

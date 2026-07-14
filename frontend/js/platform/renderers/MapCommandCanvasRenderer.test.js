@@ -197,9 +197,6 @@ test('MapCommandCanvasRenderer preserves dock command hit targets', () => {
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openCommandPanel' && target.action.panel === 'military'), false);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openFamousPersons'), true);
   assert.equal(host.hitTargets.filter((target) => target.action.type === 'openTaskCenter' && target.action.source === 'taskIcon').length, 1);
-  // UI-REDO: the 'more' guidebook dock item was removed with the redesign
-  // (openGuidebook stays a valid action handler; it just has no dock entry).
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'openGuidebook'), false);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openSettings'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('ui-hud/hud-dock-icon-tech')), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawAsset' && call[1].includes('icon-knowledge')), false);

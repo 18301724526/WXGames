@@ -223,11 +223,6 @@ test('city blocking panels route task center and tech detail through the snapsho
   const game = makeModalHost({
     canvasShell: shell,
     state: { techUiState: {} },
-    tutorialController: {
-      refreshCurrentHighlight() {
-        calls.push(['refresh']);
-      },
-    },
   });
   const host = makeModalHost({
     activeTaskCenterTab: 'main',

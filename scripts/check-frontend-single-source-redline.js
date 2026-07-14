@@ -95,9 +95,6 @@ const STATE_WRITE_ALLOWLIST = Object.freeze([
   // host game-state slot. Kept here to document the exemption even though it
   // uses `this.` (not in the receiver set) and so does not currently match.
   'frontend/js/state/GameStateManager.js',
-  // Tutorial guide state (`this.state = ...`); a distinct owner, not the host
-  // game-state slot. Same documentation note as above.
-  'frontend/js/tutorial/TutorialGuideController.js',
 ]);
 const TERRITORY_UI_STATE_ALLOWLIST = Object.freeze([TERRITORY_UI_STATE_STORE]);
 

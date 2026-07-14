@@ -125,7 +125,7 @@ function scanConfirmDialogMirrorRetirement(options = {}) {
       ...finding,
       note:
         finding.kind === 'mirror'
-          ? "confirmDialog mirror was retired in Batch 8B; App/Shell/tutorial/input reads must use snapshot.modal['modal:confirmDialog']"
+          ? "confirmDialog mirror was retired in Batch 8B; App/Shell/input reads must use snapshot.modal['modal:confirmDialog']"
           : 'confirmDialog-specific bridge wrappers were retired; use generic modal owner APIs plus snapshot adapter helpers',
     })),
     summary: { totalViolations: findings.length },

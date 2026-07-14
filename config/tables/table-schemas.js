@@ -18,7 +18,7 @@ const TABLES = [
     fields: [
       { key: 'bandId', type: 'string', label: '距离档标识（主键）', fill: 'safe / near / frontier / deep 等，唯一', effect: '标识这一档，代码按城到首城的距离归档' },
       { key: 'maxDistance', type: 'int', label: '本档距离上限（格）', fill: '离首城 ≤ 此格数归入本档；最后一档填 9999', effect: '决定一座城落在哪一档' },
-      { key: 'defended', type: 'bool', label: '本档空城是否有守军', fill: 'safe 档填 false（保护出生区，教程占城无阻力），其余 true', effect: 'false=可直接占领；true=占领前先打守军' },
+      { key: 'defended', type: 'bool', label: '本档空城是否有守军', fill: 'safe 档填 false（保护出生区，可直接占领），其余 true', effect: 'false=可直接占领；true=占领前先打守军' },
       { key: 'ownerType', type: 'string', label: '守军阵营类型', fill: 'city_state / tribe / ruin_guardians / neutral', effect: '决定守将的品类/名字池/立绘（DefenderLeaderService PROFILE_BY_OWNER）' },
       { key: 'baseSoldiers', type: 'int', label: '守军基础兵力', fill: '如 300', effect: '守军初始兵力（防守方规模基线）' },
       { key: 'soldiersPerScale', type: 'int', label: '每点站点规模额外兵力', fill: '如 120', effect: '站点 scale 越大守军越多：兵力 = base + scale×此值' },

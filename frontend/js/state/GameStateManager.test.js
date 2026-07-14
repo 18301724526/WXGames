@@ -76,7 +76,6 @@ test('GameStateManager.sync applies default sub-state shapes (military/territory
   assert.equal(result.worldExplorerState.maxActiveMissions, 1);
   assert.equal(result.activeCityId, 'capital');
   assert.equal(result.isCapitalCity, true);
-  assert.deepEqual(result.guideTasks, { visible: false, tasks: [] });
 });
 
 test('GameStateManager.sync keeps existing sub-state values when the server omits them', () => {

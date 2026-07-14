@@ -12,10 +12,6 @@ function createHost(overrides = {}) {
     height: 844,
     bottomSafeArea: 12,
     presenter: {
-      buildAdvisorViewState(softGuide) {
-        calls.push(['buildAdvisorViewState', softGuide]);
-        return { hidden: false };
-      },
       buildTechViewState(input) {
         calls.push(['buildTechViewState', input]);
         return { detail: { id: input.selectedTechId || input.techUiState?.selectedTechId || 'tech-1' } };
@@ -57,8 +53,6 @@ function createHost(overrides = {}) {
       calls.push(['getTransitionFrame', transition]);
       return transition?.frame || null;
     },
-    renderAdvisor(...args) { calls.push(['renderAdvisor', args]); },
-    renderAdvisorPanel(...args) { calls.push(['renderAdvisorPanel', args]); },
     renderArmyFormationEditor(...args) { calls.push(['renderArmyFormationEditor', args]); },
     renderBattleSceneOverlay(...args) { calls.push(['renderBattleSceneOverlay', args]); },
     renderCityManagementPanel(...args) { calls.push(['renderCityManagementPanel', args]); },
@@ -66,12 +60,10 @@ function createHost(overrides = {}) {
     renderConfirmDialog(...args) { calls.push(['renderConfirmDialog', args]); },
     renderEventModal(...args) { calls.push(['renderEventModal', args]); },
     renderFamousPersonsPanel(...args) { calls.push(['renderFamousPersonsPanel', args]); },
-    renderFloatingAdvisorButton(...args) { calls.push(['renderFloatingAdvisorButton', args]); },
     renderFloatingAccountButton(...args) { calls.push(['renderFloatingAccountButton', args]); },
     renderFloatingEventButton(...args) { calls.push(['renderFloatingEventButton', args]); },
     renderFloatingSubcityButton(...args) { calls.push(['renderFloatingSubcityButton', args]); },
     renderFloatingTexts(...args) { calls.push(['renderFloatingTexts', args]); },
-    renderGuidebookPanel(...args) { calls.push(['renderGuidebookPanel', args]); },
     renderHudOverlay(...args) { calls.push(['renderHudOverlay', args]); },
     renderLoadingScreen(...args) { calls.push(['renderLoadingScreen', args]); },
     renderLoginPanel(...args) { calls.push(['renderLoginPanel', args]); },
@@ -198,7 +190,6 @@ test('CanvasFrameRenderer preserves map-home military frame overlay sequence', (
   assert.equal(names.includes('renderSubcityListPanel'), true);
   assert.equal(names.includes('renderSettingsPanel'), true);
   assert.equal(names.includes('renderFloatingAccountButton'), true);
-  assert.equal(names.includes('renderFloatingAdvisorButton'), false);
   assert.equal(names.at(-1), 'endFrame');
 });
 
@@ -317,7 +308,6 @@ test('CanvasFrameRenderer preserves standard tab transition and modal overlays',
     showResourceDetails: true,
     showCitySwitcher: true,
     showTaskCenter: true,
-    showGuidebook: true,
     showFamousPersons: true,
     armyFormationEditor: { open: true },
     activeEventId: 'event-1',
@@ -357,7 +347,6 @@ test('CanvasFrameRenderer preserves map-home overlay toggles as a separate facad
   renderer.renderMapHomeOverlays({}, {
     activeCommandPanel: 'capital',
     showCityManagement: true,
-    showAdvisor: true,
     activeEventId: 'event-1',
     naming: { visible: true },
   });
@@ -366,9 +355,7 @@ test('CanvasFrameRenderer preserves map-home overlay toggles as a separate facad
   assert.equal(names.includes('renderFloatingSubcityButton'), true);
   assert.equal(names.includes('renderFloatingEventButton'), true);
   assert.equal(names.includes('renderFloatingAccountButton'), true);
-  assert.equal(names.includes('renderFloatingAdvisorButton'), false);
   assert.equal(names.includes('renderCityManagementPanel'), true);
-  assert.equal(names.includes('renderAdvisorPanel'), true);
   assert.equal(names.includes('renderWorldSiteModal'), true);
   assert.equal(names.includes('renderNamingModal'), true);
 });

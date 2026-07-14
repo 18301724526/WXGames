@@ -139,7 +139,6 @@ test('game action route reports committed build commands when projection fails a
   assert.equal(res.payload.command.revisionAfter, 8);
   assert.equal(res.payload.committed, true);
   assert.equal(res.payload.resyncRequired, true);
-  assert.equal(Object.hasOwn(res.payload, 'tutorial'), false);
   assert.equal(errorLogs.length, 1);
   assert.equal(errorLogs[0][1].command.phase, 'projecting');
   assert.equal(errorLogs[0][1].command.committed, true);
@@ -275,8 +274,6 @@ test('game task claim route pays main task reward and persists progress', () => 
   assert.deepEqual(res.payload.reward.resources, { food: 120, knowledge: 5 });
   assert.equal(res.payload.gameState.resources.food, 130);
   assert.equal(savedStates[0].taskProgress.claimed.main_first_supplies.reward.resources.knowledge, 5);
-  assert.equal(Object.hasOwn(res.payload, 'tutorial'), false);
-  assert.equal(Object.hasOwn(savedStates[0], 'tutorial'), false);
   assert.equal(res.payload.taskCenter.categories.main.tasks.find((task) => task.id === 'main_first_supplies').status, 'completed');
 });
 
@@ -344,7 +341,6 @@ test('game action route returns a clean domain rejection for ineligible era adva
   assert.equal(res.payload.error, 'INSUFFICIENT_RESOURCES');
   assert.equal(res.payload.message, '资源不足，无法进入下一时代');
   assert.equal(res.payload.gameState.currentEra, 1);
-  assert.equal(Object.hasOwn(res.payload, 'tutorial'), false);
 });
 
 test('game task claim route rejects the removed homestead supplies task', () => {
@@ -411,8 +407,6 @@ test('game task claim route rejects the removed homestead supplies task', () => 
   assert.equal(res.payload.success, false);
   assert.equal(res.payload.error, 'TASK_NOT_FOUND');
   assert.equal(res.payload.gameState.resources.food, 10);
-  assert.equal(Object.hasOwn(res.payload, 'tutorial'), false);
-  assert.equal(Object.hasOwn(savedStates[0], 'tutorial'), false);
   assert.equal(Boolean(savedStates[0].taskProgress.claimed.main_homestead_supplies), false);
 });
 
@@ -772,5 +766,4 @@ test('game action route retries once when worker saves a newer revision first', 
   assert.equal(saveCount, 2);
   assert.equal(savedStates.length, 1);
   assert.equal(savedStates[0].warMissions[0].status, 'ready');
-  assert.equal(Object.hasOwn(res.payload, 'tutorial'), false);
 });

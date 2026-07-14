@@ -31,9 +31,6 @@ while read -r _oldrev _newrev refname; do
         codex/battle-core-test-server)
             deploy_ref "$current_branch" "/www/wwwroot/h5-test-worktree" "scripts/deploy-test-server.sh"
             ;;
-        codex/refactor-tutorial-guide-architecture)
-            deploy_ref "$current_branch" "/www/wwwroot/h5-refactor-worktree" "scripts/deploy-refactor-tutorial-server.sh"
-            ;;
         *)
             continue
             ;;

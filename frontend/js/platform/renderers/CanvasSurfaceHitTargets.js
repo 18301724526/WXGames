@@ -176,7 +176,7 @@
 
   function resolveHitTargetPools(hitTargetPools = {}, point = {}) {
     const pools = hitTargetPools && typeof hitTargetPools === 'object' ? hitTargetPools : {};
-    for (const pool of ['guide', 'modal', 'base']) {
+    for (const pool of ['modal', 'base']) {
       const action = resolveHitTarget(Array.isArray(pools[pool]) ? pools[pool] : [], point);
       if (action) return action;
     }

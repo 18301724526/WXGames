@@ -15,7 +15,6 @@ test('shell script guard tracks project-owned shell entrypoints', () => {
   assert.deepEqual(SHELL_SCRIPTS, [
     'deploy.sh',
     'scripts/deploy-test-server.sh',
-    'scripts/deploy-refactor-tutorial-server.sh',
     'scripts/pre-deploy-gate.sh',
     'scripts/prepare-test-server-runtime.sh',
     'scripts/test-server-ci-gate.sh',
@@ -28,23 +27,6 @@ test('shell script guard tracks project-owned shell entrypoints', () => {
     'scripts/rotate-production-secrets.sh',
     'scripts/install-ops-agent-pm2.sh',
   ]);
-});
-
-test('refactor tutorial test server keeps isolated runtime surfaces', () => {
-  const repoRoot = path.join(__dirname, '..');
-  const script = fs.readFileSync(path.join(repoRoot, 'scripts', 'deploy-refactor-tutorial-server.sh'), 'utf8');
-
-  assert.match(script, /codex\/refactor-tutorial-guide-architecture/);
-  assert.match(script, /WORK_TREE="\$\{WORK_TREE:-\/www\/wwwroot\/h5-refactor-worktree\}"/);
-  assert.match(script, /FRONTEND_PUBLIC_DIR="\$\{FRONTEND_PUBLIC_DIR:-\/www\/wwwroot\/h5-refactor\}"/);
-  assert.match(script, /BACKEND_DIR="\$\{BACKEND_DIR:-\/opt\/wxgame-refactor\/backend\}"/);
-  assert.match(script, /DEPLOY_STATE_DIR="\$\{DEPLOY_STATE_DIR:-\/opt\/wxgame-refactor\/\.wxgame\}"/);
-  assert.match(script, /PORT="\$\{PORT:-3003\}"/);
-  assert.match(script, /PM2_APP_NAME="\$\{PM2_APP_NAME:-wxgame-refactor-server\}"/);
-  assert.match(script, /WORLD_WORKER_PM2_NAME="\$\{WORLD_WORKER_PM2_NAME:-wxgame-refactor-world-worker\}"/);
-  assert.match(script, /FRONTEND_API_BASE="\$\{FRONTEND_API_BASE:-\/wxgame-refactor-api\}"/);
-  assert.match(script, /FRONTEND_DEPLOY_STATUS_PATH="\$\{FRONTEND_DEPLOY_STATUS_PATH:-\.wxgame-deploy-status\.json\}"/);
-  assert.match(script, /FRONTEND_ENVIRONMENT_LABEL="\$\{FRONTEND_ENVIRONMENT_LABEL:-TUTORIAL REFACTOR\}"/);
 });
 
 test('shell script guard can find bash in PATH or Git for Windows fallback', () => {
@@ -61,10 +43,6 @@ test('shell script guard keeps Git for Windows fallback paths documented', () =>
 test('deploy rollback entrypoints keep ref and commit deployment support', () => {
   const repoRoot = path.join(__dirname, '..');
   const deployScript = fs.readFileSync(path.join(repoRoot, 'deploy.sh'), 'utf8');
-  const retirementManifest = JSON.parse(fs.readFileSync(
-    path.join(repoRoot, 'config', 'configRegistryRetirements.json'),
-    'utf8',
-  ));
   const rollbackScript = fs.readFileSync(path.join(repoRoot, 'scripts', 'rollback-deploy.sh'), 'utf8');
   const verifyHookScript = fs.readFileSync(path.join(repoRoot, 'scripts', 'verify-deploy-hook.sh'), 'utf8');
 
@@ -81,19 +59,6 @@ test('deploy rollback entrypoints keep ref and commit deployment support', () =>
   assert.match(deployScript, /run_post_backend_sync_script/);
   assert.match(deployScript, /publish_runtime_config_release\(\)/);
   assert.match(deployScript, /ConfigReleaseService\.publishRelease/);
-  assert.match(deployScript, /WXGAME_CONFIG_REGISTRY_RETIREMENTS_PATH=/);
-  assert.match(deployScript, /declaredRegistryRetirements/);
-  assert.equal(retirementManifest.schema, 'config-registry-retirements-v1');
-  assert.equal(Array.isArray(retirementManifest.retirements), true);
-  assert.equal(retirementManifest.retirements.length > 0, true);
-  assert.equal(
-    retirementManifest.retirements.every((entry) => Boolean(entry.id && entry.reason)),
-    true,
-  );
-  assert.equal(
-    new Set(retirementManifest.retirements.map((entry) => entry.id)).size,
-    retirementManifest.retirements.length,
-  );
   assert.match(deployScript, /cleanup-world-explorer-ready-state\.js"\s+set_deploy_stage "config-release"\s+publish_runtime_config_release\s+set_deploy_stage "pm2-restart"/s);
   assert.match(deployScript, /DEPLOY_STATUS_PATH="\$DEPLOY_STATE_DIR\/deploy-status\.json"/);
   assert.match(deployScript, /WXGAME_DEPLOY_STATUS_PATH="\$DEPLOY_STATUS_PATH"/);

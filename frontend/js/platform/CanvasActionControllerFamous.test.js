@@ -97,11 +97,11 @@ test('seek famous person publishes the completion event with async result', asyn
   });
 
   assert.equal(
-    await controller.handle_seekFamousPerson({ type: 'seekFamousPerson', source: 'guide' }),
+    await controller.handle_seekFamousPerson({ type: 'seekFamousPerson', source: 'seek' }),
     true,
   );
   assert.deepEqual(calls, [
-    ['seek', 'guide'],
+    ['seek', 'seek'],
     ['completed', result],
   ]);
 });

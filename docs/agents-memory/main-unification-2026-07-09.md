@@ -7,7 +7,7 @@ metadata:
   originSessionId: 5d09762d-931c-47fa-804a-fc511da650c4
 ---
 
-2026-07-09 所有者裁决：**全部合并为单一 main，删除其余所有分支**。执行者=Codex，执行文档=worktree `F:\AI Project\WXGamesLocal-button-scheduler-root-cause\docs\architecture\!!-EXECUTE-main-unification-plan-2026-07-09.md`（Phase 0 备份→1 main 快进到 pvpve→2 合入 battle 分支 10 独有提交(passability M1/auth/迁移锁)→3 真基底重冻 Slice 0→4 按 spec 切片重移植 button-scheduler(含强制修 ISSUE-009 教程钩子滥发/§6.10 计数器/§6.11 绑定)→5 合入 main→6 删分支+worktree）。
+2026-07-09 所有者裁决：**全部合并为单一 main，删除其余所有分支**。执行者=Codex，执行文档=worktree `F:\AI Project\WXGamesLocal-button-scheduler-root-cause\docs\architecture\!!-EXECUTE-main-unification-plan-2026-07-09.md`（Phase 0 备份→1 main 快进到 pvpve→2 合入 battle 分支 10 独有提交(passability M1/auth/迁移锁)→3 真基底重冻 Slice 0→4 按 spec 切片重移植 button-scheduler(含 ISSUE-009、§6.10 计数器和 §6.11 绑定修复)→5 合入 main→6 删分支+worktree）。
 
 **Why**: main 落后 pvpve 472 提交的裂缝导致 Codex 在错误基底上绿地重建整晚（监控记录在 `F:\AI Project\codex-watch\`）；统一后 spec 的"现状"才为真。
 

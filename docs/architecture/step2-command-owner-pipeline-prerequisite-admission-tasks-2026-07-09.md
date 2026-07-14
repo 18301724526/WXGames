@@ -198,7 +198,7 @@ Pass condition:
 
 Fail condition:
 
-- Resources, tutorial, era, tech, cooldown, march, candidate, territory, reward,
+- Resources, era, tech, cooldown, march, candidate, territory, reward,
   encounter, loot, or boss state blocks command submission without debt.
 
 ### STEP2-T06: Review Owner Key Coverage

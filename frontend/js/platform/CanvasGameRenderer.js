@@ -1299,38 +1299,8 @@
       return result === undefined ? 64 : result;
     }
 
-    renderGuideTasks(...args) {
-      const renderer = this.guideTaskRenderer;
-      const result = typeof renderer?.renderGuideTasks === 'function'
-        ? renderer.renderGuideTasks(...args)
-        : undefined;
-      return result === undefined ? (args.length > 1 ? args[1] : 0) : result;
-    }
-
-    renderTaskCenterButton(...args) {
-      const renderer = this.guideTaskRenderer;
-      return typeof renderer?.renderTaskCenterButton === 'function'
-        ? renderer.renderTaskCenterButton(...args)
-        : undefined;
-    }
-
-    renderGuidebookButton(...args) {
-      const renderer = this.guideTaskRenderer;
-      return typeof renderer?.renderGuidebookButton === 'function'
-        ? renderer.renderGuidebookButton(...args)
-        : undefined;
-    }
-
-    renderGuidebookPanel(...args) {
-      const renderer = this.guideTaskRenderer;
-      const result = typeof renderer?.renderGuidebookPanel === 'function'
-        ? renderer.renderGuidebookPanel(...args)
-        : undefined;
-      return result === undefined ? false : result;
-    }
-
     renderTaskCenterPanel(...args) {
-      const renderer = this.guideTaskRenderer;
+      const renderer = this.taskRenderer;
       const result = typeof renderer?.renderTaskCenterPanel === 'function'
         ? renderer.renderTaskCenterPanel(...args)
         : undefined;
@@ -1468,33 +1438,12 @@
         : undefined;
     }
 
-    renderAdvisor(...args) {
-      const renderer = this.advisorRenderer;
-      return typeof renderer?.renderAdvisor === 'function'
-        ? renderer.renderAdvisor(...args)
-        : undefined;
-    }
-
     getMapHomeFloatingButtonLayout(...args) {
       const renderer = this.mapCommandRenderer;
       const result = typeof renderer?.getMapHomeFloatingButtonLayout === 'function'
         ? renderer.getMapHomeFloatingButtonLayout(...args)
         : undefined;
       return result === undefined ? { x: 0, y: 0, size: 48 } : result;
-    }
-
-    renderFloatingAdvisorButton(...args) {
-      const renderer = this.advisorRenderer;
-      return typeof renderer?.renderFloatingAdvisorButton === 'function'
-        ? renderer.renderFloatingAdvisorButton(...args)
-        : undefined;
-    }
-
-    renderAdvisorPanel(...args) {
-      const renderer = this.advisorRenderer;
-      return typeof renderer?.renderAdvisorPanel === 'function'
-        ? renderer.renderAdvisorPanel(...args)
-        : undefined;
     }
 
     renderFamousPersonItem(...args) {

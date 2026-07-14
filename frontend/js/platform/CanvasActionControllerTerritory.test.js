@@ -596,12 +596,6 @@ test('CanvasActionController carries combat encounter id into world march option
   const game = {
     territoryUiState: {},
     state: { activeCityId: 'capital' },
-    tutorialController: {
-      onWorldMarchTargetSelected() {
-        return true;
-      },
-      refreshCurrentHighlight() {},
-    },
     startWorldMarch(options) {
       calls.push(['startWorldMarch', options]);
       return Promise.resolve(true);
@@ -1262,12 +1256,6 @@ test('CanvasActionController derives world march tile identity from target coord
     startWorldMarch(options) {
       calls.push(['startWorldMarch', options]);
       return Promise.resolve(true);
-    },
-    tutorialController: {
-      onWorldMarchTargetSelected() {
-        return true;
-      },
-      refreshCurrentHighlight() {},
     },
   };
   const host = {

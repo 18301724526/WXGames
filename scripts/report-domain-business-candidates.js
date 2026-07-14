@@ -23,7 +23,6 @@ const ALLOWED_DOMAIN_OWNER_PATTERNS = Object.freeze([
   /^backend\/repositories\//,
   /^backend\/services\//,
   /^shared\/worldMarch(?:Core|Passability)\.js$/,
-  /^shared\/tutorialFlowConfig\.js$/,
 ]);
 
 const REVIEW_LAYER_PATTERNS = Object.freeze([
@@ -96,7 +95,6 @@ const GAMEPLAY_NOUNS = Object.freeze([
   'talent',
   'tech',
   'territor',
-  'tutorial',
   'unlock',
   'worker',
   'wood',
@@ -146,7 +144,6 @@ const AUTHORITY_OBJECTS = Object.freeze([
   'resources',
   'state',
   'territory',
-  'tutorial',
   'unit',
 ]);
 

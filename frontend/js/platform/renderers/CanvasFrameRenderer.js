@@ -112,12 +112,10 @@
     renderBattleSceneOverlay(...args) { return this.host?.renderBattleSceneOverlay?.(...args); }
     renderTopBar(...args) { return this.host?.renderTopBar?.(...args) ?? 84; }
     renderTabs(...args) { return this.host?.renderTabs?.(...args); }
-    renderAdvisor(...args) { return this.host?.renderAdvisor?.(...args); }
     renderMainPanel(...args) { return this.host?.renderMainPanel?.(...args); }
     renderResourceDetailsPanel(...args) { return this.host?.renderResourceDetailsPanel?.(...args); }
     renderCitySwitcherMenu(...args) { return this.host?.renderCitySwitcherMenu?.(...args); }
     renderTaskCenterPanel(...args) { return this.host?.renderTaskCenterPanel?.(...args); }
-    renderGuidebookPanel(...args) { return this.host?.renderGuidebookPanel?.(...args); }
     renderFamousPersonsPanel(...args) { return this.host?.renderFamousPersonsPanel?.(...args); }
     renderArmyFormationEditor(...args) { return this.host?.renderArmyFormationEditor?.(...args); }
     renderEventModal(...args) { return this.host?.renderEventModal?.(...args); }
@@ -130,13 +128,11 @@
     renderConfirmDialog(...args) { return this.host?.renderConfirmDialog?.(...args); }
     renderFloatingSubcityButton(...args) { return this.host?.renderFloatingSubcityButton?.(...args); }
     renderFloatingEventButton(...args) { return this.host?.renderFloatingEventButton?.(...args); }
-    renderFloatingAdvisorButton(...args) { return this.host?.renderFloatingAdvisorButton?.(...args); }
     renderFloatingAccountButton(...args) { return this.host?.renderFloatingAccountButton?.(...args); }
     renderMapCommandPanel(...args) { return this.host?.renderMapCommandPanel?.(...args); }
     renderSubcityListPanel(...args) { return this.host?.renderSubcityListPanel?.(...args); }
     renderCityManagementPanel(...args) { return this.host?.renderCityManagementPanel?.(...args); }
     renderSettingsPanel(...args) { return this.host?.renderSettingsPanel?.(...args); }
-    renderAdvisorPanel(...args) { return this.host?.renderAdvisorPanel?.(...args); }
 
     render(state = {}, options = {}) {
       if (options.mode === 'hud') {
@@ -243,21 +239,12 @@
     renderStandardFrame(state = {}, topBarBottom = 84, activeTab = 'resources', options = {}) {
       const tabsTop = this.height - 60 - this.bottomSafeArea;
       const panelTop = topBarBottom;
-      const advisorOffset = this.getAdvisorFrameOffset(state);
-      const availableHeight = Math.max(120, tabsTop - panelTop - 12 - advisorOffset);
+      const availableHeight = Math.max(120, tabsTop - panelTop - 12);
       this.renderFrameMainPanel(state, activeTab, panelTop, availableHeight, tabsTop, options);
-      this.renderAdvisor(state);
       this.renderTabs(activeTab, state, options);
       this.renderStandardOverlays(state, activeTab, options);
       this.renderFrameFeedback(state, options);
       this.endFrame(options);
-    }
-
-    getAdvisorFrameOffset(state = {}) {
-      const view = this.presenter && typeof this.presenter.buildAdvisorViewState === 'function'
-        ? this.presenter.buildAdvisorViewState(state.softGuide)
-        : null;
-      return view?.hidden ? 0 : 52;
     }
 
     renderFrameMainPanel(state = {}, activeTab = 'resources', panelTop = 84, availableHeight = 120, tabsTop = 0, options = {}) {
@@ -285,7 +272,6 @@
       if (options.showResourceDetails) this.renderResourceDetailsPanel(state);
       if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
       if (options.showTaskCenter) this.renderTaskCenterPanel(state, options);
-      if (options.showGuidebook) this.renderGuidebookPanel(state, options);
       if (options.armyFormationEditor?.open) this.renderArmyFormationEditor(state, options);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
       this.renderCaptureModal(state); // ②b: auto-surfaces while a pending capture decision exists
@@ -325,9 +311,7 @@
       if (options.showResourceDetails) this.renderResourceDetailsPanel(state);
       if (options.showSettings) this.renderSettingsPanel();
       if (options.showCitySwitcher) this.renderCitySwitcherMenu(state);
-      if (options.showAdvisor) this.renderAdvisorPanel(state);
       if (options.showTaskCenter) this.renderTaskCenterPanel(state, options);
-      if (options.showGuidebook) this.renderGuidebookPanel(state, options);
       if (options.armyFormationEditor?.open) this.renderArmyFormationEditor(state, options);
       if (options.activeEventId) this.renderEventModal(state, options.activeEventId);
       this.renderCaptureModal(state); // ②b: auto-surfaces while a pending capture decision exists

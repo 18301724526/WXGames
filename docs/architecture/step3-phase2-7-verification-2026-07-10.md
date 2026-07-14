@@ -31,7 +31,7 @@ Contracts: `COP-CLIENT-001`, `COP-CLIENT-002`, `COP-AUTHORITY-001`.
 ### P0-1 Server Formation Validation
 
 - `startWorldMarch` now uses `shared/formationDeploymentEligibility.js` for every
-  non-combat march after tutorial formation lookup.
+  non-combat march after formation lookup.
 - Empty formation returns structured HTTP 400 result:
   `FORMATION_EMPTY` / `编队为空，无法出征`.
 - Primary general with zero soldiers returns:
@@ -72,9 +72,6 @@ Captured same-run facts:
   `DISPATCH_METHODS` structural inspection.
 - A domain-conditioned ternary now fires when either branch replaces a command action with any
   different action type; detection is no longer limited to `blockCanvasModal`.
-- `GuideTaskCanvasRenderer` no longer derives claim/navigation action type from `claimable`; it
-  consumes the presenter-owned action and keeps only a non-command navigation fallback.
-
 Novel temporary FIRE probes injected into actual source:
 
 ```text

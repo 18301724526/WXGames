@@ -15,7 +15,7 @@ metadata:
 - **opencode(GLM/deepseek/doubao 全走这里)**:`~/.config/opencode/opencode.json` 已加 `"permission":{"edit":"allow","bash":"allow","webfetch":"allow"}`(备份 opencode.json.bak-perms-20260712)。**进程启动时读一次配置→改完必须退出重开,`/new` 不重读**。
 - 取证提示词自带只读+只写 tmp/ 纪律,监督者跑后 git status 兜底。owner 亲审单命令模式废除。**取证题模板铁则:席位代号+输出文件名由出题人写死在题面**(如"你是 A 席,写 tmp/audit-A.md")——防 owner 贴错模型/模型自报家门造成档案混淆(2026-07-12 doubao 被误当 deepseek 考了两场)。**新问题盲审题面只给客观证据(症状+复现命令+原始产物路径),禁止预嚼候选方向/嫌疑点/我方行号**(owner 纠正 2026-07-12:预埋假设→席位顺框走,收敛失去证明力=G3 假独立变体);监督者私有假设留手里当 diff 基准,席位独立撞上才算真收敛。定位收敛后的**验证/修复单**相反要写死方向与判据。**审计与执行需并行时用 worktree 隔离**:`git worktree add --detach "$env:TEMP\audit-X" <commit>` 每席一个(钉快照+双向隔离),题面写明工作目录;worktree 内禁构建(esbuild 路径坑)、无 node_modules(纯 stdlib 生成器可跑,npm test 不可);审完 `git worktree remove --force`。
 
-**doubao-seed-2.0-pro 首考通过**(G3 停滞静态审计,误跑两卷):链路重建准确、置信度标注诚实,第二卷深度更佳(有跑间方差,重要取证可跑两次采样);弱点=未做量级/状态检验(与另一卷同倒在 tutorialStep=initial 上)。**deepseek-v4-pro 首考未考**,顺延下一题。
+**doubao-seed-2.0-pro 首考通过**(G3 停滞静态审计,误跑两卷):链路重建准确、置信度标注诚实,第二卷深度更佳(有跑间方差,重要取证可跑两次采样);弱点=未做量级/状态检验（两卷都没有检查初始状态的量级）。**deepseek-v4-pro 首考未考**,顺延下一题。
 
 **2026-07-12 花名册扩编(owner)**:新增 **DeepSeek V4 Pro**(复活,当年从评审席退役)与 **doubao-seed-2.0-pro**(新入,经火山 ARK/arkcli 通道),均订阅配额零现金。**→ 2026-07-12 晚 owner 裁定 doubao 退役**("方舟的,太拉了"),连同方舟 Coding Plan 通道整体弃用(反复卡死+验证轮弃权);DeepSeek 只走官方 API(claude-code Anthropic 兼容端点,见 [[deepseek-agentic-executor]]),不走方舟。**入队路径:先取证/盲审交叉席**(同一审计提示词发 2+ 廉价席盲测,监督者 diff 发现再仲裁——kimi/GLM 已用此模式立功),表现达标再升机械执行单;两振出局。现役花名册:Fable=监督仲裁;sol=手术/L2 执行+设计主笔+深度定责;terra=机械执行试点(待首单);Opus=机械执行试点(配额,待首单);GLM/kimi=取证席已转正;deepseek-v4-pro/doubao-seed-2.0-pro=取证席试用。**廉价席盲审面板**为 L2 标准配置:同一提示词 2-3 席盲测,我 diff+验真,Claude 席只留判断最密处。
 

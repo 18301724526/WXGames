@@ -65,9 +65,8 @@ test('CanvasGameRendererCompositionFactory injects host facade into drawing surf
   const calls = [];
   const host = { id: 'game-renderer-facade' };
   const dependencies = {
-    advisorCanvasRenderer: createClass('advisor', calls),
     resourceTopBarCanvasRenderer: createClass('resource-top-bar', calls),
-    guideTaskCanvasRenderer: createClass('guide-task', calls),
+    taskCanvasRenderer: createClass('task', calls),
     civilizationCanvasRenderer: createClass('civilization', calls),
     militaryCanvasRenderer: createClass('military', calls),
     techCanvasRenderer: createClass('tech', calls),
@@ -85,9 +84,8 @@ test('CanvasGameRendererCompositionFactory injects host facade into drawing surf
   const composition = CanvasGameRendererCompositionFactory.create({ host, dependencies });
 
   [
-    'advisorRenderer',
     'resourceTopBarRenderer',
-    'guideTaskRenderer',
+    'taskRenderer',
     'civilizationRenderer',
     'militaryRenderer',
     'techRenderer',
@@ -113,15 +111,15 @@ test('CanvasGameRendererCompositionFactory injects shared surface state only int
   const dependencies = {
     canvasSurfaceRenderer: createClass('surface', calls),
     famousCanvasRenderer: createClass('famous', calls),
-    advisorCanvasRenderer: createClass('advisor', calls),
+    taskCanvasRenderer: createClass('task', calls),
   };
 
   const composition = CanvasGameRendererCompositionFactory.create({ host, dependencies });
 
   assert.equal(composition.rendererMap.surfaceRenderer.options.surfaceState, surfaceState);
   assert.equal(composition.rendererMap.famousRenderer.options.surfaceState, surfaceState);
-  assert.equal(composition.rendererMap.advisorRenderer.options.surfaceState, undefined);
-  assert.equal(composition.rendererMap.advisorRenderer.options.drawingSurface, host);
+  assert.equal(composition.rendererMap.taskRenderer.options.surfaceState, undefined);
+  assert.equal(composition.rendererMap.taskRenderer.options.drawingSurface, host);
 });
 
 test('CanvasGameRendererCompositionFactory syncs presenter through descriptor fallback boundary', () => {

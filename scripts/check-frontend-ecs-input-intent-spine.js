@@ -8,7 +8,7 @@ const { scanInputBranches } = require('./report-frontend-ecs-input-branch');
 // Surface === 'input-router' AND Branch Kind in {mode, runtime-route}. Net-new
 // such branches in legacy router files (i.e. outside the approved ECS input
 // owner, the generated runtime bundle, or the mode ownership runtime) fail the
-// gate. Panel / tutorial / action branch kinds stay report-only this batch.
+// gate. Panel / action branch kinds stay report-only this batch.
 const BASELINE_PATH = 'docs/development_logs/2026-06-25-frontend-ecs-0b-input-branch-baseline.md';
 const IN_SCOPE_SURFACE = 'input-router';
 const IN_SCOPE_BRANCH_KINDS = Object.freeze(['mode', 'runtime-route']);

@@ -14,13 +14,12 @@
     { property: 'civilizationRenderer', classOption: 'civilizationRendererClass', dependencyKey: 'civilizationCanvasRenderer', globalName: 'CivilizationCanvasRenderer', requirePath: './renderers/CivilizationCanvasRenderer' },
     { property: 'militaryRenderer', classOption: 'militaryRendererClass', dependencyKey: 'militaryCanvasRenderer', globalName: 'MilitaryCanvasRenderer', requirePath: './renderers/MilitaryCanvasRenderer' },
     { property: 'armyFormationEditorRenderer', classOption: 'armyFormationEditorRendererClass', dependencyKey: 'armyFormationEditorCanvasRenderer', globalName: 'ArmyFormationEditorCanvasRenderer', requirePath: './renderers/ArmyFormationEditorCanvasRenderer' },
-    { property: 'guideTaskRenderer', classOption: 'guideTaskRendererClass', dependencyKey: 'guideTaskCanvasRenderer', globalName: 'GuideTaskCanvasRenderer', requirePath: './renderers/GuideTaskCanvasRenderer' },
+    { property: 'taskRenderer', classOption: 'taskRendererClass', dependencyKey: 'taskCanvasRenderer', globalName: 'TaskCanvasRenderer', requirePath: './renderers/TaskCanvasRenderer' },
     { property: 'resourceTopBarRenderer', classOption: 'resourceTopBarRendererClass', dependencyKey: 'resourceTopBarCanvasRenderer', globalName: 'ResourceTopBarCanvasRenderer', requirePath: './renderers/ResourceTopBarCanvasRenderer' },
     { property: 'cityPeopleRenderer', classOption: 'cityPeopleRendererClass', dependencyKey: 'cityPeopleCanvasRenderer', globalName: 'CityPeopleCanvasRenderer', requirePath: './renderers/CityPeopleCanvasRenderer' },
     { property: 'systemRenderer', classOption: 'systemRendererClass', dependencyKey: 'systemCanvasRenderer', globalName: 'SystemCanvasRenderer', requirePath: './renderers/SystemCanvasRenderer' },
     { property: 'cityRenderer', classOption: 'cityRendererClass', dependencyKey: 'cityCanvasRenderer', globalName: 'CityCanvasRenderer', requirePath: './renderers/CityCanvasRenderer' },
     { property: 'overlayRenderer', classOption: 'overlayRendererClass', dependencyKey: 'overlayCanvasRenderer', globalName: 'OverlayCanvasRenderer', requirePath: './renderers/OverlayCanvasRenderer' },
-    { property: 'advisorRenderer', classOption: 'advisorRendererClass', dependencyKey: 'advisorCanvasRenderer', globalName: 'AdvisorCanvasRenderer', requirePath: './renderers/AdvisorCanvasRenderer' },
     { property: 'mapCommandRenderer', classOption: 'mapCommandRendererClass', dependencyKey: 'mapCommandCanvasRenderer', globalName: 'MapCommandCanvasRenderer', requirePath: './renderers/MapCommandCanvasRenderer' },
     { property: 'tabBarRenderer', classOption: 'tabBarRendererClass', dependencyKey: 'tabBarCanvasRenderer', globalName: 'TabBarCanvasRenderer', requirePath: './renderers/TabBarCanvasRenderer' },
     { property: 'hudTabPageRenderer', classOption: 'hudTabPageRendererClass', dependencyKey: 'hudTabPageCanvasRenderer', globalName: 'HudTabPageCanvasRenderer', requirePath: './renderers/HudTabPageCanvasRenderer' },
@@ -29,9 +28,8 @@
   ]);
 
   const DRAWING_SURFACE_RENDERER_PROPERTIES = new Set([
-    'advisorRenderer',
     'resourceTopBarRenderer',
-    'guideTaskRenderer',
+    'taskRenderer',
     'civilizationRenderer',
     'militaryRenderer',
     'techRenderer',

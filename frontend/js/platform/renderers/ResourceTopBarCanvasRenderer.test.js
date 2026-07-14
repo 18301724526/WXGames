@@ -24,9 +24,6 @@ function createHost(overrides = {}) {
       buildCitySwitcherViewState() {
         return createCitySwitcherView();
       },
-      buildAdvisorViewState() {
-        return { hidden: false };
-      },
       toDisplayPopulation(value) {
         return String(Number(value || 0) * 100);
       },
@@ -199,7 +196,6 @@ test('ResourceTopBarCanvasRenderer preserves top bar resource and utility hit ta
 
   assert.equal(bottom, 190);
   assert.equal(host.hitTargets.filter((target) => target.action.type === 'openResourceDetails').length, 5);
-  assert.equal(host.hitTargets.some((target) => target.action.type === 'openAdvisor'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openLogs'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openSettings'), true);
   assert.equal(host.hitTargets.some((target) => target.action.type === 'openCitySwitcher'), true);
@@ -221,7 +217,6 @@ test('ResourceTopBarCanvasRenderer resolves top bar chrome through active locale
 
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Primitive Era'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawText' && call[1] === 'Population: 1200'), true);
-  assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Advisor'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Logs'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Settings'), true);
   assert.equal(host.calls.some((call) => call[0] === 'drawButton' && call[1] === 'Capital'), true);

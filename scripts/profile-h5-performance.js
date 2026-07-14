@@ -571,26 +571,16 @@ function createGameStatePayload(options = {}) {
     },
     activeCityId: 'capital',
     isCapitalCity: true,
-    guidebook: {},
     talentPolicies: {},
     famousPersons: {
       people: [],
       candidates: [],
     },
-    softGuide: null,
-    guideTasks: { visible: false, tasks: [] },
     taskCenter: null,
   };
 
   return {
     gameState,
-    tutorial: {
-      completed: false,
-      currentStep: 0,
-      phaseCompleted: { newbie: false, era2: false },
-    },
-    softGuide: null,
-    guideTasks: { visible: false, tasks: [] },
     taskCenter: null,
     eraProgress: gameState.eraProgress,
     syncTime: now.toISOString(),
@@ -752,7 +742,6 @@ async function createProfileServer(options = {}) {
         status = 200;
         responseBytes = writeJson(res, status, {
           taskCenter: null,
-          guideTasks: { visible: false, tasks: [] },
         });
       } else if (reqUrl.pathname === '/api/game/action' || reqUrl.pathname === '/api/game/tasks/claim') {
         status = 200;

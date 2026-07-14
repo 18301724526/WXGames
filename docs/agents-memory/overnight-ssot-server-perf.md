@@ -7,7 +7,7 @@ metadata:
   originSessionId: 2992377e-0795-4820-a4df-9cbb32be926b
 ---
 
-用户指令"自主推进架构优化/单一事实源/服务器优化/暴力猎BUG，别问我"。分支 codex/refactor-tutorial-guide-architecture，提交链 `efab0af7(观测分库+迁移锁)→1baf7146(worker重试)→ecd062bb(别名收敛)→f5e0595e(formations单键)→…`，每步全门禁+双推送部署。
+用户指令"自主推进架构优化/单一事实源/服务器优化/暴力猎BUG，别问我"。工作在 refactor 分支，提交链 `efab0af7(观测分库+迁移锁)→1baf7146(worker重试)→ecd062bb(别名收敛)→f5e0595e(formations单键)→…`，每步全门禁+双推送部署。
 
 **服务器侧修复（全部已部署）：**
 - **观测日志分库**：api_logs 曾 124 万行/313MB（占游戏库 78%，清理定时器从未被接线！），且与游戏事务同写锁域 = "database is locked" 主凶。现 LogService 用独立 `observability.db`（`LOGS_DB_PATH`，server.js 组装根开第二连接），retention 每小时分批短事务删（`cleanupOldLogs` batchSize 5000）。主库 DROP 旧表 + VACUUM：**399MB→2.4MB**。

@@ -33,7 +33,6 @@ const DEFAULT_WRITE_HELPER_NAMES = Object.freeze([
   'renameCity',
   'renamePolity',
   'switchCity',
-  'advanceTutorial',
   'heartbeat',
   'reportClientEvent',
   'uploadClientOperationLog',
@@ -453,7 +452,6 @@ function scanFrontendDirectSubmits(repoRoot, options = {}) {
         migrationTarget: inferDirectSubmitMigrationTarget(relativeFile),
       };
       if (helper === 'assignJob') call.commandType = 'assign';
-      if (helper === 'advanceTutorial') call.commandType = 'tutorialAdvance';
       results.push(call);
     }
   }
@@ -473,7 +471,6 @@ function inferDirectSubmitMigrationTarget(file) {
   if (file.includes('/platform/GameCommandService.js')) return 'ClientCommandSender game-command service adapter';
   if (file.includes('/platform/CanvasGameApp.js')) return 'ClientCommandSender CanvasGameApp facade';
   if (file.includes('/services/')) return 'ClientCommandSender service bridge';
-  if (file.includes('/tutorial/')) return 'ClientCommandSender tutorial adapter';
   return 'ClientCommandSender frontend command adapter';
 }
 

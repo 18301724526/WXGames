@@ -16,7 +16,6 @@ const RETIRED_APP_MODULES = [
   'CanvasGameAppRenderingRuntime',
   'CanvasGameAppBattleScene',
   'CanvasGameAppCommands',
-  'CanvasGameAppGuideUi',
   'CanvasGameAppInputRouter',
 ];
 
@@ -198,12 +197,58 @@ test('CanvasGameApp advanceEra always reaches GameAPI before local era eligibili
   ]);
 });
 
+test('claimTaskReward keeps ordinary task progress and reward flow independent', async () => {
+  const calls = [];
+  const result = { message: 'task claimed', gameState: { taskCenter: { visible: true } } };
+  const host = makeAppHost({
+    state: {
+      currentTab: 'resources',
+      taskCenter: {
+        categories: {
+          main: {
+            tasks: [{ id: 'main-1', status: 'claimable', claimed: false, progressText: 'Ready' }],
+          },
+        },
+      },
+    },
+    getGameApi() {
+      return {
+        async claimTaskReward(taskId, category) {
+          calls.push(['api.claimTaskReward', taskId, category]);
+          return result;
+        },
+      };
+    },
+    applyApiState(payload) {
+      calls.push(['applyApiState', payload]);
+    },
+    emitGameEvent(eventName, payload) {
+      calls.push(['emitGameEvent', eventName, payload.result]);
+    },
+    showFloatingText(message) {
+      calls.push(['showFloatingText', message]);
+      return true;
+    },
+    log(message) {
+      calls.push(['log', message]);
+    },
+  });
+
+  assert.equal(host.hasClaimableMainTask(), true);
+  assert.equal(await host.claimTaskReward('main-1', 'main'), true);
+  assert.deepEqual(calls.slice(0, 3), [
+    ['api.claimTaskReward', 'main-1', 'main'],
+    ['applyApiState', result],
+    ['emitGameEvent', 'taskRewardClaimed', result],
+  ]);
+  assert.equal(calls.some((call) => call[0] === 'showFloatingText' && call[1] === 'task claimed'), true);
+});
+
 test('seekFamousPerson syncs the single API state source and redraws only the panel surface', async () => {
   const calls = [];
   const result = {
     message: 'seek complete',
     gameState: { currentTab: 'military', famousPersons: { candidates: [{ id: 'candidate-1' }] } },
-    tutorial: { currentStep: 'famousSeekCompleted' },
   };
   const host = makeAppHost({
     state: { currentTab: 'military', militaryView: 'world' },
@@ -226,7 +271,6 @@ test('seekFamousPerson syncs the single API state source and redraws only the pa
         ...(this.state || {}),
         ...(data.gameState || {}),
       };
-      this.tutorial = data.tutorial;
     },
     renderPanelOverlaySurface(panelKey, manager, options) {
       calls.push(['renderPanelOverlaySurface', panelKey, options.state.famousPersons.candidates.length]);
@@ -246,13 +290,13 @@ test('seekFamousPerson syncs the single API state source and redraws only the pa
     },
   });
 
-  const returned = await host.seekFamousPerson('guide');
+  const returned = await host.seekFamousPerson('seek');
 
   assert.equal(returned, result);
   assert.equal(host.famousPersonsPage, 0);
   assert.equal(host.selectedFamousPersonId, '');
   assert.deepEqual(calls, [
-    ['api.seekFamousPerson', 'guide'],
+    ['api.seekFamousPerson', 'seek'],
     ['applyApiState', result, { render: false }],
     ['log', 'seek complete'],
     ['renderPanelOverlaySurface', 'famousPersons', 1],
@@ -457,10 +501,10 @@ test('openArmyFormation seeds the editor from the city formation and normalizes 
 });
 
 test('openArmyFormation writes the UiRuntimeStateStore authority on a real app instance', () => {
-  const tutorialCalls = [];
+  const eventCalls = [];
   const changeEventBus = ChangeEventBus.createEventBus();
   changeEventBus.subscribe('armyFormationOpened', () => {
-    tutorialCalls.push('opened');
+    eventCalls.push('opened');
     return Promise.resolve(true);
   });
   const shell = new CanvasGameShell({
@@ -473,7 +517,6 @@ test('openArmyFormation writes the UiRuntimeStateStore authority on a real app i
     rendererRequired: false,
     useWorldMapRuntime: false,
     canvasShell: shell,
-    tutorialController: {},
     changeEventBus,
     initialState: {
       activeCityId: 'capital',
@@ -493,7 +536,7 @@ test('openArmyFormation writes the UiRuntimeStateStore authority on a real app i
     app.getArmyFormationEditorController().editor,
     UiRuntimeStateStore.getFormationEditor(app),
   );
-  assert.deepEqual(tutorialCalls, ['opened']);
+  assert.deepEqual(eventCalls, ['opened']);
 });
 
 test('toggleArmyFormationMember adds with zeroed assignments, removes, and enforces the 5-member cap', () => {
@@ -763,7 +806,6 @@ test('CanvasGameApp seeds reports on load and plays only newly arriving ones onc
   const calls = [];
   const host = makeAppHost({
     state: { currentTab: 'military' },
-    tutorial: {},
     loading: { visible: false },
     resolveMapHomeViewState(state = {}, options = {}) {
       return {
@@ -1066,7 +1108,6 @@ test('CanvasGameApp starts a selected idle world actor by id without a capital o
         territories: [{ id: 'capital', q: 0, r: 0 }],
       },
     },
-    tutorial: {},
     loading: {},
     canvasShell: { loading: {}, territoryUiState: {} },
     config: {},
@@ -1121,7 +1162,6 @@ test('CanvasGameApp starts a selected idle world actor by id without a capital o
                 idleMissions: [],
               },
             },
-            tutorial: {},
           };
         },
       };
@@ -1137,10 +1177,6 @@ test('CanvasGameApp starts a selected idle world actor by id without a capital o
     },
     log(message) {
       calls.push(['log', message]);
-    },
-    tutorialController: {
-      sync() {},
-      onExploreStarted() {},
     },
   });
 

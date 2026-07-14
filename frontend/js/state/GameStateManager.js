@@ -41,12 +41,9 @@
       state.wood = state.resources.wood || 0;
       state.iron = state.resources.iron ?? state.resources.metal ?? 0;
       state.stone = state.resources.stone || 0;
-      state.softGuide = serverState.softGuide || null;
-      state.guideTasks = serverState.guideTasks || { visible: false, tasks: [] };
       state.taskCenter = serverState.taskCenter || null;
       state.talentPolicies = serverState.talentPolicies || state.talentPolicies || {};
       state.famousPersons = serverState.famousPersons || state.famousPersons || {};
-      state.guidebook = serverState.guidebook || state.guidebook || {};
       state.workshopCount = this.buildingState.getLevel(state.buildings, 'workshop');
       state.lumbermillCount = this.buildingState.getLevel(state.buildings, 'lumbermill');
       state.military = {

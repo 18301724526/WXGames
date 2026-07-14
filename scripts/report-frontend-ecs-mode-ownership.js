@@ -22,9 +22,7 @@ const SHOW_MODE_SYMBOLS = Object.freeze([
   'showCitySwitcher',
   'showSubcityList',
   'showCityManagement',
-  'showAdvisor',
   'showTaskCenter',
-  'showGuidebook',
   'showFamousPersons',
 ]);
 
@@ -156,12 +154,10 @@ function classifyRole(filePath = '', line = '', access = 'read') {
     }
     if (/\b(canvasShell|shell|lastGame)\./.test(line)) return 'mirror';
     if (/frontend\/js\/state\//.test(normalized)) return 'adapter';
-    if (/frontend\/js\/tutorial\//.test(normalized)) return 'adapter';
     return 'unknown';
   }
   if (/frontend\/js\/platform\/renderers\//.test(normalized)) return 'consumer';
   if (/frontend\/js\/state\//.test(normalized)) return 'adapter';
-  if (/frontend\/js\/tutorial\//.test(normalized)) return 'adapter';
   if (
     /frontend\/js\/platform\/.*(InputRouter|Action|Handlers|Commands|Controller|Shell|App)/.test(
       normalized,

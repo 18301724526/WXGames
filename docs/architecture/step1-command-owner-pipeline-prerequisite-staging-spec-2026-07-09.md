@@ -153,7 +153,6 @@ remain inventoried so they cannot hide.
 - `advanceEra`
 - `claimEvent`
 - `assign`
-- `tutorialAdvance`
 - `claimTaskReward` (route write, NOT a registry action)
 - `applyTalentPolicy`
 - `saveTalentPolicy`
@@ -192,7 +191,7 @@ Required classifications:
 - `intent-only`: emits an action/intention but does not submit
 - `display-only`: renders server or presenter state
 - `transport-guard`: blocks duplicate/in-flight/payload-shape/UI-ready only
-- `domain-blocker`: blocks based on resources, tutorial, era, cooldown, tech,
+- `domain-blocker`: blocks based on resources, era, cooldown, tech,
   march, candidate, territory, encounter, reward, boss, or loot
 - `legacy-debt`: known old path awaiting migration
 
@@ -262,7 +261,6 @@ Examples:
 Forbidden local block reasons include:
 
 - resources/cost insufficient
-- tutorial step locked
 - era cannot advance
 - tech unavailable
 - cooldown not ready
@@ -335,7 +333,6 @@ orchestration if a route-local helper, service facade, retry wrapper, or action
 adapter performs any of these on its behalf:
 
 - state load or projection load
-- tutorial sync or authority-contract preparation
 - registry/handler dispatch
 - domain validation
 - state mutation
@@ -368,7 +365,6 @@ Required initial owner declarations:
 | `advanceEra` | `player:{playerId}` |
 | `research` | `player:{playerId}` |
 | `assign` | `player:{playerId}` |
-| `tutorialAdvance` | `player:{playerId}` |
 | `claimEvent` | `player:{playerId}` unless event target becomes shared |
 | `claimTaskReward` | `player:{playerId}` |
 | `applyTalentPolicy` | `player:{playerId}` |
@@ -555,7 +551,6 @@ Known prerequisite debt:
 - civilization advance uses local `canAdvanceEraNow()` as a hard command blocker.
 - tech research hit targets use local `canResearch` as command `disabled`.
 - building hit targets use local button/cost state as command `disabled`.
-- building command path calls tutorial controller before sending server command.
 - world march HUD suppresses command targets when local passability says blocked.
 - world march formation picker marks busy/blocked formations as command disabled.
 - world site presenter only emits `claimConquest` when local mission state is

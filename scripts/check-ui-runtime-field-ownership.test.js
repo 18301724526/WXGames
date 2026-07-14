@@ -39,12 +39,6 @@ function createFixture(overrides = {}) {
       fields: ['worldPanX'],
       approvedCompatibilityFiles: [],
     },
-    {
-      store: 'TutorialRuntimeStore',
-      path: 'frontend/js/state/TutorialRuntimeStore.js',
-      fields: ['tutorialHighlight'],
-      approvedCompatibilityFiles: [],
-    },
   ];
   stores.forEach((store) => {
     const exportedFields = overrides.exportedFields?.[store.store] || store.fields;
@@ -134,48 +128,12 @@ test('ui runtime field ownership FIRE: unapproved direct host field access is bl
   );
 });
 
-test('ui runtime field ownership FIRE: TutorialGuideController historical setIfChanged shape is blocked', () => {
-  const root = createFixture({
-    extraSource: {
-      'frontend/js/tutorial/TutorialGuideController.js': [
-        'function update(game) {',
-        '  const setIfChanged = (host, key, value) => {',
-        '    if (!host || host[key] === value) return;',
-        '    host[key] = value;',
-        '  };',
-        "  setIfChanged(game, 'activeTab', 'military');",
-        "  setIfChanged(game.state, 'militaryView', 'world');",
-        '}',
-      ].join('\n'),
-    },
-  });
-  const report = inspectUiRuntimeOwnership({ repoRoot: root });
-
-  assert.equal(
-    report.violations.some((violation) => (
-      violation.includes('TutorialGuideController.js')
-      && violation.includes('activeTab')
-      && violation.includes('setIfChanged')
-    )),
-    true,
-  );
-  assert.equal(
-    report.violations.some((violation) => (
-      violation.includes('TutorialGuideController.js')
-      && violation.includes('militaryView')
-      && violation.includes('setIfChanged')
-    )),
-    true,
-  );
-});
-
 test('ui runtime field ownership FIRE: bypass scan covers the existing store family', () => {
   const root = createFixture({
     extraSource: {
       'frontend/js/platform/ModalBypass.js': 'module.exports = function read(host) { return host.showLogs; };\n',
       'frontend/js/platform/BattleBypass.js': 'module.exports = function read(game) { return game.entityBattle; };\n',
       'frontend/js/platform/TerritoryBypass.js': 'module.exports = function read(owner) { return owner.worldPanX; };\n',
-      'frontend/js/platform/TutorialBypass.js': 'module.exports = function read(shell) { return shell.tutorialHighlight; };\n',
     },
   });
   const report = inspectUiRuntimeOwnership({ repoRoot: root });
@@ -195,12 +153,6 @@ test('ui runtime field ownership FIRE: bypass scan covers the existing store fam
   assert.equal(
     report.violations.some((violation) =>
       violation.includes('TerritoryBypass.js') && violation.includes('outside TerritoryUiStateStore'),
-    ),
-    true,
-  );
-  assert.equal(
-    report.violations.some((violation) =>
-      violation.includes('TutorialBypass.js') && violation.includes('outside TutorialRuntimeStore'),
     ),
     true,
   );

@@ -68,7 +68,7 @@
 - `CanvasTerritoryActionHandlers` 将 `meta.inputIntent` 作为 `clientInputIntent` 传入 `startWorldMarch` / `returnWorldMarch` / `stopWorldMarch`。
 - `CanvasTerritoryActionHandlers` 的行军目标 HUD 状态必须通过 `TileCoord` 从 `targetQ/targetR` 生成 canonical `tileId`；旧 renderer/caller `action.tileId` 不能覆盖坐标事实，`startWorldMarch` 顶层 payload 也不新增 `tileId` 权威字段。
 - `WorldExplorerActions` 是服务端世界行军命令编排边界；start/return/stop 的 trace summary、idle mission rebase、target/position 写回都必须由 `q/r` 生成 tile identity，旧 caller/persisted `tileId` / `id` 不能覆盖命令诊断或 mission 事实。
-- `WorldExplorerRoutePlanner` 是服务端路线规划边界；route / planned tile / tutorial planned site 只要带 `q/r`，planned tile lookup、terrain 判定和 planned site `tileId` 都必须由坐标生成，旧 route `tileId` 或 planned tile `id` 不能改变首个空城规划结果。
+- `WorldExplorerRoutePlanner` 是服务端路线规划边界；route / planned tile / planned site 只要带 `q/r`，planned tile lookup、terrain 判定和 planned site `tileId` 都必须由坐标生成，旧 route `tileId` 或 planned tile `id` 不能改变首个空城规划结果。
 - `GameAPI` 只发送 `clientInputIntent` 的白名单摘要，不发送 renderer/context 原对象、完整 tiles、完整 targets 或大 payload。
 - `GameActionRegistry` 保留 `clientInputIntent` 到 world-march payload；`TerritoryAction` 将 return/stop/start 的 payload 交给 `WorldExplorerService`。
 - `CommandAuthorityContract` 在 `authority.command.clientInput` 中保存 compact evidence，用于回放和审计。
@@ -130,7 +130,6 @@
 - 2026-06-15：`ClientOperationLog` 的本地操作日志摘要完成坐标身份收口；新增红测证明带 `targetQ/targetR` 或 `q/r` 的 action、input intent target、UI `worldMarchTarget` 不再保留脏旧 `tileId`，导出/上传日志按坐标事实对账。
 - 2026-06-15：`cleanup-world-explorer-ready-state.js` 的部署期 ready->idle 清理写回完成坐标身份收口；新增红测证明脏 ready mission `origin/target/position/route.tileId` 不会被迁移脚本原样写回，带坐标记录统一按 `q/r` 生成 tile identity。
 - 2026-06-15：`WorldMarchProgressSnapshot.deriveMissionForTime()` 的 route reveal set / 输出 `revealedTileIds` 完成坐标身份收口；新增红测证明脏 route step `tileId` 只作为 coordinate-bearing route alias 被折回 canonical `tile_q_r`，旧 route id 不会继续透传到前端进度快照。
-- 2026-06-14：`WorldExplorerRoutePlanner.createTutorialPlannedSites()` 的首个空城规划改为按 route 坐标查 planned tile、按坐标判定 terrain、按坐标写 planned site `tileId`；旧 route `tileId` 或 planned tile `id` 即使是脏值，也不能把教程空城规划导向错误地块。
 - 2026-06-14：`WorldExplorerMissionNormalizer` 的服务端 mission row 也完成坐标身份收口；route/origin/homeOrigin/target/position/planned tile/planned site 中的旧 `tileId` / `id` 不能覆盖 `q/r` 坐标，后续 progression、timeline、AOI 都只消费归一化后的 canonical mission facts。
 - 2026-06-15：`WorldExplorerMissionNormalizer` 的 `revealedTileIds` / route `revealed` 推导继续补齐坐标身份收口；新增红测证明脏 route step `tileId` 只作为 coordinate-bearing route alias 被折回 canonical `tile_q_r`，旧 route reveal id 不会进入服务端 normalized mission row。
 - 2026-06-14：`WorldExplorerProgression` 的运行时副作用也完成坐标身份收口；planned site materialization、planned tile lookup、trace step summary、mission position 写回不再信旧 `step.tileId` / planned tile `id`，即使脏 mission 绕过上游也不能改变 materialize 或 position 事实。
@@ -184,10 +183,10 @@
 - 世界行军命令可带 compact `clientInputIntent` evidence，但服务端路线、停止点、timeline、AOI 和接受/拒绝仍由服务器当前状态计算。
 - 文档与代码事实一致，旧实现不留在当前项目目录中。
 
-## 2026-06-18 新手引导入城点击 / world target picker 边界修复记录
+## 2026-06-18 入城点击 / world target picker 边界修复记录
 
 - 线上复现账号 `codexqa` 的重置/出生数据正常：只有一个 capital，坐标为 `tile_23_18`，问题不是新账号落地算法或后端重置产生实体重叠。
-- 根因一：`WorldMapSelectionResolver` 把 HUD command `enterCity` 纳入 world entity candidates，导致 `openWorldSite + enterCity` 被错误改写为 `openWorldTargetPicker`；教程 enter 步只允许 `enterCity`，因此 picker 被教程输入门禁拒绝，表现为“入城点不了”。
+- 根因一：`WorldMapSelectionResolver` 把 HUD command `enterCity` 纳入 world entity candidates，导致 `openWorldSite + enterCity` 被错误改写为 `openWorldTargetPicker`，表现为“入城点不了”。
 - 根因二：`skipWorldMapLayer` 时先 append runtime hit targets，又调用 `collectMapHomeWorldSiteHitTargets()` 重新注册 drag/tile/site targets，导致线上同一点出现重复 `openWorldSite` 和背景 targets。两个机制分别服务 runtime 复用和 context 刷新，但不能同时注册同一批地图目标。
 - 修复：`WORLD_ENTITY_ACTIONS` 只保留 `openWorldSite` / `selectWorldActor`；`enterCity` / `renameCity` / `territoryAction` 明确留在 HUD/command 层。前景候选归一化后只有一个世界实体时不提前返回，让正常 topmost hit target 处理 HUD 命令。
 - 修复：`collectMapHomeWorldSiteHitTargets()` 增加 `collectHitTargets: false` 的 context-only 模式；Frame/HUD 在成功复用 runtime hit targets 后只刷新 `lastMapHomeWorldHudContext`，不重复注册 map hit targets；如果 runtime targets 不存在，则保留原注册路径作为 fallback。

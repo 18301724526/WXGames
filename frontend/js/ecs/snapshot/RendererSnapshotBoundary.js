@@ -10,7 +10,7 @@ const ModeKeys = (() => {
 // Batch 8F: per-panel modal subtypes replace the single 'modal:blockingPanel'.
 // 'modal:commandPanel' carries the activeCommandPanel string in its payload; the
 // other 11 are open/closed only. PANEL_KEYS/PANEL_DEFAULTS below are unchanged --
-// the flat-12 panel block is DERIVED from these entries, not from a host mirror.
+// the panel block is DERIVED from these entries, not from a host mirror.
 // The subtype list IS the canonical MODAL_MODE_KEYS (single source) so a newly
 // added modal subtype appears here automatically.
 const MODAL_SUBTYPES = ModeKeys.MODAL_MODE_KEYS;
@@ -22,9 +22,7 @@ const PANEL_KEYS = Object.freeze([
   'showCitySwitcher',
   'showSubcityList',
   'showCityManagement',
-  'showAdvisor',
   'showTaskCenter',
-  'showGuidebook',
   'showFamousPersons',
   'activeCommandPanel',
   'techDetailOpen',
@@ -39,9 +37,7 @@ const PANEL_DEFAULTS = Object.freeze({
   showCitySwitcher: false,
   showSubcityList: false,
   showCityManagement: false,
-  showAdvisor: false,
   showTaskCenter: false,
-  showGuidebook: false,
   showFamousPersons: false,
   activeCommandPanel: '',
   techDetailOpen: false,

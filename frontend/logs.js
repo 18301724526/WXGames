@@ -23,7 +23,6 @@ window.mountLogMethods = function(game) {
     this.canvasShell.showSettings = false;
     this.canvasShell.showResourceDetails = false;
     this.canvasShell.showCitySwitcher = false;
-    this.canvasShell.showAdvisor = false;
     this.canvasShell.activeEventId = null;
     this.canvasShell.renderReadOnly(this.state, this.state.currentTab);
     return true;

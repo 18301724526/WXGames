@@ -38,7 +38,6 @@ test('package code bundle excludes art, runtime data, vendor code, tools, and ge
     'backend/logs/server.log',
     '.github/workflows/other.yml',
     'frontend/assets/art/units/spearman/move/001.png',
-    'frontend/assets/art/spine/tutorial/advisor/tutorial_advisor.atlas',
     'frontend/js/vendor/spine-3.8/spine-webgl.js',
     'frontend/tools/tile-map-lab.js',
     'frontend/frontend.zip',

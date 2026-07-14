@@ -239,7 +239,7 @@ Output:
 
 Verification:
 
-- Era, tutorial, resource, cooldown, march, famous-person, territory, reward,
+- Era, resource, cooldown, march, famous-person, territory, reward,
   encounter, loot, and boss readiness do not appear as allowed command-submit
   blockers.
 
@@ -290,7 +290,7 @@ Inputs:
 Action:
 
 - Add `route-write-orchestration` report-only detection.
-- Detect route-owned state load, tutorial sync, validation, registry execution,
+- Detect route-owned state load, validation, registry execution,
   mutation, save, shared upsert, revision retry, and projection.
 - Follow helper wrappers, service facades, retry wrappers, and functions named
   like `pipeline`.

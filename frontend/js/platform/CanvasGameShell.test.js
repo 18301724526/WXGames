@@ -31,7 +31,6 @@ const RETIRED_SHELL_MODULES = [
   'CanvasGameShellMounting',
   'CanvasGameShellInputRouter',
   'CanvasGameShellCommands',
-  'CanvasGameShellGuideUi',
   'CanvasGameShellWorldMapLayerRuntime',
   'CanvasGameShellWorldMapDragRuntime',
   'CanvasGameShellWorldMapFrameRuntime',
@@ -852,7 +851,6 @@ test('CanvasGameShell passes runtime frame time into render options', () => {
   shell.lastGame = {
     state: { currentTab: 'military', militaryView: 'world' },
     mapHomeActive: true,
-    tutorial: {},
   };
 
   const options = shell.buildRenderOptions('military', {});
@@ -912,7 +910,6 @@ test('CanvasGameShell renderPanelOverlaySurface repaints only the panel overlay 
   shell.lastGame = {
     state,
     mapHomeActive: true,
-    tutorial: {},
   };
   shell.renderReadOnly = () => {
     calls.push(['renderReadOnly']);
@@ -1058,7 +1055,6 @@ test('CanvasGameShell reads battleScene render options from BattleStore only', (
   });
   shell.lastGame = {
     state: { currentTab: 'military', militaryView: 'army' },
-    tutorial: {},
   };
   shell.battleScene = { visible: true, report: { id: 'removed-shell-mirror' }, turnIndex: 0 };
 
@@ -1329,7 +1325,6 @@ test('CanvasGameShell can render resources without default map-home coercion', (
   shell.lastGame = {
     state,
     mapHomeActive: true,
-    tutorial: {},
   };
   shell.setWorldMapLayerVisible = () => {};
   shell.renderWorldMapLayer = () => false;
@@ -1358,7 +1353,6 @@ test('CanvasGameShell renderActive does not publish derived navigation state', (
     mapHomeActive: true,
     activeTab: 'military',
     militaryView: 'world',
-    tutorial: {},
   };
   shell.setWorldMapLayerVisible = () => {};
   shell.renderWorldMapLayer = () => false;
@@ -1408,7 +1402,6 @@ test('CanvasGameShell renderCanvasSurface uses mounted game state instead of inh
   shell.lastGame = {
     state: gameState,
     mapHomeActive: true,
-    tutorial: {},
   };
   shell.setWorldMapLayerVisible = () => {};
   shell.renderWorldMapLayer = (renderState) => {
@@ -1451,7 +1444,6 @@ test('CanvasGameShell renders HUD with the latest shared world actor selection',
       worldPanX: 12,
       worldPanY: -4,
     },
-    tutorial: {},
   };
   shell.territoryUiState = shell.lastGame.territoryUiState;
   shell.setWorldMapLayerVisible = () => {};
@@ -1500,7 +1492,6 @@ test('CanvasGameShell redraws runtime world map when baked layer backing store i
   shell.lastGame = {
     state,
     mapHomeActive: true,
-    tutorial: {},
   };
   shell.getCanvasLayerBackingStoreState = () => ({
     epoch: 2,
@@ -1599,7 +1590,6 @@ test('CanvasGameShell refreshes actor overlay when a valid baked map layer is re
   shell.lastGame = {
     state,
     mapHomeActive: true,
-    tutorial: {},
   };
   shell.getCanvasLayerBackingStoreState = () => ({
     epoch: 2,
@@ -1703,7 +1693,6 @@ test('CanvasGameShell does not skip map layer when hit targets are preserved but
   shell.lastGame = {
     state,
     mapHomeActive: true,
-    tutorial: {},
   };
   shell.getCanvasLayerBackingStoreState = () => ({
     epoch: 2,
@@ -1775,7 +1764,6 @@ test('CanvasGameShell forces world map redraw instead of hiding an invalid baked
   shell.lastGame = {
     state,
     mapHomeActive: true,
-    tutorial: {},
   };
   shell.getCanvasLayerBackingStoreState = () => ({
     epoch: 2,
@@ -2376,7 +2364,6 @@ test('CanvasGameShell records async runtime tap routing as compact promise state
       },
     },
   });
-  shell.isTutorialInputActive = () => false;
   shell.hasBlockingOverlayOpen = () => false;
   shell.ensureWorldMapRuntimeCoordinator = () => ({
     handleTap() {
@@ -2420,7 +2407,6 @@ test('CanvasGameShell records async runtime tap misses as compact promise state'
       },
     },
   });
-  shell.isTutorialInputActive = () => false;
   shell.hasBlockingOverlayOpen = () => false;
   shell.closeWorldSiteHud = () => false;
   shell.ensureWorldMapRuntimeCoordinator = () => ({
@@ -2493,8 +2479,6 @@ test('CanvasGameShell keeps map-home HUD rendering after an open world site acti
         shell.renderReadOnly(state, 'territory');
       },
     },
-    tutorial: {},
-    tutorialController: { refreshCurrentHighlight() {} },
   };
   shell.territoryUiState = shell.lastGame.territoryUiState;
   shell.setWorldMapLayerVisible = () => {};
@@ -2685,13 +2669,12 @@ test('CanvasGameShell full-frame renders keep an open panel surface hit-target a
     height: 747,
     canvas: { id: 'mainHud' },
     hitTargets: [],
-    hitTargetPools: { base: [], modal: [], guide: [] },
+    hitTargetPools: { base: [], modal: [] },
     activeHitTargetPool: 'base',
     syncHitTargets() {
       this.hitTargets = [
         ...this.hitTargetPools.base,
         ...this.hitTargetPools.modal,
-        ...this.hitTargetPools.guide,
       ];
       return this.hitTargets;
     },
@@ -2751,7 +2734,7 @@ test('CanvasGameShell full-frame renders keep an open panel surface hit-target a
       },
     },
   });
-  shell.lastGame = { state, tutorial: {} };
+  shell.lastGame = { state };
   shell.setWorldMapLayerVisible = () => {};
   shell.renderWorldMapLayer = () => false;
   const famousPanel = {

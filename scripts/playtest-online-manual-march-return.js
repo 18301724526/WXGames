@@ -506,12 +506,6 @@ async function getState(page) {
       currentTab: game?.state?.currentTab || game?.currentTab || shell?.currentTab || '',
       militaryView: game?.state?.militaryView || shell?.militaryView || '',
       mapHomeActive: Boolean(shell?.mapHomeActive || game?.mapHomeActive),
-      tutorialStep: (() => {
-        const raw = game?.state?.tutorial?.currentStep ?? game?.tutorial?.currentStep ?? 0;
-        const index = globalThis.TutorialFlowShared?.stepIndex?.(raw);
-        return Number.isFinite(index) && index >= 0 ? index : Number(raw) || 0;
-      })(),
-      tutorialCompleted: Boolean(game?.state?.tutorial?.completed || game?.tutorial?.completed),
       canvas: {
         id: canvas?.id || '',
         logicalWidth: Number(runtime?.width || renderer?.width || canvas?.width || rect?.width || 0),
@@ -1000,11 +994,7 @@ async function main() {
     username: CONFIG.username,
     password: CONFIG.password,
   });
-  const initialState = login.gameState || {};
   if (!login.token) throw new Error('login returned no token');
-  if (!initialState.tutorial?.completed && login.tutorial?.completed !== true) {
-    throw new Error('QA account must have completed tutorial before manual march test');
-  }
 
   const browser = await chromium.launch({ headless: CONFIG.headless });
   const page = await browser.newPage({
@@ -1068,9 +1058,6 @@ async function main() {
   await page.waitForTimeout(5000);
 
   const loaded = await writeSnapshot(page, '00-loaded');
-  if (!loaded.state.tutorialCompleted || loaded.state.tutorialStep < 36) {
-    throw new Error(`manual march requires completed tutorial; current step=${loaded.state.tutorialStep}`);
-  }
   if (!loaded.state.mapHomeActive || loaded.state.currentTab !== 'military') {
     throw new Error(`expected map-home military view, got tab=${loaded.state.currentTab} mapHome=${loaded.state.mapHomeActive}`);
   }
@@ -1133,7 +1120,6 @@ async function main() {
       apiBase: CONFIG.apiBase,
       deployedUrl: url.toString(),
       playerId: CONFIG.username,
-      initialTutorialCompleted: Boolean(login.tutorial?.completed || initialState.tutorial?.completed),
       chosenTarget: sanitize(chosen),
       routeCount,
       missionId: activeMission.id,
@@ -1193,7 +1179,6 @@ async function main() {
       apiBase: CONFIG.apiBase,
       deployedUrl: url.toString(),
       playerId: CONFIG.username,
-      initialTutorialCompleted: Boolean(login.tutorial?.completed || initialState.tutorial?.completed),
       chosenTarget: sanitize(chosen),
       routeCount,
       missionId: activeMission.id,
@@ -1298,7 +1283,6 @@ async function main() {
     apiBase: CONFIG.apiBase,
     deployedUrl: url.toString(),
     playerId: CONFIG.username,
-    initialTutorialCompleted: Boolean(login.tutorial?.completed || initialState.tutorial?.completed),
     chosenTarget: sanitize(chosen),
     routeCount,
     missionId: activeMission.id,

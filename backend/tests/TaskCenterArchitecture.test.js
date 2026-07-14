@@ -89,7 +89,6 @@ test('TaskCenterAssembler owns task tabs, category assembly, and task view statu
         category: 'main',
         title: 'Architecture Task',
         description: 'assembled by module',
-        target: 'tasks',
         condition: { type: 'buildingLevel', buildingId: 'house', count: 1 },
         reward: { resources: { food: 1 } },
         rewardText: 'food+1',
@@ -122,4 +121,15 @@ test('TaskRewardClaimer owns resource payout and reward reveal payload', () => {
   assert.equal(gameState.cities.capital.resources.food, 9);
   assert.deepEqual(reveal.resources, { food: 4 });
   assert.equal(reveal.subtitle, 'Reward Task');
+});
+
+test('TaskRewardClaimer omits the reward reveal for tasks with no payout', () => {
+  const reveal = TaskRewardClaimer.buildRewardReveal({
+    id: 'arch_no_reward_task',
+    title: 'No Reward Task',
+    rewardText: 'none',
+    reward: { resources: {} },
+  }, {});
+
+  assert.equal(reveal, null);
 });

@@ -120,7 +120,7 @@ function scanRewardRevealMirrorRetirement(options = {}) {
       ...finding,
       note:
         finding.kind === 'mirror'
-          ? "rewardReveal mirror was retired in Batch 8C; App/Shell/tutorial/input reads must use snapshot.modal['modal:rewardReveal']"
+          ? "rewardReveal mirror was retired in Batch 8C; App/Shell/input reads must use snapshot.modal['modal:rewardReveal']"
           : 'rewardReveal-specific bridge wrappers were retired; use the modal snapshot adapter helpers (openRewardRevealSnapshot/closeRewardRevealSnapshot)',
     })),
     summary: { totalViolations: findings.length },

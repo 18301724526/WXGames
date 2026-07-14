@@ -28,7 +28,7 @@ function withTempRepo(callback) {
 
 test('naming mirror retirement guard blocks App/Shell mirror reads and writes', () => {
   const findings = findNamingMirrorRetirementViolationsInText(
-    'frontend/js/platform/CanvasGameAppGuideUi.js',
+    'frontend/js/platform/CanvasGameAppLegacyUi.js',
     [
       'this.naming = { visible: true };',
       'if (canvasShell.naming?.visible) return;',

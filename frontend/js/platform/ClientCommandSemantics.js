@@ -8,7 +8,6 @@
     'buildBuilding',
     'claimConquest',
     'claimEvent',
-    'claimGuideTaskReward',
     'claimTaskReward',
     'conquer',
     'dismissFamousPersonCandidate',

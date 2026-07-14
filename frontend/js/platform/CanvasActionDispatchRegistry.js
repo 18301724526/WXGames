@@ -162,18 +162,6 @@
       return typeof context.closeLogs === 'function' ? context.closeLogs(action) : false;
     },
 
-    openAdvisor(context = {}, action = {}) {
-      return typeof context.openAdvisor === 'function' ? context.openAdvisor(action) : false;
-    },
-
-    closeAdvisor(context = {}, action = {}) {
-      return typeof context.closeAdvisor === 'function' ? context.closeAdvisor(action) : false;
-    },
-
-    goToAdvisorTarget(context = {}, action = {}) {
-      return typeof context.goToAdvisorTarget === 'function' ? context.goToAdvisorTarget(action) : false;
-    },
-
     openEvent(context = {}, action = {}) {
       return typeof context.openEvent === 'function' ? context.openEvent(action) : false;
     },
@@ -228,10 +216,6 @@
 
     skipBattleScene(context = {}, action = {}) {
       return typeof context.skipBattleScene === 'function' ? context.skipBattleScene(action) : false;
-    },
-
-    goToGuideTaskTarget(context = {}, action = {}) {
-      return typeof context.goToGuideTaskTarget === 'function' ? context.goToGuideTaskTarget(action) : false;
     },
 
     openTaskCenter(context = {}, action = {}) {
@@ -325,9 +309,6 @@
     'closeSettings',
     'openLogs',
     'closeLogs',
-    'openAdvisor',
-    'closeAdvisor',
-    'goToAdvisorTarget',
     'openEvent',
     'closeEvent',
     'resolveCapture',
@@ -351,7 +332,6 @@
     'enterBattleScene',
     'closeBattleScene',
     'skipBattleScene',
-    'goToGuideTaskTarget',
     'openTaskCenter',
     'closeTaskCenter',
     'switchTaskCenterTab',

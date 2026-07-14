@@ -30,18 +30,6 @@ function createScheduler() {
   };
 }
 
-function createTutorial() {
-  return {
-    canOpenTab() {
-      return true;
-    },
-    onFamousPersonsOpened() {},
-    onFamousPersonsClosed() {},
-    onFamousPersonDetailOpened() {},
-    refreshCurrentHighlight() {},
-  };
-}
-
 function runFamousPanelActions(host) {
   assert.equal(host.dispatchCanvasAction({ type: 'openFamousPersons' }), true);
   assert.equal(host.dispatchCanvasAction({ type: 'changeFamousPersonsPage', delta: 1 }), true);
@@ -85,7 +73,6 @@ test('App and Shell famous dispatcher paths leave retired compatibility counters
       },
     });
     app.stageScheduler = createScheduler();
-    app.tutorialController = createTutorial();
 
     const shell = new CanvasGameShell({
       previewEnabled: false,
@@ -100,7 +87,6 @@ test('App and Shell famous dispatcher paths leave retired compatibility counters
       },
       famousPersonsPage: 0,
       selectedFamousPersonId: '',
-      tutorialController: createTutorial(),
     };
 
     runFamousPanelActions(app);

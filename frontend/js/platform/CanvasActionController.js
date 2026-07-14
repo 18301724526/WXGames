@@ -451,12 +451,6 @@
         case 'openLogs': return this.handle_openLogs;
         case 'closeLogs': return this.handle_closeLogs;
         case 'clearLogs': return this.handle_clearLogs;
-        case 'openAdvisor': return this.handle_openAdvisor;
-        case 'closeAdvisor': return this.handle_closeAdvisor;
-        case 'goToAdvisorTarget': return this.handle_goToAdvisorTarget;
-        case 'openGuidebook': return this.handle_openGuidebook;
-        case 'closeGuidebook': return this.handle_closeGuidebook;
-        case 'switchGuidebookTab': return this.handle_switchGuidebookTab;
         case 'requestLoginUsername': return this.handle_requestLoginUsername;
         case 'requestLoginPassword': return this.handle_requestLoginPassword;
         case 'toggleRememberPassword': return this.handle_toggleRememberPassword;
@@ -1776,53 +1770,6 @@
             if (Array.isArray(game?.requestLogs)) game.requestLogs = [];
             if (typeof game?.clearRequestLogs === 'function') game.clearRequestLogs();
             CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this.host, 'showLogs', true);
-            return this.afterHandled(action);
-          }
-
-    handle_openAdvisor(action) {
-            CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this.host, 'showAdvisor', true);
-            this.closePanels(['showAdvisor']);
-            return this.afterHandled(action);
-          }
-
-    handle_closeAdvisor(action) {
-            CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this.host, 'showAdvisor');
-            this.emitGameEvent('advisorClosed', {});
-            return this.afterHandled(action);
-          }
-
-    handle_goToAdvisorTarget(action, meta = {}) {
-            CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this.host, 'showAdvisor');
-            this.host.closeEventSnapshot?.();
-            const game = this.getGameHost();
-            const result = typeof game?.goToAdvisorTarget === 'function'
-              ? game.goToAdvisorTarget()
-              : this.forward(action, meta);
-            const afterAllowed = () => this.afterHandled(action);
-            if (result && typeof result.then === 'function') {
-              return this.finalize(result.then((allowed) => {
-                if (allowed !== false) afterAllowed();
-                return allowed !== false;
-              }));
-            }
-            if (result !== false) afterAllowed();
-            return result !== false;
-          }
-
-    handle_openGuidebook(action) {
-            this.host.activeGuidebookTab = action.tab || this.host.activeGuidebookTab || 'planning';
-            CanvasModalSnapshotAdapter.openBlockingPanelSnapshot(this.host, 'showGuidebook', true);
-            this.closePanels(['showGuidebook']);
-            return this.afterHandled(action);
-          }
-
-    handle_closeGuidebook(action) {
-            CanvasModalSnapshotAdapter.closeBlockingPanelSnapshot(this.host, 'showGuidebook');
-            return this.afterHandled(action);
-          }
-
-    handle_switchGuidebookTab(action) {
-            this.host.activeGuidebookTab = action.tab || 'planning';
             return this.afterHandled(action);
           }
 

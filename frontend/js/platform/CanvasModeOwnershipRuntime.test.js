@@ -85,7 +85,7 @@ test('CanvasModeOwnershipRuntime owner host exposes snapshot helpers', () => {
   assert.equal(snapshot.baseModeKey, 'worldMap');
   assert.equal(host.canRouteModeWorldMap(), true);
 
-  host.openModal('modal:guidebook', {});
+  host.openModal('modal:taskCenter', {});
   const blocked = host.refreshModeSnapshot();
   assert.equal(blocked.blockingOverlayActive, true);
   assert.equal(host.canRouteModeWorldMap(), false);

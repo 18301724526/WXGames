@@ -9,7 +9,7 @@ const {
 } = require('./check-frontend-ecs-mode-vocab');
 
 const canonical = {
-  MODE_KEYS: ['boot', 'modal:a', 'modal:commandPanel', 'tutorial'],
+  MODE_KEYS: ['boot', 'modal:a', 'modal:commandPanel'],
   MODAL_MODE_KEYS: ['modal:a', 'modal:commandPanel'],
   BASE_MODE_KEYS: ['boot'],
   CAPTURE_PRIORITY: ['modal:a', 'modal:commandPanel', 'boot'],

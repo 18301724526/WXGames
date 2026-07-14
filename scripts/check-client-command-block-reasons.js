@@ -8,7 +8,7 @@ const ROOT = path.resolve(process.env.CLIENT_COMMAND_GUARD_ROOT || path.resolve(
 const SCAN_ROOTS = [path.join(ROOT, 'frontend/js')];
 const ALLOWED_REASONS = new Set(ClientCommandSemantics.LOCAL_BLOCK_REASONS);
 const COMMAND_ACTION_TYPES = new Set(ClientCommandSemantics.COMMAND_ACTION_TYPES);
-const DOMAIN_SIGNALS = /resources?|tutorial|era|tech|cooldown|march|candidate|territory|reward|encounter|loot|boss|eligib|claimable|ready|locked/i;
+const DOMAIN_SIGNALS = /resources?|era|tech|cooldown|march|candidate|territory|reward|encounter|loot|boss|eligib|claimable|ready|locked/i;
 const DISPATCH_METHODS = new Map([
   ['frontend/js/platform/CanvasActionDispatcher.js', new Set(['handle'])],
   ['frontend/js/platform/CanvasActionController.js', new Set(['handle', 'handleBuilding'])],
