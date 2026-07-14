@@ -660,6 +660,16 @@
             "backend/migrations/releaseManifestMigration.js:6"
           ],
           "summary": "SchemaMigrationService 迁移 007-create-release-manifests"
+        },
+        {
+          "category": "migration",
+          "id": "migration:008-create-command-receipts",
+          "file": "backend/migrations/commandReceiptsMigration.js",
+          "line": 6,
+          "evidence": [
+            "backend/migrations/commandReceiptsMigration.js:6"
+          ],
+          "summary": "SchemaMigrationService 迁移 008-create-command-receipts"
         }
       ]
     },
@@ -734,15 +744,15 @@
   "findings": [],
   "summary": {
     "categoryCount": 8,
-    "declaredWriterCount": 68,
-    "discoveredWriterCount": 68,
+    "declaredWriterCount": 69,
+    "discoveredWriterCount": 69,
     "driftFindingCount": 0,
     "writersByCategory": {
       "route": 9,
       "command": 35,
       "worker": 5,
       "admin": 10,
-      "migration": 4,
+      "migration": 5,
       "repair_script": 4,
       "consumer": 0,
       "client_state_writer": 1
