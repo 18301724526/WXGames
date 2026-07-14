@@ -194,7 +194,7 @@ function text(value, limit = 240) {
   return normalized.length > limit ? `${normalized.slice(0, limit - 3)}...` : normalized;
 }
 
-function readRecentLogLines(filePath, maxLines = 20) {
+function readRecentLogLines(filePath, maxLines = 120) {
   if (!filePath || !fs.existsSync(filePath)) return [];
   try {
     const content = fs.readFileSync(filePath, 'utf8');
@@ -590,6 +590,8 @@ verify_pm2_listener() {
     echo "[Deploy] Another PM2 user or stale process may own port $API_PORT." >&2
     pm2 show "$app_name" >&2 || true
     ss -ltnp >&2 || true
+    echo "[Deploy] Recent PM2 application logs: app=$app_name" >&2
+    pm2 logs "$app_name" --lines 80 --nostream >&2 || true
     exit 1
 }
 
