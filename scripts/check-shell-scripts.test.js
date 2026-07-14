@@ -26,6 +26,7 @@ test('shell script guard tracks project-owned shell entrypoints', () => {
     'scripts/verify-runtime-backup.sh',
     'scripts/rotate-production-secrets.sh',
     'scripts/install-ops-agent-pm2.sh',
+    'scripts/m0-fixture/run-restore-drill.sh',
   ]);
 });
 
