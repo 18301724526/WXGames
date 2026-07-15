@@ -15,8 +15,32 @@ const {
   resolveCommandOwners,
 } = require('./CommandOwnerResolver');
 const { runWithOwnerContext } = require('./CommandOwnerContext');
+const { computePayloadHash } = require('./CommandReceiptIdentity');
 const CommandCommitter = require('./CommandCommitter');
 const CommandTrace = require('./CommandTrace');
+const { toNonNegativeInteger } = require('../../../shared/numberUtils.js');
+
+// 保留 presence 语义：缺失或非法值返回 null 以跳过影子写，数值规范化仍委托共享单源。
+function toEpochOrNull(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const normalized = Number(value);
+  if (!Number.isFinite(normalized)) return null;
+  return toNonNegativeInteger(normalized);
+}
+
+function resolveReceiptAdmission(envelope = {}, sessionContext = {}) {
+  const admission = {
+    sessionId: String(sessionContext?.sessionId || '').trim(),
+    clientSeq: toEpochOrNull(envelope.client?.clientSequence),
+    credentialVersion: toEpochOrNull(sessionContext?.credentialVersion),
+    sessionEpoch: toEpochOrNull(sessionContext?.sessionEpoch),
+    authzEpoch: toEpochOrNull(sessionContext?.authzEpoch),
+  };
+  const missingFields = Object.entries(admission)
+    .filter(([, value]) => value === '' || value === null)
+    .map(([field]) => field);
+  return { admission, missingFields };
+}
 
 function normalizeResponse(value, fallbackStatus = 200) {
   if (value && Number.isFinite(Number(value.statusCode)) && value.payload !== undefined) {
@@ -66,6 +90,8 @@ class CommandExecutionPipeline {
     }
     this.repository = options.repository;
     this.idempotencyStore = options.idempotencyStore;
+    this.receiptStore = options.receiptStore || null;
+    this.logger = options.logger || console;
     this.ownerResolver = options.ownerResolver || resolveCommandOwners;
     this.committer = options.committer || new CommandCommitter({
       repository: this.repository,
@@ -73,6 +99,65 @@ class CommandExecutionPipeline {
     });
     this.traceFactory = options.traceFactory || ((command, traceOptions) => new CommandTrace(command, traceOptions));
     this.monotonicNow = options.monotonicNow || (() => Date.now());
+  }
+
+  _warnReceiptShadow(code, envelope = {}, detail = {}) {
+    try {
+      const warn = this.logger?.warn;
+      if (typeof warn !== 'function') return;
+      warn.call(this.logger, '[CommandExecutionPipeline] receipt shadow skipped', {
+        code,
+        commandId: String(envelope.commandId || ''),
+        commandType: String(envelope.type || ''),
+        ...detail,
+      });
+    } catch (_) {
+      return undefined;
+    }
+  }
+
+  _writeAcceptedReceipt(envelope = {}, sessionContext = {}) {
+    if (!this.receiptStore) return;
+    const { admission, missingFields } = resolveReceiptAdmission(envelope, sessionContext);
+    if (missingFields.length > 0) {
+      this._warnReceiptShadow('COMMAND_RECEIPT_ADMISSION_CONTEXT_INCOMPLETE', envelope, {
+        missingFields,
+      });
+      return;
+    }
+
+    let payloadHash;
+    try {
+      payloadHash = computePayloadHash(envelope.payload);
+    } catch (error) {
+      if (error?.code === 'PAYLOAD_NOT_HASHABLE') {
+        this._warnReceiptShadow(error.code, envelope, {
+          errorName: error.name || 'Error',
+          message: error.message || '',
+        });
+        return;
+      }
+      this._warnReceiptShadow('COMMAND_RECEIPT_PAYLOAD_HASH_FAILED', envelope, {
+        errorCode: error?.code || '',
+        errorName: error?.name || 'Error',
+        message: error?.message || '',
+      });
+      return;
+    }
+
+    try {
+      this.receiptStore.writeAccepted({
+        commandId: envelope.commandId,
+        payloadHash,
+        ...admission,
+      });
+    } catch (error) {
+      this._warnReceiptShadow('COMMAND_RECEIPT_SHADOW_WRITE_FAILED', envelope, {
+        errorCode: error?.code || '',
+        errorName: error?.name || 'Error',
+        message: error?.message || '',
+      });
+    }
   }
 
   _attachTrace(response, trace) {
@@ -135,6 +220,7 @@ class CommandExecutionPipeline {
       };
     }
 
+    this._writeAcceptedReceipt(envelope, options.sessionContext);
     const trace = this.traceFactory(envelope, {
       retryAttempt: options.retryAttempt || 0,
       now: options.now,

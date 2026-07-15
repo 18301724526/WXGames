@@ -8,6 +8,8 @@ const { normalizeCommandEnvelope } = require('../application/commands/CommandEnv
 const { CommandExecutionPipeline } = require('../application/commands/CommandExecutionPipeline');
 const { CommandIdempotencyStore } = require('../application/commands/CommandIdempotencyStore');
 const { requireOwnerContext } = require('../application/commands/CommandOwnerContext');
+const { computePayloadHash } = require('../application/commands/CommandReceiptIdentity');
+const { CommandReceiptShadowStore } = require('../application/commands/CommandReceiptShadowStore');
 const GameStateRepository = require('../repositories/GameStateRepository');
 
 function command(options = {}) {
@@ -31,12 +33,15 @@ function command(options = {}) {
         idempotencyKey: options.idempotencyKey || 'idem-pipeline-1',
         payload,
         trace: options.trace,
+        client: {
+          clientSequence: options.clientSequence ?? null,
+        },
       },
     },
   });
 }
 
-function createPipeline() {
+function createPipeline(options = {}) {
   const db = new Database(':memory:');
   const backingRepository = new GameStateRepository(db);
   backingRepository.init();
@@ -58,8 +63,24 @@ function createPipeline() {
     },
   };
   const idempotencyStore = new CommandIdempotencyStore(db);
-  const pipeline = new CommandExecutionPipeline({ repository, idempotencyStore });
-  return { db, state, calls, pipeline, idempotencyStore };
+  const receiptStore = options.receiptStore === true
+    ? new CommandReceiptShadowStore(db, { now: options.receiptNow })
+    : options.receiptStore || null;
+  const pipeline = new CommandExecutionPipeline({
+    repository,
+    idempotencyStore,
+    receiptStore,
+    logger: options.logger,
+    monotonicNow: options.monotonicNow,
+  });
+  return {
+    db,
+    state,
+    calls,
+    pipeline,
+    idempotencyStore,
+    receiptStore,
+  };
 }
 
 function successfulDefinition(calls) {
@@ -86,6 +107,23 @@ function successfulDefinition(calls) {
         statusCode: 200,
         payload: { success: true, ...context.projection },
       };
+    },
+  };
+}
+
+const FIXED_TRACE_NOW = () => new Date('2026-07-16T00:00:00.000Z');
+const FIXED_MONOTONIC_NOW = () => 1000;
+const SESSION_CONTEXT = Object.freeze({
+  sessionId: 'session-pipeline-1',
+  credentialVersion: 3,
+  sessionEpoch: 5,
+  authzEpoch: 7,
+});
+
+function warningLogger(warnings) {
+  return {
+    warn(message, detail) {
+      warnings.push({ message, detail });
     },
   };
 }
@@ -296,5 +334,207 @@ test('CommandExecutionPipeline retries one revision conflict inside the pipeline
     assert.deepEqual(persisted, { playerId: 'player-1', revision: 3, value: 1 });
   } finally {
     db.close();
+  }
+});
+
+test('CommandExecutionPipeline keeps the response DTO byte-identical with receipt shadowing on or off', () => {
+  const disabled = createPipeline({ monotonicNow: FIXED_MONOTONIC_NOW });
+  const enabled = createPipeline({
+    receiptStore: true,
+    receiptNow: FIXED_TRACE_NOW,
+    monotonicNow: FIXED_MONOTONIC_NOW,
+  });
+  try {
+    const commandOptions = {
+      commandId: 'cmd-receipt-feature',
+      idempotencyKey: 'idem-receipt-feature',
+      clientSequence: 41,
+    };
+    const disabledEnvelope = command(commandOptions);
+    const enabledEnvelope = command(commandOptions);
+    const disabledResponse = disabled.pipeline.execute(
+      disabledEnvelope,
+      successfulDefinition(disabled.calls),
+      { now: FIXED_TRACE_NOW, sessionContext: SESSION_CONTEXT },
+    );
+    const enabledResponse = enabled.pipeline.execute(
+      enabledEnvelope,
+      successfulDefinition(enabled.calls),
+      { now: FIXED_TRACE_NOW, sessionContext: SESSION_CONTEXT },
+    );
+
+    assert.equal(JSON.stringify(enabledResponse), JSON.stringify(disabledResponse));
+    assert.deepEqual(enabled.calls, disabled.calls);
+    assert.deepEqual(
+      enabled.db.prepare(`
+        SELECT command_id, payload_hash, session_id, client_seq, status,
+          admission_credential_version, admission_session_epoch, admission_authz_epoch
+        FROM command_receipts
+      `).get(),
+      {
+        command_id: commandOptions.commandId,
+        payload_hash: computePayloadHash(enabledEnvelope.payload),
+        session_id: SESSION_CONTEXT.sessionId,
+        client_seq: commandOptions.clientSequence,
+        status: 'accepted',
+        admission_credential_version: SESSION_CONTEXT.credentialVersion,
+        admission_session_epoch: SESSION_CONTEXT.sessionEpoch,
+        admission_authz_epoch: SESSION_CONTEXT.authzEpoch,
+      },
+    );
+  } finally {
+    disabled.db.close();
+    enabled.db.close();
+  }
+});
+
+test('CommandExecutionPipeline receipt shadow retries and session sequence conflicts stay single-row', () => {
+  const fixture = createPipeline({
+    receiptStore: true,
+    receiptNow: FIXED_TRACE_NOW,
+    monotonicNow: FIXED_MONOTONIC_NOW,
+  });
+  try {
+    const envelope = command({
+      commandId: 'cmd-receipt-retry',
+      idempotencyKey: 'idem-receipt-retry',
+      clientSequence: 42,
+    });
+    const executionOptions = { now: FIXED_TRACE_NOW, sessionContext: SESSION_CONTEXT };
+    const first = fixture.pipeline.execute(
+      envelope,
+      successfulDefinition(fixture.calls),
+      executionOptions,
+    );
+    const replay = fixture.pipeline.execute(
+      envelope,
+      successfulDefinition(fixture.calls),
+      executionOptions,
+    );
+    const sequenceConflict = fixture.pipeline.execute(
+      command({
+        commandId: 'cmd-receipt-sequence-conflict',
+        idempotencyKey: 'idem-receipt-sequence-conflict',
+        clientSequence: 42,
+      }),
+      successfulDefinition(fixture.calls),
+      executionOptions,
+    );
+
+    assert.equal(first.statusCode, 200);
+    assert.equal(replay.statusCode, 200);
+    assert.equal(replay.idempotencyStatus, 'replay');
+    assert.equal(sequenceConflict.statusCode, 200);
+    assert.equal(sequenceConflict.payload.success, true);
+    assert.equal(
+      fixture.db.prepare('SELECT COUNT(*) AS count FROM command_receipts').get().count,
+      1,
+    );
+  } finally {
+    fixture.db.close();
+  }
+});
+
+test('CommandExecutionPipeline warns and preserves the domain result when receipt persistence fails', () => {
+  const warnings = [];
+  const fixture = createPipeline({
+    receiptStore: {
+      writeAccepted() {
+        throw new Error('receipt database unavailable');
+      },
+    },
+    logger: warningLogger(warnings),
+    monotonicNow: FIXED_MONOTONIC_NOW,
+  });
+  try {
+    const result = fixture.pipeline.execute(
+      command({
+        commandId: 'cmd-receipt-write-failure',
+        idempotencyKey: 'idem-receipt-write-failure',
+        clientSequence: 43,
+      }),
+      successfulDefinition(fixture.calls),
+      { now: FIXED_TRACE_NOW, sessionContext: SESSION_CONTEXT },
+    );
+
+    assert.equal(result.statusCode, 200);
+    assert.equal(result.payload.success, true);
+    assert.equal(warnings.length, 1);
+    assert.equal(warnings[0].detail.code, 'COMMAND_RECEIPT_SHADOW_WRITE_FAILED');
+  } finally {
+    fixture.db.close();
+  }
+});
+
+test('CommandExecutionPipeline skips receipt shadowing when an admission epoch is unavailable', () => {
+  const warnings = [];
+  const fixture = createPipeline({
+    receiptStore: true,
+    receiptNow: FIXED_TRACE_NOW,
+    logger: warningLogger(warnings),
+    monotonicNow: FIXED_MONOTONIC_NOW,
+  });
+  try {
+    const result = fixture.pipeline.execute(
+      command({
+        commandId: 'cmd-receipt-missing-epoch',
+        idempotencyKey: 'idem-receipt-missing-epoch',
+        clientSequence: 44,
+      }),
+      successfulDefinition(fixture.calls),
+      {
+        now: FIXED_TRACE_NOW,
+        sessionContext: {
+          sessionId: 'session-missing-epoch',
+          credentialVersion: 1,
+          sessionEpoch: 2,
+        },
+      },
+    );
+
+    assert.equal(result.statusCode, 200);
+    assert.equal(
+      fixture.db.prepare('SELECT COUNT(*) AS count FROM command_receipts').get().count,
+      0,
+    );
+    assert.equal(warnings.length, 1);
+    assert.equal(warnings[0].detail.code, 'COMMAND_RECEIPT_ADMISSION_CONTEXT_INCOMPLETE');
+    assert.deepEqual(warnings[0].detail.missingFields, ['authzEpoch']);
+  } finally {
+    fixture.db.close();
+  }
+});
+
+test('CommandExecutionPipeline routes PAYLOAD_NOT_HASHABLE by code and keeps a NaN command on the main path', () => {
+  const warnings = [];
+  const fixture = createPipeline({
+    receiptStore: true,
+    receiptNow: FIXED_TRACE_NOW,
+    logger: warningLogger(warnings),
+    monotonicNow: FIXED_MONOTONIC_NOW,
+  });
+  try {
+    const envelope = command({
+      commandId: 'cmd-receipt-nan',
+      idempotencyKey: 'idem-receipt-nan',
+      clientSequence: 45,
+    });
+    envelope.payload.ratio = Number.NaN;
+    const result = fixture.pipeline.execute(
+      envelope,
+      successfulDefinition(fixture.calls),
+      { now: FIXED_TRACE_NOW, sessionContext: SESSION_CONTEXT },
+    );
+
+    assert.equal(result.statusCode, 200);
+    assert.equal(result.payload.success, true);
+    assert.equal(
+      fixture.db.prepare('SELECT COUNT(*) AS count FROM command_receipts').get().count,
+      0,
+    );
+    assert.equal(warnings.length, 1);
+    assert.equal(warnings[0].detail.code, 'PAYLOAD_NOT_HASHABLE');
+  } finally {
+    fixture.db.close();
   }
 });
