@@ -133,3 +133,101 @@ node --test scripts/check-shell-scripts.test.js
 ℹ todo 0
 ℹ duration_ms 888.1657
 ```
+
+## FI22-T3 — 全量门禁
+
+### npm test
+
+命令：
+
+```powershell
+npm test
+```
+
+原始开头与汇总输出：
+
+```text
+> wxgameslocal@1.0.0 test
+> node scripts/run-node-tests.js
+
+[test] Running 294 all test files
+ℹ tests 2249
+ℹ suites 0
+ℹ pass 2249
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7416.3024
+```
+
+### npm run lint
+
+命令：
+
+```powershell
+npm run lint
+```
+
+原始输出：
+
+```text
+> wxgameslocal@1.0.0 lint
+> eslint . --suppressions-location eslint-suppressions.json
+```
+
+进程退出码：`0`。
+
+### architecture-smoke
+
+命令：
+
+```powershell
+node scripts/run-architecture-smoke.js
+```
+
+原始末段输出：
+
+```text
+[architecture-smoke] shell script syntax guard
+[shell-scripts] passed: 14 scripts via C:\Program Files\Git\bin\bash.exe
+[architecture-smoke] config pipeline validation guard
+[config-pipeline] registries: 6
+[config-pipeline] battle-config version=1.0.0 schema=battle-config-registry@1 entries=9 hash=439aa4a3d614 source=backend/config/BattleConfig.js
+[config-pipeline] building-config version=2.5 schema=building-config-registry@1 entries=10 hash=9f99e47710a9 source=shared/buildingConfig.json
+[config-pipeline] era-config version=1.0.0 schema=era-config-registry@1 entries=6 hash=857323ac7add source=backend/config/EraConfig.js
+[config-pipeline] game-config version=1.2.0 schema=game-config-registry@1 entries=3 hash=dd182768b8c7 source=backend/config/GameConfig.js
+[config-pipeline] task-definitions version=1.2.0 schema=task-definition-registry@1 entries=6 hash=83a9b73fe010 source=backend/config/defaultTaskDefinitions.json
+[config-pipeline] tech-tree-config version=1.1.0 schema=tech-tree-config-registry@1 entries=28 hash=a84734d721bc source=backend/config/TechTreeConfig.js
+[config-pipeline] changed=4 added=0 removed=0
+[config-pipeline] diff building-config 2.4->2.5 contentChanged=true schemaChanged=false addedEntries=0 removedEntries=0 recommended=minor:2.5.0 ok=true
+[config-pipeline] diff game-config 1.0.0->1.2.0 contentChanged=true schemaChanged=false addedEntries=1 removedEntries=0 recommended=minor:1.1.0 ok=true
+[config-pipeline] diff task-definitions 0.1.0->1.2.0 contentChanged=true schemaChanged=false addedEntries=3 removedEntries=0 recommended=minor:0.2.0 ok=true
+[config-pipeline] diff tech-tree-config 1.0.0->1.1.0 contentChanged=true schemaChanged=false addedEntries=0 removedEntries=0 recommended=minor:1.1.0 ok=true
+[architecture-smoke] config tables freshness guard
+[config-tables] check passed: 8 table(s) fresh
+[architecture-smoke] git diff --check
+[architecture-smoke] passed
+```
+
+进程退出码：`0`；完整命令输出共 `2666` 行。
+
+### shellcheck deploy.sh
+
+Windows 原始输出：
+
+```text
+SHELLCHECK_EXIT=0
+GIT_DIFF_CHECK_EXIT=0
+```
+
+WSL 原始输出：
+
+```text
+WSL_SHELLCHECK_EXIT=0
+GIT_DIFF_CHECK_EXIT=0
+```
+
+### git diff --check
+
+命令无标准输出，进程退出码：`0`。

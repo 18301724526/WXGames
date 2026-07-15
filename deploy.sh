@@ -318,6 +318,7 @@ run_with_deploy_status_heartbeat() {
     return "$command_status"
 }
 
+# shellcheck disable=SC2317
 deploy_exit_trap() {
     local exit_code="$?"
     if [ "$DEPLOY_FINISHED" = "1" ] || [ "$DEPLOY_ERROR_RECORDED" = "1" ] || [ "$exit_code" = "0" ]; then
@@ -326,6 +327,7 @@ deploy_exit_trap() {
     record_deploy_failure "$exit_code" "deploy exited before completion"
 }
 
+# shellcheck disable=SC2317
 deploy_error_trap() {
     local exit_code="$1"
     local failed_command="$2"
@@ -553,7 +555,6 @@ print_pm2_recent_logs() {
 verify_pm2_listener() {
     local app_name="${1:-$PM2_APP_NAME}"
     local require_listener="${2:-1}"
-    local attempt
     local snapshot
     local status
     local pm2_pid
@@ -561,7 +562,7 @@ verify_pm2_listener() {
     local pm2_exec
     local listener_pids
 
-    for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
         snapshot="$(read_pm2_process "$app_name" 2>/dev/null || true)"
         status="$(printf '%s' "$snapshot" | awk -F '\t' '{print $1}')"
         pm2_pid="$(printf '%s' "$snapshot" | awk -F '\t' '{print $2}')"
@@ -818,8 +819,7 @@ rollback_backend_and_restart() {
         "$BACKEND_ROLLBACK_SNAPSHOT/" "$BACKEND_DIR/" || return 1
     pm2 restart "$PM2_APP_NAME" --update-env >/dev/null 2>&1 || true
     pm2 restart "$WORLD_WORKER_PM2_NAME" --update-env >/dev/null 2>&1 || true
-    local attempt
-    for attempt in 1 2 3 4 5; do
+    for _ in 1 2 3 4 5; do
         if curl -fsS "http://localhost:${API_PORT}/api/health" >/dev/null 2>&1; then
             echo "[Deploy] 回滚成功：上一版本已恢复运行。" >&2
             return 0
@@ -994,7 +994,7 @@ restart_ops_agent_if_configured
 set_deploy_stage "health-check"
 
 echo "[Deploy] 校验健康接口..."
-for attempt in 1 2 3 4 5; do
+for _ in 1 2 3 4 5; do
     if health_payload="$(curl -fsS "http://localhost:${API_PORT}/api/health")"; then
         verify_runtime_config "$health_payload"
         set_deploy_stage "frontend-publish"
