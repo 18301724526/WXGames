@@ -231,3 +231,187 @@ GIT_DIFF_CHECK_EXIT=0
 ### git diff --check
 
 命令无标准输出，进程退出码：`0`。
+
+## FI22-T4 — WSL 镜像端到端部署验证
+
+目标仅为本机 `local` remote：`http://localhost:3001/wxgame.git`。未连接或操作 `private` remote、`47.116.32.216` 或 `kodagame.top`。
+
+### 第一次部署当前 main
+
+命令：
+
+```powershell
+wxpush main
+```
+
+部署关键原始输出：
+
+```text
+remote: [hook] deploying branch: main
+remote: [deploy-test-server] Deploying branch main to isolated test server
+remote: HEAD is now at c85a8f6c chore(deploy): FI22-T3 通过全量门禁
+remote: [Deploy] Running post-backend sync script: /root/wxgame-test/worktree/scripts/prepare-test-server-runtime.sh
+remote: [Deploy] Publishing runtime config release: deploy:c85a8f6c5b9ec2d67f2591c931b94a829eaa5f1e
+remote: [Deploy] 已创建回滚快照: /root/wxgame-test/.wxgame/backend.rollback-prev
+remote: [Deploy] PM2 listener confirmed: app=wxgame-test-server pid=1473 port=3002 cwd=/root/wxgame-test/backend script=/root/wxgame-test/backend/server.js
+remote: [Deploy] PM2 process confirmed: app=wxgame-test-world-worker pid=1499 cwd=/root/wxgame-test/backend script=/root/wxgame-test/backend/world-worker.js
+remote: [Deploy] 部署完成
+To http://localhost:3001/wxgame.git
+   c7b19303..c85a8f6c  main -> main
+```
+
+进程退出码：`0`。
+
+### 迁移表、迁移记录与真实写事务
+
+第一次部署后，直接打开镜像 `/root/wxgame-test/backend/civilization.db` 查询并执行 `BEGIN IMMEDIATE` + DDL + `ROLLBACK`。原始输出：
+
+```json
+{
+  "dbPath": "/root/wxgame-test/backend/civilization.db",
+  "tables": [
+    "command_execution_plans",
+    "command_receipts",
+    "release_manifests"
+  ],
+  "migrations": [
+    {
+      "id": "001-game-states-compat-columns",
+      "status": "applied",
+      "appliedAt": "2026-06-24T18:36:48.913Z"
+    },
+    {
+      "id": "002-capture-decisions-column",
+      "status": "applied",
+      "appliedAt": "2026-07-06T12:47:13.407Z"
+    },
+    {
+      "id": "003-owner-locks-generalization",
+      "status": "applied",
+      "appliedAt": "2026-07-14T18:54:13.132Z"
+    },
+    {
+      "id": "004-command-idempotency-store",
+      "status": "applied",
+      "appliedAt": "2026-07-14T18:54:13.132Z"
+    },
+    {
+      "id": "005-task-reward-grants-column",
+      "status": "applied",
+      "appliedAt": "2026-07-14T18:54:13.133Z"
+    },
+    {
+      "id": "006-rebuild-game-states-current-schema",
+      "status": "applied",
+      "appliedAt": "2026-07-14T18:54:13.142Z"
+    },
+    {
+      "id": "007-create-release-manifests",
+      "status": "applied",
+      "appliedAt": "2026-07-15T14:58:09.810Z"
+    },
+    {
+      "id": "008-create-command-receipts",
+      "status": "applied",
+      "appliedAt": "2026-07-15T14:58:09.810Z"
+    },
+    {
+      "id": "009-create-command-execution-plans",
+      "status": "applied",
+      "appliedAt": "2026-07-15T14:58:09.810Z"
+    }
+  ],
+  "writeProbe": "BEGIN IMMEDIATE/DDL/ROLLBACK ok"
+}
+```
+
+### 第二次部署（同一 commit 幂等）
+
+同一 commit 直接 push 不会触发 `post-receive`。本地镜像钩子已明确在删除分支时跳过部署，因此先删除本地 remote 的 `main`，不切换运行版本，再用 `wxpush main` 重建同一 ref 并触发第二次真实部署。
+
+触发准备的原始输出：
+
+```text
+c85a8f6c5b9ec2d67f2591c931b94a829eaa5f1e	refs/heads/main
+remote: [hook] branch main deleted; skipping deploy
+To http://localhost:3001/wxgame.git
+ - [deleted]           main
+```
+
+第二次命令：
+
+```powershell
+wxpush main
+```
+
+部署关键原始输出：
+
+```text
+remote: [hook] deploying branch: main
+remote: [deploy-test-server] Deploying branch main to isolated test server
+remote: HEAD is now at c85a8f6c chore(deploy): FI22-T3 通过全量门禁
+remote: [Deploy] Publishing runtime config release: deploy:c85a8f6c5b9ec2d67f2591c931b94a829eaa5f1e
+remote: {"schema":"deploy-config-release-v1","action":"skip","status":"matched","activeRelease":{"id":"20260714T185342028Z-c8278a4157b4-156144e4","action":"publish","createdAt":"2026-07-14T18:53:42.028Z","operator":"supervisor-reset","source":"reset:c7b19303d5e839d1c449ecfc7b18bb03b666785a","snapshotHash":"c8278a4157b4","registryCount":6}}
+remote: [Deploy] 已创建回滚快照: /root/wxgame-test/.wxgame/backend.rollback-prev
+remote: [Deploy] PM2 listener confirmed: app=wxgame-test-server pid=2114 port=3002 cwd=/root/wxgame-test/backend script=/root/wxgame-test/backend/server.js
+remote: [Deploy] PM2 process confirmed: app=wxgame-test-world-worker pid=2140 cwd=/root/wxgame-test/backend script=/root/wxgame-test/backend/world-worker.js
+remote: [Deploy] 部署完成
+To http://localhost:3001/wxgame.git
+ * [new branch]        main -> main
+```
+
+进程退出码：`0`。
+
+第二次部署后的迁移记录与真实写事务原始输出；`appliedAt` 未变化：
+
+```json
+{
+  "dbPath": "/root/wxgame-test/backend/civilization.db",
+  "migrations": [
+    {
+      "id": "007-create-release-manifests",
+      "status": "applied",
+      "appliedAt": "2026-07-15T14:58:09.810Z"
+    },
+    {
+      "id": "008-create-command-receipts",
+      "status": "applied",
+      "appliedAt": "2026-07-15T14:58:09.810Z"
+    },
+    {
+      "id": "009-create-command-execution-plans",
+      "status": "applied",
+      "appliedAt": "2026-07-15T14:58:09.810Z"
+    }
+  ],
+  "writeProbe": "second BEGIN IMMEDIATE/DDL/ROLLBACK ok"
+}
+```
+
+### 最终 DB 权限、快照排除、pm2 与健康
+
+原始输出：
+
+```text
+755 root:root /root/wxgame-test/backend/civilization.db
+755 root:root /root/wxgame-test/backend/civilization.db-wal
+755 root:root /root/wxgame-test/backend/civilization.db-shm
+644 root:root /root/wxgame-test/backend/observability.db
+644 root:root /root/wxgame-test/backend/observability.db-wal
+644 root:root /root/wxgame-test/backend/observability.db-shm
+SNAPSHOT_DB_COUNT=0
+┌────┬─────────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                        │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼─────────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 0  │ wxgame-test-server          │ default     │ 0.2.1   │ fork    │ 2114     │ 83s    │ 2    │ online    │ 0%       │ 84.3mb   │ root     │ disabled │
+│ 1  │ wxgame-test-world-worker    │ default     │ 0.2.1   │ fork    │ 2140     │ 83s    │ 2    │ online    │ 0%       │ 57.5mb   │ root     │ disabled │
+└────┴─────────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+{"status":"ok"}
+```
+
+最终 remote 与部署状态原始输出：
+
+```text
+c85a8f6c5b9ec2d67f2591c931b94a829eaa5f1e	refs/heads/main
+{"status":"succeeded","branch":"main","targetCommit":"c85a8f6c5b9ec2d67f2591c931b94a829eaa5f1e","previousDeployedCommit":"c85a8f6c5b9ec2d67f2591c931b94a829eaa5f1e","stage":"complete","exitCode":0}
+```
