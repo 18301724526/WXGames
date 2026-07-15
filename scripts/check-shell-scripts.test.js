@@ -11,6 +11,23 @@ const {
   findBash,
 } = require('./check-shell-scripts');
 
+function readFi22DeployScript(repoRoot) {
+  const sourceRef = String(process.env.FI22_DEPLOY_SH_REF || '').trim();
+  if (!sourceRef) return fs.readFileSync(path.join(repoRoot, 'deploy.sh'), 'utf8');
+
+  const result = spawnSync('git', ['show', `${sourceRef}:deploy.sh`], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    shell: false,
+  });
+  assert.equal(result.status, 0, [result.stdout, result.stderr].filter(Boolean).join('\n'));
+  return result.stdout;
+}
+
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, `'"'"'`)}'`;
+}
+
 test('shell script guard tracks project-owned shell entrypoints', () => {
   assert.deepEqual(SHELL_SCRIPTS, [
     'deploy.sh',
@@ -91,28 +108,88 @@ test('deploy rollback entrypoints keep ref and commit deployment support', () =>
   assert.match(deployScript, /restart_ops_agent_if_configured/);
   assert.match(deployScript, /ENABLE_OPS_AGENT:-0/);
   assert.match(deployScript, /bash "\$WORK_TREE\/scripts\/install-ops-agent-pm2\.sh"/);
-  const snapshotSection = deployScript.slice(
-    deployScript.indexOf('snapshot_backend_for_rollback()'),
-    deployScript.indexOf('rollback_backend_and_restart()'),
-  );
-  const rollbackSection = deployScript.slice(
-    deployScript.indexOf('rollback_backend_and_restart()'),
-    deployScript.indexOf('run_deploy_gate()'),
-  );
-  const snapshotCopyIndex = snapshotSection.indexOf('cp -al');
-  const snapshotReadOnlyIndex = snapshotSection.indexOf('chmod -R a-w');
-  const rollbackWriteRestoreIndex = rollbackSection.indexOf('restore_snapshot_write_permissions');
-  const rollbackRsyncIndex = rollbackSection.indexOf('rsync -a --delete');
-  assert.notEqual(snapshotCopyIndex, -1);
-  assert.notEqual(snapshotReadOnlyIndex, -1);
-  assert.notEqual(rollbackWriteRestoreIndex, -1);
-  assert.notEqual(rollbackRsyncIndex, -1);
-  assert.equal(snapshotCopyIndex < snapshotReadOnlyIndex, true);
-  assert.equal(rollbackWriteRestoreIndex < rollbackRsyncIndex, true);
   assert.match(rollbackScript, /rev-parse --verify "\$TARGET_REF\^\{commit\}"/);
   assert.match(rollbackScript, /bash "\$DEPLOY_SCRIPT" "\$TARGET_COMMIT"/);
   assert.match(verifyHookScript, /bash -n "\$HOOK_PATH"/);
   assert.match(verifyHookScript, /current deploy commit is reachable/);
+});
+
+test('deploy hardlink snapshot forbids chmod and excludes database runtime data', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const deployScript = readFi22DeployScript(repoRoot);
+  const snapshotSection = deployScript.slice(
+    deployScript.indexOf('BACKEND_ROLLBACK_SNAPSHOT=""'),
+    deployScript.indexOf('rollback_backend_and_restart()'),
+  );
+  const snapshotCopyIndex = snapshotSection.indexOf('cp -al');
+  const snapshotExcludeIndex = snapshotSection.indexOf('exclude_backend_snapshot_runtime_data');
+  const forbiddenSnapshotChmod = snapshotSection.match(/\bchmod\b[^\n]*(?:\$\{?snapshot_dir\}?|snapshot_dir)/);
+
+  assert.notEqual(snapshotCopyIndex, -1);
+  assert.ok(!forbiddenSnapshotChmod, `deploy.sh must not chmod a hardlink snapshot: ${forbiddenSnapshotChmod?.[0]}`);
+  assert.match(snapshotSection, /BACKEND_SNAPSHOT_EXCLUDES=\([\s\S]*?'\*\.db\*'[\s\S]*?\)/);
+  assert.notEqual(snapshotExcludeIndex, -1);
+  assert.equal(snapshotCopyIndex < snapshotSection.indexOf('exclude_backend_snapshot_runtime_data', snapshotCopyIndex), true);
+});
+
+test('deploy hardlink snapshot drill preserves live database and replaced code snapshot', () => {
+  const repoRoot = path.join(__dirname, '..');
+  const bashPath = findBash();
+  const deployScript = readFi22DeployScript(repoRoot);
+  const snapshotStart = deployScript.indexOf('BACKEND_ROLLBACK_SNAPSHOT=""');
+  const snapshotEnd = deployScript.indexOf('rollback_backend_and_restart()');
+  const snapshotSection = deployScript.slice(snapshotStart, snapshotEnd);
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'wxgame-hardlink-snapshot-'));
+  const backendDir = path.join(tempRoot, 'backend');
+  const stateDir = path.join(tempRoot, 'state');
+  const snapshotDir = path.join(stateDir, 'backend.rollback-prev');
+  const dbPath = path.join(backendDir, 'civilization.db');
+  const walPath = path.join(backendDir, 'civilization.db-wal');
+  const codePath = path.join(backendDir, 'server.js');
+  const snapshotCodePath = path.join(snapshotDir, 'server.js');
+  const harnessPath = path.join(tempRoot, 'snapshot-drill.sh');
+
+  try {
+    assert.notEqual(snapshotStart, -1);
+    assert.notEqual(snapshotEnd, -1);
+    fs.mkdirSync(path.join(backendDir, 'logs'), { recursive: true });
+    fs.mkdirSync(stateDir, { recursive: true });
+    fs.writeFileSync(dbPath, 'db-live\n', 'utf8');
+    fs.writeFileSync(walPath, 'wal-live\n', 'utf8');
+    fs.writeFileSync(codePath, 'old-code\n', 'utf8');
+    fs.writeFileSync(harnessPath, [
+      '#!/usr/bin/env bash',
+      'set -Eeuo pipefail',
+      `BACKEND_DIR=${shellQuote(backendDir.replace(/\\/g, '/'))}`,
+      `DEPLOY_STATE_DIR=${shellQuote(stateDir.replace(/\\/g, '/'))}`,
+      snapshotSection,
+      'snapshot_backend_for_rollback',
+      '',
+    ].join('\n'), 'utf8');
+
+    const result = spawnSync(bashPath, [harnessPath], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      shell: false,
+    });
+    assert.equal(result.status, 0, [result.stdout, result.stderr].filter(Boolean).join('\n'));
+
+    fs.appendFileSync(dbPath, 'db-still-writable\n', 'utf8');
+    assert.notEqual(fs.statSync(dbPath).mode & 0o222, 0);
+    const snapshotEntries = fs.readdirSync(snapshotDir, { recursive: true });
+    assert.equal(snapshotEntries.some((entry) => /\.db/i.test(String(entry))), false);
+    assert.equal(snapshotEntries.some((entry) => String(entry).split(/[\\/]/).includes('logs')), false);
+    assert.equal(fs.statSync(codePath, { bigint: true }).ino, fs.statSync(snapshotCodePath, { bigint: true }).ino);
+
+    const replacementPath = path.join(tempRoot, 'server.js.new');
+    fs.writeFileSync(replacementPath, 'new-code\n', 'utf8');
+    fs.rmSync(codePath);
+    fs.renameSync(replacementPath, codePath);
+    assert.equal(fs.readFileSync(codePath, 'utf8'), 'new-code\n');
+    assert.equal(fs.readFileSync(snapshotCodePath, 'utf8'), 'old-code\n');
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
 });
 
 test('deploy release marker is written only after backend health passes', () => {
