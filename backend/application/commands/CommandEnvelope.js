@@ -76,8 +76,84 @@ function removeUndefined(value) {
   }, {});
 }
 
+function createPayloadNotHashableError(reason, cause) {
+  return new CommandEnvelopeError(
+    'PAYLOAD_NOT_HASHABLE',
+    'Command payload is not hashable',
+    { reason, ...(cause ? { cause } : {}) },
+  );
+}
+
+function normalizePayloadForHash(value, seen = new Set()) {
+  if (value === null || value === undefined || typeof value === 'boolean') return value;
+  if (typeof value === 'string') return value.normalize('NFC');
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) {
+      throw createPayloadNotHashableError('Payload numbers must be finite');
+    }
+    return value;
+  }
+  if (typeof value === 'bigint' || typeof value === 'function' || typeof value === 'symbol') {
+    throw createPayloadNotHashableError(`Payload contains unsupported ${typeof value} value`);
+  }
+  if (typeof value !== 'object') {
+    throw createPayloadNotHashableError(`Payload contains unsupported ${typeof value} value`);
+  }
+  if (seen.has(value)) {
+    throw createPayloadNotHashableError('Payload contains a circular reference');
+  }
+
+  seen.add(value);
+  try {
+    if (Array.isArray(value)) {
+      return value.map((item) => normalizePayloadForHash(item, seen));
+    }
+
+    const symbolKeys = Object.getOwnPropertySymbols(value)
+      .filter((key) => Object.prototype.propertyIsEnumerable.call(value, key));
+    if (symbolKeys.length > 0) {
+      throw createPayloadNotHashableError('Payload contains an enumerable Symbol key');
+    }
+
+    const entries = Object.keys(value)
+      .map((key) => ({ key, normalizedKey: key.normalize('NFC') }))
+      .sort((left, right) => {
+        if (left.normalizedKey < right.normalizedKey) return -1;
+        if (left.normalizedKey > right.normalizedKey) return 1;
+        return 0;
+      });
+    const result = {};
+    let previousKey = null;
+    for (const { key, normalizedKey } of entries) {
+      if (normalizedKey === previousKey) {
+        throw createPayloadNotHashableError(
+          'Payload contains duplicate keys after Unicode normalization',
+        );
+      }
+      previousKey = normalizedKey;
+      if (value[key] !== undefined) {
+        result[normalizedKey] = normalizePayloadForHash(value[key], seen);
+      }
+    }
+    return result;
+  } finally {
+    seen.delete(value);
+  }
+}
+
 function stableStringify(value) {
-  return JSON.stringify(removeUndefined(value));
+  try {
+    const serialized = JSON.stringify(normalizePayloadForHash(value));
+    if (typeof serialized !== 'string') {
+      throw createPayloadNotHashableError('Payload does not serialize to JSON');
+    }
+    return serialized;
+  } catch (error) {
+    if (error instanceof CommandEnvelopeError && error.code === 'PAYLOAD_NOT_HASHABLE') {
+      throw error;
+    }
+    throw createPayloadNotHashableError('Payload serialization failed', error);
+  }
 }
 
 function digestPayload(payload = {}) {

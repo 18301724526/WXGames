@@ -5,7 +5,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { digestPayload } = require('../application/commands/CommandEnvelope');
+const {
+  CommandEnvelopeError,
+  digestPayload,
+  stableStringify,
+} = require('../application/commands/CommandEnvelope');
 const {
   MAX_COMMAND_ID_LENGTH,
   computePayloadHash,
@@ -34,6 +38,41 @@ test('computePayloadHash distinguishes different payloads', () => {
     computePayloadHash({ target: { q: 3, r: -2 } }),
     computePayloadHash({ target: { q: 4, r: -2 } }),
   );
+});
+
+function assertPayloadNotHashable(error) {
+  assert.equal(error instanceof CommandEnvelopeError, true);
+  assert.equal(error instanceof TypeError, false);
+  assert.equal(error.code, 'PAYLOAD_NOT_HASHABLE');
+  return true;
+}
+
+test('computePayloadHash rejects values that JSON cannot serialize with a domain error', () => {
+  const circular = {};
+  circular.self = circular;
+  const payloads = [
+    { value: 1n },
+    { value: () => 'unsupported' },
+    { value: Symbol('unsupported') },
+    circular,
+  ];
+
+  for (const payload of payloads) {
+    assert.throws(() => computePayloadHash(payload), assertPayloadNotHashable);
+  }
+});
+
+test('stableStringify rejects non-finite payload numbers', () => {
+  for (const value of [NaN, Infinity, -Infinity]) {
+    assert.throws(() => stableStringify({ value }), assertPayloadNotHashable);
+  }
+});
+
+test('computePayloadHash normalizes visually identical Unicode strings to NFC', () => {
+  const nfc = 'Caf\u00e9';
+  const nfd = 'Cafe\u0301';
+
+  assert.equal(computePayloadHash({ label: nfc }), computePayloadHash({ label: nfd }));
 });
 
 test('command ids normalize to the existing envelope character and length contract', () => {
