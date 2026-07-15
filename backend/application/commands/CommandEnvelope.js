@@ -105,8 +105,17 @@ function normalizePayloadForHash(value, seen = new Set()) {
 
   seen.add(value);
   try {
+    // Command identity accepts JSON primitives, arrays, and plain objects only. Custom toJSON
+    // hooks are rejected instead of letting executable serialization redefine payload identity.
+    if (typeof value.toJSON === 'function') {
+      throw createPayloadNotHashableError('Payload must not define a toJSON method');
+    }
     if (Array.isArray(value)) {
       return value.map((item) => normalizePayloadForHash(item, seen));
+    }
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      throw createPayloadNotHashableError('Payload containers must be plain objects or arrays');
     }
 
     const symbolKeys = Object.getOwnPropertySymbols(value)
@@ -143,7 +152,10 @@ function normalizePayloadForHash(value, seen = new Set()) {
 
 function stableStringify(value) {
   try {
-    const serialized = JSON.stringify(normalizePayloadForHash(value));
+    // An omitted or explicitly undefined top-level payload is the empty payload. Nested
+    // undefined values keep JSON's existing object-omission and array-null semantics.
+    const payload = value === undefined ? {} : value;
+    const serialized = JSON.stringify(normalizePayloadForHash(payload));
     if (typeof serialized !== 'string') {
       throw createPayloadNotHashableError('Payload does not serialize to JSON');
     }

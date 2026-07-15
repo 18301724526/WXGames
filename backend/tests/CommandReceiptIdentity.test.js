@@ -68,6 +68,43 @@ test('stableStringify rejects non-finite payload numbers', () => {
   }
 });
 
+test('computePayloadHash rejects non-plain payload containers', () => {
+  const containers = [
+    new Map([['first', 1]]),
+    new Map([['second', 2]]),
+    new Set([1]),
+    new Date('2026-07-16T00:00:00.000Z'),
+    new Date('2026-07-17T00:00:00.000Z'),
+    /payload/u,
+    new Error('payload'),
+    Promise.resolve('payload'),
+    new ArrayBuffer(8),
+    new DataView(new ArrayBuffer(8)),
+    new Uint8Array([1, 2, 3]),
+  ];
+
+  for (const payload of containers) {
+    assert.throws(() => computePayloadHash(payload), assertPayloadNotHashable);
+  }
+});
+
+test('computePayloadHash rejects payloads with custom toJSON methods', () => {
+  const payload = { value: 'original' };
+  Object.defineProperty(payload, 'toJSON', {
+    enumerable: false,
+    value() {
+      return { value: 'rewritten' };
+    },
+  });
+
+  assert.throws(() => computePayloadHash(payload), assertPayloadNotHashable);
+});
+
+test('top-level undefined is the empty command payload', () => {
+  assert.equal(stableStringify(undefined), '{}');
+  assert.equal(computePayloadHash(undefined), computePayloadHash({}));
+});
+
 test('computePayloadHash normalizes visually identical Unicode strings to NFC', () => {
   const nfc = 'Caf\u00e9';
   const nfd = 'Cafe\u0301';
