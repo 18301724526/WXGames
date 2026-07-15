@@ -38,9 +38,14 @@ Authority: owner 指令 2026-07-15。M0 已完结并入 main（65df4bd6）。
 - 在 shared/ 或 backend 无 IO 层加 `computePayloadHash(payload)`（规范化 JSON + sha256，确定性）与 commandId 规范化谓词。
 - 判据：单测——同 payload 同 hash、字段顺序无关、不同 payload 不同 hash；纯函数无 IO/DOM（可被 architecture 纯度门禁接受）。
 
-### M1a-T4 — admission 影子写（并行，不改权威路径）
+### M1a-T4a — computePayloadHash 硬化（前置于影子写，源自双席审计 finding #5）
+- `CommandReceiptIdentity.computePayloadHash` / `CommandEnvelope.stableStringify` 当前对不可序列化输入脆弱（审计实证）：`BigInt` payload 直接 `TypeError` throw 破坏纯函数闭包；`NaN`/`Infinity` 与 `null` 撞同一 hash；NFC/NFD 同一视觉字符串产生不同 hash。
+- 修：①序列化前显式拒绝/规范化不可 JSON 序列化值（BigInt/函数/Symbol/循环引用）——用 try/catch 包裹并抛一个**领域错误码**（如 `PAYLOAD_NOT_HASHABLE`），不得裸 throw TypeError；②NaN/Infinity 视为非法 payload 拒绝（不得静默变 null）；③字符串在 hash 前做 Unicode NFC 归一化，消除 NFC/NFD 分叉。
+- 判据：单测覆盖 BigInt→领域错误（非裸 TypeError）、NaN/Infinity→拒绝、NFC 与 NFD 同视觉串→同 hash、既有确定性用例仍绿。此项独立 commit，先于 T4b。
+
+### M1a-T4b — admission 影子写（并行，不改权威路径）
 - `CommandExecutionPipeline` 在现有 admission 点**额外**以独立小事务写一条 accepted receipt（command_id + payload_hash + session/client_seq + 三 epoch 快照）；epoch 取自现有 session 上下文，任一不可得则**跳过影子写并告警**（本单不 fail-closed 拒绝命令——那是 contract 阶段行为，避免改现有可达性）。
-- receipt 写失败**只告警不阻断**现有领域结果（影子纪律）。
+- receipt 写失败**只告警不阻断**现有领域结果（影子纪律）；payload 不可 hash（T4a 的领域错误）时同样只告警跳过影子写，绝不阻断主链。
 - 判据：特征测试——现有命令全链行为逐字节不变（对比影子写开/关的响应 DTO 相同）；receipt 表被并行写入且三 epoch 列非空；`UNIQUE(session_id,client_seq)` 冲突时影子写幂等（同命令重试不产生第二行、不抛给主链）。
 
 ### M1a-T5 — 恢复所有权只读探针 + guardian 收敛判据（不接管在线命令）
