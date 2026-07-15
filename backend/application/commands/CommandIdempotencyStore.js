@@ -5,7 +5,6 @@ const crypto = require('node:crypto');
 const {
   CLIENT_IDEMPOTENT,
   INTERNAL_IDEMPOTENT,
-  stableStringify,
 } = require('./CommandEnvelope');
 
 const STATUS_IN_PROGRESS = 'in_progress';
@@ -23,10 +22,80 @@ class CommandIdempotencyError extends Error {
   }
 }
 
+const RESPONSE_SERIALIZATION_FALLBACK = '{"$responseType":"unserializable"}';
+
+function responseMarker(type, value) {
+  const marker = Object.create(null);
+  marker.$responseType = type;
+  if (value !== undefined) marker.value = value;
+  return marker;
+}
+
+function normalizeResponseForDigest(value, seen = new Set()) {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (value === undefined || typeof value === 'function' || typeof value === 'symbol') {
+    return undefined;
+  }
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'bigint') return responseMarker('bigint', value.toString());
+  if (typeof value !== 'object') return responseMarker('unsupported');
+  if (seen.has(value)) return responseMarker('circular');
+
+  seen.add(value);
+  try {
+    if (Array.isArray(value)) {
+      return value.map((item) => normalizeResponseForDigest(item, seen) ?? null);
+    }
+
+    let keys;
+    try {
+      keys = Object.keys(value).sort();
+    } catch (_) {
+      return responseMarker('unserializable');
+    }
+    const result = Object.create(null);
+    for (const key of keys) {
+      let item;
+      try {
+        item = value[key];
+      } catch (_) {
+        result[key] = responseMarker('unserializable');
+        continue;
+      }
+      const normalized = normalizeResponseForDigest(item, seen);
+      if (normalized !== undefined) result[key] = normalized;
+    }
+    return result;
+  } finally {
+    seen.delete(value);
+  }
+}
+
+// Response fingerprints are deliberately lossy: terminal persistence must never fail on
+// values that JSON would omit, coerce, or reject. Command identity uses the strict serializer.
+function stableResponseStringify(value) {
+  try {
+    const serialized = JSON.stringify(normalizeResponseForDigest(value));
+    return typeof serialized === 'string' ? serialized : 'null';
+  } catch (_) {
+    return RESPONSE_SERIALIZATION_FALLBACK;
+  }
+}
+
+function serializeResponsePayload(payload) {
+  try {
+    const serialized = JSON.stringify(payload);
+    if (typeof serialized === 'string') return serialized;
+  } catch (_) {
+    // Fall through to the deterministic, non-throwing response serializer.
+  }
+  return stableResponseStringify(payload);
+}
+
 function responseDigest(statusCode, payload) {
   return crypto
     .createHash('sha256')
-    .update(stableStringify({ statusCode, payload }))
+    .update(stableResponseStringify({ statusCode, payload }))
     .digest('hex');
 }
 
@@ -205,7 +274,7 @@ class CommandIdempotencyStore {
     const statusCode = Number(response.statusCode) || 500;
     const payload = response.payload == null ? {} : response.payload;
     const status = options.status || terminalStatusFor(statusCode);
-    const serialized = JSON.stringify(payload);
+    const serialized = serializeResponsePayload(payload);
     const digest = responseDigest(statusCode, payload);
     const result = this.db.prepare(`
       UPDATE command_idempotency

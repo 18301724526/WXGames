@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const test = require('node:test');
 const Database = require('better-sqlite3');
 
@@ -12,6 +13,7 @@ const {
   CommandIdempotencyStore,
   STATUS_COMMITTED,
   STATUS_REJECTED,
+  responseDigest,
 } = require('../application/commands/CommandIdempotencyStore');
 const GameStateRepository = require('../repositories/GameStateRepository');
 
@@ -67,6 +69,38 @@ test('CommandIdempotencyStore replays the exact stored response for the same pay
     const replay = store.begin(command);
     assert.equal(replay.status, 'replay');
     assert.deepEqual(replay.response, response);
+  } finally {
+    db.close();
+  }
+});
+
+test('responseDigest preserves the pre-hardening digest bytes for normal responses', () => {
+  const legacyBytes = '{"payload":{"nested":{"alpha":1,"zebra":2},"success":true},"statusCode":200}';
+  const expected = crypto.createHash('sha256').update(legacyBytes).digest('hex');
+  const payload = { success: true, nested: { zebra: 2, alpha: 1 } };
+  const reordered = { nested: { alpha: 1, zebra: 2 }, success: true };
+
+  assert.equal(responseDigest(200, payload), expected);
+  assert.equal(responseDigest(200, reordered), expected);
+});
+
+test('CommandIdempotencyStore records lossy non-JSON responses as terminal results', () => {
+  const { db, store } = createStore();
+  try {
+    const started = store.begin(envelope({ idempotencyKey: 'idem-lossy-response' }));
+    const payload = {
+      bigint: 1n,
+      handler: () => 'ignored',
+      notANumber: NaN,
+      positiveInfinity: Infinity,
+      token: Symbol('ignored'),
+    };
+
+    const saved = store.recordResult(started.record, { statusCode: 200, payload });
+
+    assert.equal(saved.status, STATUS_COMMITTED);
+    assert.equal(saved.responseDigest, responseDigest(200, payload));
+    assert.equal(store.get(saved.playerId, saved.idempotencyKey).status, STATUS_COMMITTED);
   } finally {
     db.close();
   }
