@@ -765,12 +765,25 @@ install_backend_dependencies_if_needed() {
 # with new inodes, so the snapshot stays intact; runtime data (db/env/logs) is excluded
 # from restore so a rollback never rolls back player data.
 BACKEND_ROLLBACK_SNAPSHOT=""
-restore_snapshot_write_permissions() {
+BACKEND_SNAPSHOT_EXCLUDES=(
+    '.env'
+    '.env.*'
+    'logs'
+    '*.db*'
+    '*.bak'
+    '*.bak.*'
+    '*.backup'
+    '*.backup.*'
+    '*.pre-tick'
+)
+
+exclude_backend_snapshot_runtime_data() {
     local snapshot_dir="$1"
-    if [ ! -d "$snapshot_dir" ]; then
-        return 0
-    fi
-    chmod -R u+w -- "$snapshot_dir"
+    local exclude_pattern
+
+    for exclude_pattern in "${BACKEND_SNAPSHOT_EXCLUDES[@]}"; do
+        find "$snapshot_dir" -depth -name "$exclude_pattern" -exec rm -rf -- {} +
+    done
 }
 
 snapshot_backend_for_rollback() {
@@ -778,14 +791,13 @@ snapshot_backend_for_rollback() {
     if [ ! -d "$BACKEND_DIR" ]; then
         return 0
     fi
-    restore_snapshot_write_permissions "$snapshot_dir" 2>/dev/null || true
     rm -rf "$snapshot_dir" 2>/dev/null || true
+    # cp -al files share inodes: chmod or in-place runtime writes would also change the live originals.
     if cp -al "$BACKEND_DIR" "$snapshot_dir" 2>/dev/null \
-        && chmod -R a-w -- "$snapshot_dir"; then
+        && exclude_backend_snapshot_runtime_data "$snapshot_dir"; then
         BACKEND_ROLLBACK_SNAPSHOT="$snapshot_dir"
-        echo "[Deploy] 已创建只读回滚快照: $snapshot_dir"
+        echo "[Deploy] 已创建回滚快照: $snapshot_dir"
     else
-        restore_snapshot_write_permissions "$snapshot_dir" 2>/dev/null || true
         rm -rf "$snapshot_dir" 2>/dev/null || true
         echo "[Deploy] 回滚快照创建失败（继续部署，但失败时无法自动回滚）" >&2
     fi
@@ -797,17 +809,12 @@ rollback_backend_and_restart() {
         return 1
     fi
     echo "[Deploy] 健康检查失败，自动回滚到上一版本..." >&2
-    if ! restore_snapshot_write_permissions "$BACKEND_ROLLBACK_SNAPSHOT"; then
-        echo "[Deploy] 回滚快照恢复写权限失败，需要人工介入！" >&2
-        return 1
-    fi
-    rsync -a --delete \
-        --exclude '.env' \
-        --exclude '.env.*' \
-        --exclude 'logs' \
-        --exclude '*.db' \
-        --exclude '*.db-shm' \
-        --exclude '*.db-wal' \
+    local rsync_excludes=()
+    local exclude_pattern
+    for exclude_pattern in "${BACKEND_SNAPSHOT_EXCLUDES[@]}"; do
+        rsync_excludes+=(--exclude "$exclude_pattern")
+    done
+    rsync -a --delete "${rsync_excludes[@]}" \
         "$BACKEND_ROLLBACK_SNAPSHOT/" "$BACKEND_DIR/" || return 1
     pm2 restart "$PM2_APP_NAME" --update-env >/dev/null 2>&1 || true
     pm2 restart "$WORLD_WORKER_PM2_NAME" --update-env >/dev/null 2>&1 || true
