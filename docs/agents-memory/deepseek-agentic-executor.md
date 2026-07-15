@@ -5,6 +5,8 @@ metadata:
   type: reference
 ---
 
+⚠️ 席位政策已变更（见 model-seat-policy.md）：DeepSeek 不再派活，执行席=Codex。本篇仅保留端点接法/判活三态/元教训作技术参考。
+
 **背景(2026-07-12 夜)**:火山方舟 Coding Plan(opencode 的 agent-plan 通道:deepseek/glm/doubao/kimi-k2.7)**无人值守长任务屡次卡死**(端口起了但日志零增长=僵尸,或初始化就挂)。弃用于自主执行。
 
 **可靠替代=DeepSeek 官方 API 当 agentic 执行席**:

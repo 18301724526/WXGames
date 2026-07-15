@@ -1,5 +1,7 @@
 # Command Owner Pipeline Prerequisite Staging Spec
 
+⚠️ 已执行（2026-07-10）：产出=scripts/command-owner-step1/ 真实源码扫描器（仍在用，M0 writer inventory 在其上扩展，勿另起炉灶）。后续总计划见 7月14日后端架构/ v2.3 路线图。本文仅存档。
+
 Status: Draft v0.4, Step1 prerequisite staging implementation
 Date: 2026-07-09
 Scope: architecture inventory, command-path classification, report-only checks, anti-temporary-fix gates

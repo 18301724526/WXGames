@@ -1,0 +1,771 @@
+{
+  "schema": "m0-writer-inventory-v1",
+  "sourceScanner": "scripts/m0-writer-inventory/scanner.js",
+  "declarationSource": "scripts/m0-writer-inventory/declarations.js",
+  "categories": [
+    {
+      "category": "route",
+      "emptyReason": "",
+      "entries": [
+        {
+          "category": "route",
+          "id": "route:middleware:api-log",
+          "file": "backend/server.js",
+          "line": 133,
+          "evidence": [
+            "backend/server.js:133"
+          ],
+          "summary": "跨路由响应审计日志写入口"
+        },
+        {
+          "category": "route",
+          "id": "route:POST /api/buildings/build",
+          "file": "backend/routes/buildingRoutes.js",
+          "line": 42,
+          "evidence": [
+            "backend/routes/buildingRoutes.js:42"
+          ],
+          "summary": "写路由 POST /api/buildings/build"
+        },
+        {
+          "category": "route",
+          "id": "route:POST /api/client-events",
+          "file": "backend/routes/clientEventsRoutes.js",
+          "line": 40,
+          "evidence": [
+            "backend/routes/clientEventsRoutes.js:40"
+          ],
+          "summary": "写路由 POST /api/client-events"
+        },
+        {
+          "category": "route",
+          "id": "route:POST /api/client-operation-logs",
+          "file": "backend/routes/clientEventsRoutes.js",
+          "line": 73,
+          "evidence": [
+            "backend/routes/clientEventsRoutes.js:73"
+          ],
+          "summary": "写路由 POST /api/client-operation-logs"
+        },
+        {
+          "category": "route",
+          "id": "route:POST /api/game/action",
+          "file": "backend/routes/gameRoutes.js",
+          "line": 239,
+          "evidence": [
+            "backend/routes/gameRoutes.js:239"
+          ],
+          "summary": "写路由 POST /api/game/action"
+        },
+        {
+          "category": "route",
+          "id": "route:POST /api/game/heartbeat",
+          "file": "backend/routes/gameRoutes.js",
+          "line": 180,
+          "evidence": [
+            "backend/routes/gameRoutes.js:180"
+          ],
+          "summary": "写路由 POST /api/game/heartbeat"
+        },
+        {
+          "category": "route",
+          "id": "route:POST /api/game/tasks/claim",
+          "file": "backend/routes/gameRoutes.js",
+          "line": 221,
+          "evidence": [
+            "backend/routes/gameRoutes.js:221"
+          ],
+          "summary": "写路由 POST /api/game/tasks/claim"
+        },
+        {
+          "category": "route",
+          "id": "route:POST /api/player/login",
+          "file": "backend/routes/playerRoutes.js",
+          "line": 108,
+          "evidence": [
+            "backend/routes/playerRoutes.js:108"
+          ],
+          "summary": "写路由 POST /api/player/login"
+        },
+        {
+          "category": "route",
+          "id": "route:POST /api/player/reset",
+          "file": "backend/routes/playerRoutes.js",
+          "line": 150,
+          "evidence": [
+            "backend/routes/playerRoutes.js:150"
+          ],
+          "summary": "写路由 POST /api/player/reset"
+        }
+      ]
+    },
+    {
+      "category": "command",
+      "emptyReason": "",
+      "entries": [
+        {
+          "category": "command",
+          "id": "command:acceptFamousPerson",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 6,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:6"
+          ],
+          "summary": "业务命令 acceptFamousPerson"
+        },
+        {
+          "category": "command",
+          "id": "command:advanceEra",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 7,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:7"
+          ],
+          "summary": "业务命令 advanceEra"
+        },
+        {
+          "category": "command",
+          "id": "command:applyTalentPolicy",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 8,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:8"
+          ],
+          "summary": "业务命令 applyTalentPolicy"
+        },
+        {
+          "category": "command",
+          "id": "command:assign",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 9,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:9"
+          ],
+          "summary": "业务命令 assign"
+        },
+        {
+          "category": "command",
+          "id": "command:assignFamousAttributePoint",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 10,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:10"
+          ],
+          "summary": "业务命令 assignFamousAttributePoint"
+        },
+        {
+          "category": "command",
+          "id": "command:build",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 11,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:11"
+          ],
+          "summary": "业务命令 build"
+        },
+        {
+          "category": "command",
+          "id": "command:claimConquest",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 59,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:59"
+          ],
+          "summary": "业务命令 claimConquest"
+        },
+        {
+          "category": "command",
+          "id": "command:claimEvent",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 12,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:12"
+          ],
+          "summary": "业务命令 claimEvent"
+        },
+        {
+          "category": "command",
+          "id": "command:claimTaskReward",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 13,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:13"
+          ],
+          "summary": "业务命令 claimTaskReward"
+        },
+        {
+          "category": "command",
+          "id": "command:clientEventIngest",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 93,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:93"
+          ],
+          "summary": "业务命令 clientEventIngest"
+        },
+        {
+          "category": "command",
+          "id": "command:clientOperationLogIngest",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 94,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:94"
+          ],
+          "summary": "业务命令 clientOperationLogIngest"
+        },
+        {
+          "category": "command",
+          "id": "command:deleteTalentPolicy",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 14,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:14"
+          ],
+          "summary": "业务命令 deleteTalentPolicy"
+        },
+        {
+          "category": "command",
+          "id": "command:dismissFamousPersonCandidate",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 15,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:15"
+          ],
+          "summary": "业务命令 dismissFamousPersonCandidate"
+        },
+        {
+          "category": "command",
+          "id": "command:heartbeat",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 16,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:16"
+          ],
+          "summary": "业务命令 heartbeat"
+        },
+        {
+          "category": "command",
+          "id": "command:heartbeatMarchSettlement",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 17,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:17"
+          ],
+          "summary": "业务命令 heartbeatMarchSettlement"
+        },
+        {
+          "category": "command",
+          "id": "command:playerLogin",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 49,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:49"
+          ],
+          "summary": "业务命令 playerLogin"
+        },
+        {
+          "category": "command",
+          "id": "command:playerReset",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 50,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:50"
+          ],
+          "summary": "业务命令 playerReset"
+        },
+        {
+          "category": "command",
+          "id": "command:renameCity",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 67,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:67"
+          ],
+          "summary": "业务命令 renameCity"
+        },
+        {
+          "category": "command",
+          "id": "command:renamePolity",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 18,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:18"
+          ],
+          "summary": "业务命令 renamePolity"
+        },
+        {
+          "category": "command",
+          "id": "command:research",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 19,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:19"
+          ],
+          "summary": "业务命令 research"
+        },
+        {
+          "category": "command",
+          "id": "command:resolveCapture",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 20,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:20"
+          ],
+          "summary": "业务命令 resolveCapture"
+        },
+        {
+          "category": "command",
+          "id": "command:resolveWorldCombat",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 86,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:86"
+          ],
+          "summary": "业务命令 resolveWorldCombat"
+        },
+        {
+          "category": "command",
+          "id": "command:returnWorldMarch",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 21,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:21"
+          ],
+          "summary": "业务命令 returnWorldMarch"
+        },
+        {
+          "category": "command",
+          "id": "command:saveTalentPolicy",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 22,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:22"
+          ],
+          "summary": "业务命令 saveTalentPolicy"
+        },
+        {
+          "category": "command",
+          "id": "command:seekFamousPerson",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 23,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:23"
+          ],
+          "summary": "业务命令 seekFamousPerson"
+        },
+        {
+          "category": "command",
+          "id": "command:setArmyFormation",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 24,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:24"
+          ],
+          "summary": "业务命令 setArmyFormation"
+        },
+        {
+          "category": "command",
+          "id": "command:startConquest",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 51,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:51"
+          ],
+          "summary": "业务命令 startConquest"
+        },
+        {
+          "category": "command",
+          "id": "command:startWorldCombat",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 79,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:79"
+          ],
+          "summary": "业务命令 startWorldCombat"
+        },
+        {
+          "category": "command",
+          "id": "command:startWorldMarch",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 75,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:75"
+          ],
+          "summary": "业务命令 startWorldMarch"
+        },
+        {
+          "category": "command",
+          "id": "command:stopWorldMarch",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 25,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:25"
+          ],
+          "summary": "业务命令 stopWorldMarch"
+        },
+        {
+          "category": "command",
+          "id": "command:switchCity",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 26,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:26"
+          ],
+          "summary": "业务命令 switchCity"
+        },
+        {
+          "category": "command",
+          "id": "command:upgrade",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 27,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:27"
+          ],
+          "summary": "业务命令 upgrade"
+        },
+        {
+          "category": "command",
+          "id": "command:veteranCampUpgrade",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 28,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:28"
+          ],
+          "summary": "业务命令 veteranCampUpgrade"
+        },
+        {
+          "category": "command",
+          "id": "command:veteranCampWithdraw",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 29,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:29"
+          ],
+          "summary": "业务命令 veteranCampWithdraw"
+        },
+        {
+          "category": "command",
+          "id": "command:worldMarchClientReportIngest",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 30,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:30"
+          ],
+          "summary": "业务命令 worldMarchClientReportIngest"
+        }
+      ]
+    },
+    {
+      "category": "worker",
+      "emptyReason": "",
+      "entries": [
+        {
+          "category": "worker",
+          "id": "worker:command:worldWorkerDiplomacyTick",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 111,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:111"
+          ],
+          "summary": "后台命令 worldWorkerDiplomacyTick"
+        },
+        {
+          "category": "worker",
+          "id": "worker:command:worldWorkerPersonUpdate",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 104,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:104"
+          ],
+          "summary": "后台命令 worldWorkerPersonUpdate"
+        },
+        {
+          "category": "worker",
+          "id": "worker:command:worldWorkerPlayerTick",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 100,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:100"
+          ],
+          "summary": "后台命令 worldWorkerPlayerTick"
+        },
+        {
+          "category": "worker",
+          "id": "worker:command:worldWorkerRuntimeTick",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 117,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:117"
+          ],
+          "summary": "后台命令 worldWorkerRuntimeTick"
+        },
+        {
+          "category": "worker",
+          "id": "worker:entry:backend/world-worker.js",
+          "file": "backend/world-worker.js",
+          "line": 1,
+          "evidence": [
+            "backend/world-worker.js:1"
+          ],
+          "summary": "后台 world worker 入口"
+        }
+      ]
+    },
+    {
+      "category": "admin",
+      "emptyReason": "",
+      "entries": [
+        {
+          "category": "admin",
+          "id": "admin:command:configReleasePublish",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 98,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:98"
+          ],
+          "summary": "管理命令 configReleasePublish"
+        },
+        {
+          "category": "admin",
+          "id": "admin:command:configReleaseRollback",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 99,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:99"
+          ],
+          "summary": "管理命令 configReleaseRollback"
+        },
+        {
+          "category": "admin",
+          "id": "admin:command:opsLoginAudit",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 95,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:95"
+          ],
+          "summary": "管理命令 opsLoginAudit"
+        },
+        {
+          "category": "admin",
+          "id": "admin:command:opsMaintenanceSet",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 96,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:96"
+          ],
+          "summary": "管理命令 opsMaintenanceSet"
+        },
+        {
+          "category": "admin",
+          "id": "admin:command:opsRestartAccepted",
+          "file": "backend/application/commands/CommandOwnerResolver.js",
+          "line": 97,
+          "evidence": [
+            "backend/application/commands/CommandOwnerResolver.js:97"
+          ],
+          "summary": "管理命令 opsRestartAccepted"
+        },
+        {
+          "category": "admin",
+          "id": "admin:route:POST /api/admin/config-releases/publish",
+          "file": "backend/routes/adminRoutes.js",
+          "line": 83,
+          "evidence": [
+            "backend/routes/adminRoutes.js:83"
+          ],
+          "summary": "管理写路由 POST /api/admin/config-releases/publish"
+        },
+        {
+          "category": "admin",
+          "id": "admin:route:POST /api/admin/config-releases/rollback",
+          "file": "backend/routes/adminRoutes.js",
+          "line": 94,
+          "evidence": [
+            "backend/routes/adminRoutes.js:94"
+          ],
+          "summary": "管理写路由 POST /api/admin/config-releases/rollback"
+        },
+        {
+          "category": "admin",
+          "id": "admin:route:POST /api/admin/ops/login",
+          "file": "backend/routes/opsRoutes.js",
+          "line": 26,
+          "evidence": [
+            "backend/routes/opsRoutes.js:26"
+          ],
+          "summary": "管理写路由 POST /api/admin/ops/login"
+        },
+        {
+          "category": "admin",
+          "id": "admin:route:POST /api/admin/ops/maintenance",
+          "file": "backend/routes/opsRoutes.js",
+          "line": 73,
+          "evidence": [
+            "backend/routes/opsRoutes.js:73"
+          ],
+          "summary": "管理写路由 POST /api/admin/ops/maintenance"
+        },
+        {
+          "category": "admin",
+          "id": "admin:route:POST /api/admin/ops/restart",
+          "file": "backend/routes/opsRoutes.js",
+          "line": 86,
+          "evidence": [
+            "backend/routes/opsRoutes.js:86"
+          ],
+          "summary": "管理写路由 POST /api/admin/ops/restart"
+        }
+      ]
+    },
+    {
+      "category": "migration",
+      "emptyReason": "",
+      "entries": [
+        {
+          "category": "migration",
+          "id": "migration:001-game-states-compat-columns",
+          "file": "backend/migrations/immutableGameStateMigrations.js",
+          "line": 35,
+          "evidence": [
+            "backend/migrations/immutableGameStateMigrations.js:35"
+          ],
+          "summary": "SchemaMigrationService 迁移 001-game-states-compat-columns"
+        },
+        {
+          "category": "migration",
+          "id": "migration:005-task-reward-grants-column",
+          "file": "backend/migrations/immutableGameStateMigrations.js",
+          "line": 49,
+          "evidence": [
+            "backend/migrations/immutableGameStateMigrations.js:49"
+          ],
+          "summary": "SchemaMigrationService 迁移 005-task-reward-grants-column"
+        },
+        {
+          "category": "migration",
+          "id": "migration:006-rebuild-game-states-current-schema",
+          "file": "backend/migrations/currentGameStateSchemaMigration.js",
+          "line": 59,
+          "evidence": [
+            "backend/migrations/currentGameStateSchemaMigration.js:59"
+          ],
+          "summary": "SchemaMigrationService 迁移 006-rebuild-game-states-current-schema"
+        },
+        {
+          "category": "migration",
+          "id": "migration:007-create-release-manifests",
+          "file": "backend/migrations/releaseManifestMigration.js",
+          "line": 6,
+          "evidence": [
+            "backend/migrations/releaseManifestMigration.js:6"
+          ],
+          "summary": "SchemaMigrationService 迁移 007-create-release-manifests"
+        },
+        {
+          "category": "migration",
+          "id": "migration:008-create-command-receipts",
+          "file": "backend/migrations/commandReceiptsMigration.js",
+          "line": 6,
+          "evidence": [
+            "backend/migrations/commandReceiptsMigration.js:6"
+          ],
+          "summary": "SchemaMigrationService 迁移 008-create-command-receipts"
+        },
+        {
+          "category": "migration",
+          "id": "migration:009-create-command-execution-plans",
+          "file": "backend/migrations/commandExecutionPlansMigration.js",
+          "line": 6,
+          "evidence": [
+            "backend/migrations/commandExecutionPlansMigration.js:6"
+          ],
+          "summary": "SchemaMigrationService 迁移 009-create-command-execution-plans"
+        }
+      ]
+    },
+    {
+      "category": "repair_script",
+      "emptyReason": "",
+      "entries": [
+        {
+          "category": "repair_script",
+          "id": "repair-script:backend/scripts/cleanup-world-explorer-ready-state.js",
+          "file": "backend/scripts/cleanup-world-explorer-ready-state.js",
+          "line": 162,
+          "evidence": [
+            "backend/scripts/cleanup-world-explorer-ready-state.js:162"
+          ],
+          "summary": "修复或恢复脚本 backend/scripts/cleanup-world-explorer-ready-state.js"
+        },
+        {
+          "category": "repair_script",
+          "id": "repair-script:scripts/repair-legacy-spawn-account.js",
+          "file": "scripts/repair-legacy-spawn-account.js",
+          "line": 221,
+          "evidence": [
+            "scripts/repair-legacy-spawn-account.js:221"
+          ],
+          "summary": "修复或恢复脚本 scripts/repair-legacy-spawn-account.js"
+        },
+        {
+          "category": "repair_script",
+          "id": "repair-script:scripts/repair-legacy-spawn-batch.js",
+          "file": "scripts/repair-legacy-spawn-batch.js",
+          "line": 128,
+          "evidence": [
+            "scripts/repair-legacy-spawn-batch.js:128"
+          ],
+          "summary": "修复或恢复脚本 scripts/repair-legacy-spawn-batch.js"
+        },
+        {
+          "category": "repair_script",
+          "id": "repair-script:scripts/restore-runtime-state.sh",
+          "file": "scripts/restore-runtime-state.sh",
+          "line": 161,
+          "evidence": [
+            "scripts/restore-runtime-state.sh:161"
+          ],
+          "summary": "修复或恢复脚本 scripts/restore-runtime-state.sh"
+        }
+      ]
+    },
+    {
+      "category": "consumer",
+      "emptyReason": "当前后端没有消息队列或事件流 consumer；后台定时写入统一归入 worker。",
+      "entries": []
+    },
+    {
+      "category": "client_state_writer",
+      "emptyReason": "",
+      "entries": [
+        {
+          "category": "client_state_writer",
+          "id": "client-state-writer:frontend/js/state/StateWriter.js#commit",
+          "file": "frontend/js/state/StateWriter.js",
+          "line": 49,
+          "evidence": [
+            "frontend/js/state/StateWriter.js:49"
+          ],
+          "summary": "客户端实时状态唯一写点 StateWriter.commit"
+        }
+      ]
+    }
+  ],
+  "findings": [],
+  "summary": {
+    "categoryCount": 8,
+    "declaredWriterCount": 70,
+    "discoveredWriterCount": 70,
+    "driftFindingCount": 0,
+    "writersByCategory": {
+      "route": 9,
+      "command": 35,
+      "worker": 5,
+      "admin": 10,
+      "migration": 6,
+      "repair_script": 4,
+      "consumer": 0,
+      "client_state_writer": 1
+    }
+  }
+}

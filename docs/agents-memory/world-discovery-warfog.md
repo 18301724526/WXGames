@@ -7,6 +7,8 @@ metadata:
   originSessionId: 2992377e-0795-4820-a4df-9cbb32be926b
 ---
 
+⚠️ 分支已并入单一 main（2026-07-09），分支引述作废；权威设计文档已删（38dbaab6），git 历史可取。
+
 用户改主意后的世界发现模型定论（分支 `codex/pvpve-systems`，权威设计 = [docs/design/10-march-discovery-refactor.md](../../docs/design/10-march-discovery-refactor.md)）：**一个共享持久世界，地形 seed 程序生成→冻成固定世界，城池预置，靠行军视野揭雾发现**。已删掉旧的"定向侦察 spawn 城"临时实现(S1)。
 
 **已建 + 已部署 WSL(cd9e0982)：**

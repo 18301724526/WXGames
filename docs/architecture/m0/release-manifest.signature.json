@@ -1,0 +1,7 @@
+{
+  "manifestDigest": "9dd3e547a842aefe21da8f4c966cbabcbf4fd897060e714076031d286db5c25d",
+  "schema": "wxgame-release-manifest-signature-v1",
+  "signature": "95ZyuuLKUTCws/10q7VJeQ2G1knNw6knrZzV7Qqri+PuxasdxTSEndlh+ky+7l2HcOfy2N/Ljcg6ThcI+xMQCg==",
+  "signatureAlgorithm": "ed25519",
+  "signerKeyId": "ed25519:8674d8738f36459e"
+}

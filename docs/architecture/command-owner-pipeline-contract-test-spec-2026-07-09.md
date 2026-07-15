@@ -1,6 +1,9 @@
 # Command Owner Pipeline Contract Test Spec
 
 Status: Draft v0.7, contract test oracle for Step1-Step3
+
+2026-07-15 注：Step1-3 已执行完毕（见 step3-phase2-7-verification）。COP-* 不变量与门禁仍然生效；但演进目标以 7月14日后端架构/当前实现迁移路线图-v2.3.md 为准——M1 原子 receipt 取代 commit/recordResult 两步，M2 epoch fencing 取代 §4.4.1 的纯 TTL lease 语义。本文不再作为新实现的目标规范。
+
 Date: 2026-07-09
 Scope: testable command-owner contracts for write-command concurrency, owner routing, idempotency, frontend/game adaptation
 

@@ -1,0 +1,76 @@
+{
+  "schema": "wxgame-production-shape-restore-drill-v1",
+  "executedAt": "2026-07-14T19:53:12.753Z",
+  "environment": "WSL Ubuntu-24.04 本地隔离环境",
+  "source": {
+    "label": "wsl:wxgame-test",
+    "access": "sqlite-readonly-snapshot"
+  },
+  "artifacts": {
+    "fixture": "tmp/m0-fixture/production-shape.fixture.json",
+    "metadata": "docs/architecture/m0/production-shape-fixture-metadata.json",
+    "backupArchive": "tmp/m0-fixture/restore-drill/backups/wxgame-runtime-20260714T195310Z-m0-t5.tar.gz",
+    "backupArchiveSha256": "c576d46d35244fb5c3949bf5faba37589d731e9dd67bdee96f6e751168a7af4e"
+  },
+  "shape": {
+    "tableCount": 18,
+    "rowCount": 5312,
+    "excludedInstrumentationTables": [
+      "codex_db_write_probe"
+    ]
+  },
+  "fixtureChecksumRuns": [
+    {
+      "schema": "wxgame-production-shape-checksum-v1",
+      "ruleVersion": "m0-production-shape-checksum-v1",
+      "checksum": "ec06259d3ba4a86ad99a900c0229be0e793751ccad4d5ffe701c81c6ed495b62",
+      "tableCount": 18,
+      "rowCount": 5312
+    },
+    {
+      "schema": "wxgame-production-shape-checksum-v1",
+      "ruleVersion": "m0-production-shape-checksum-v1",
+      "checksum": "ec06259d3ba4a86ad99a900c0229be0e793751ccad4d5ffe701c81c6ed495b62",
+      "tableCount": 18,
+      "rowCount": 5312
+    }
+  ],
+  "backupRestore": {
+    "before": {
+      "schema": "wxgame-production-shape-checksum-v1",
+      "ruleVersion": "m0-production-shape-checksum-v1",
+      "checksum": "ec06259d3ba4a86ad99a900c0229be0e793751ccad4d5ffe701c81c6ed495b62",
+      "tableCount": 18,
+      "rowCount": 5312
+    },
+    "after": {
+      "schema": "wxgame-production-shape-checksum-v1",
+      "ruleVersion": "m0-production-shape-checksum-v1",
+      "checksum": "ec06259d3ba4a86ad99a900c0229be0e793751ccad4d5ffe701c81c6ed495b62",
+      "tableCount": 18,
+      "rowCount": 5312
+    },
+    "sourceDb": "tmp/m0-fixture/restore-drill/source/backend/civilization.db",
+    "restoredDb": "tmp/m0-fixture/restore-drill/restored/backend/civilization.db",
+    "sourcePort": 45339,
+    "restorePort": 45365,
+    "sourceHealthStatus": "ok",
+    "restoreHealthStatus": "ok"
+  },
+  "sanitization": {
+    "schema": "wxgame-production-shape-sanitization-v1",
+    "rawSensitiveValueLeaks": 0,
+    "emailPatternLeaks": 0,
+    "jwtPatternLeaks": 0,
+    "bearerPatternLeaks": 0,
+    "querySecretPatternLeaks": 0
+  },
+  "assertions": {
+    "exportExitedZero": true,
+    "sanitizationPassed": true,
+    "fixtureChecksumRepeatable": true,
+    "isolatedDatabasePaths": true,
+    "isolatedPorts": true,
+    "restoreChecksumMatches": true
+  }
+}

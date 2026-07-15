@@ -7,6 +7,8 @@ metadata:
   originSessionId: f9e3a21f-5733-4bf2-8572-471329f80088
 ---
 
+⚠️ 本文进度与 NEXT TASK 已过时：Axis A 代理方案被 bitecs-ecs-standard 废止，host-bridge 收敛已推送部署，现行主计划=7月14日后端架构/ v2.3（M0-M7）。仅教训段（load-order 陷阱、guard-the-signature、prettier 部署门）仍有效。
+
 P1 Cluster 2 of the [[architecture-refactor]] is DONE on the refactor branch (13 commits `6945f143`…`01b8a119` + doc `133e402f`, NOT pushed). The `tile_${x}_${y}` tileId format now lives in exactly **3 honest sources** — `frontend/js/domain/TileCoord.js` (world-map canonical), `frontend/js/shared/WorldMarchCoreAdapter.js` (march family), `frontend/js/debug/WorldMarchTrace.js` (debug, deliberately non-floored) — down from 38 inline copies across ~33 files. Locked by `scripts/check-duplicate-coord-helpers.js` (bans inline `tile_${` outside those 3; wired into architecture-smoke). Test baseline is now **1699** (was 1701: deleted the 2 fallback-pinning tests in TileMapGeometry/WorldRevealStore that force-nulled `require.cache[TileCoord]`).
 
 **Why:** the handoff §4 plan was wrong in 3 ways that only an independent grep + per-file read caught (Rule 4) — see [[architecture-refactor]] / docs/refactor §4.

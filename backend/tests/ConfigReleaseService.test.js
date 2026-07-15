@@ -144,6 +144,98 @@ test('ConfigReleaseService records an explicitly declared registry retirement', 
   }]);
 });
 
+test('ConfigReleaseService loads registry retirements from the manifest so deploy warns instead of failing', () => {
+  const paths = createTempPaths();
+  const first = createSnapshot();
+  first.registryCount = 2;
+  first.registries.push({
+    id: 'legacy-config',
+    schema: 'legacy-config-registry',
+    schemaVersion: 1,
+    version: '1.0.0',
+    contentHash: 'bbbbbbbbbbbb',
+    entryCount: 1,
+    entryIds: ['legacy'],
+    source: 'unit-test',
+  });
+  const second = createSnapshot();
+
+  assert.equal(ConfigReleaseService.publishRelease(
+    { snapshot: first, source: 'unit:first' },
+    { ...paths, operator: 'codexqa' },
+  ).success, true);
+
+  // No manifest on the resolved path -> an undeclared removal blocks the release.
+  const undeclared = ConfigReleaseService.publishRelease(
+    { snapshot: second, source: 'unit:retire' },
+    { ...paths, operator: 'codexqa', registryRetirementsPath: path.join(paths.dir, 'missing.json') },
+  );
+  assert.equal(undeclared.success, false);
+  assert.equal(undeclared.error, 'CONFIG_RELEASE_VALIDATION_FAILED');
+  assert.equal(undeclared.errors.includes('legacy-config: registry removed'), true);
+
+  // Manifest declares the retirement -> warning, publish succeeds.
+  const manifestPath = path.join(paths.dir, 'configRegistryRetirements.json');
+  fs.writeFileSync(manifestPath, JSON.stringify({
+    schema: 'config-registry-retirements-v1',
+    retirements: [{ id: 'legacy-config', reason: 'legacy feature removed' }],
+  }));
+  const declared = ConfigReleaseService.publishRelease(
+    { snapshot: second, source: 'unit:retire' },
+    { ...paths, operator: 'codexqa', registryRetirementsPath: manifestPath },
+  );
+  assert.equal(declared.success, true);
+  assert.deepEqual(declared.release.comparison.retiredRegistryIds, ['legacy-config']);
+  assert.equal(
+    declared.report.warnings.includes('legacy-config: registry retired (legacy feature removed)'),
+    true,
+  );
+});
+
+test('ConfigReleaseService.getRuntimeStatus treats declared retirements as drift, not error', () => {
+  const activeSnapshot = createSnapshot();
+  activeSnapshot.registryCount = 2;
+  activeSnapshot.registries.push({
+    id: 'legacy-config',
+    schema: 'legacy-config-registry',
+    schemaVersion: 1,
+    version: '1.0.0',
+    contentHash: 'bbbbbbbbbbbb',
+    entryCount: 1,
+    entryIds: ['legacy'],
+    source: 'unit-test',
+  });
+  const current = createSnapshot(); // runtime no longer ships legacy-config
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wxgame-runtime-retire-'));
+  const activeRecord = { id: 'rel-1', snapshot: activeSnapshot };
+
+  // Undeclared -> runtime status is a hard error (blocks a required gate).
+  const undeclared = ConfigReleaseService.getRuntimeStatus({
+    currentSnapshot: current,
+    activeRecord,
+    registryRetirementsPath: path.join(dir, 'missing.json'),
+    now: new Date('2026-07-15T00:00:00Z'),
+  });
+  assert.equal(undeclared.status, 'error');
+  assert.equal(undeclared.errors.includes('legacy-config: registry removed'), true);
+
+  // Declared -> drift with a warning, not an error.
+  const manifestPath = path.join(dir, 'configRegistryRetirements.json');
+  fs.writeFileSync(manifestPath, JSON.stringify({
+    schema: 'config-registry-retirements-v1',
+    retirements: [{ id: 'legacy-config', reason: 'legacy feature removed' }],
+  }));
+  const declared = ConfigReleaseService.getRuntimeStatus({
+    currentSnapshot: current,
+    activeRecord,
+    registryRetirementsPath: manifestPath,
+    now: new Date('2026-07-15T00:00:00Z'),
+  });
+  assert.notEqual(declared.status, 'error');
+  assert.equal(declared.success, true);
+  assert.equal(declared.warnings.includes('legacy-config: registry retired (legacy feature removed)'), true);
+});
+
 test('ConfigReleaseService rolls back active release to a previous audited snapshot', () => {
   const paths = createTempPaths();
   const first = createSnapshot();

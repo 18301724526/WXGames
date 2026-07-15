@@ -1,10 +1,10 @@
 - [Codex token monitor](codex-token-monitor.md) — 多 CLI 消耗看板 codex-watch/token-monitor.js → :8788（标签页：Codex/Kimi Code/OpenCode）；三源适配语义+中转注入规则+372K 输入墙+账单解剖法都在这篇。
 - [Line endings are LF](line-endings-lf.md) — repo is LF + `.gitattributes * -text`; Edit tool writes CRLF, normalize back to LF or architecture-smoke's `git diff --check` fails.
 - [Main unification 2026-07-09](main-unification-2026-07-09.md) — ✅ 已完成:全仓统一进单一 main(2260 测试绿),origin 留 2 归档分支;监控记录在 F:\AI Project\codex-watch。
-- [Command owner pipeline progress](command-owner-pipeline-progress.md) — 三步解耦接力棒:可行性评审过(有条件),Step1 整改工单 301abcbe 已派 Codex(T1-T8);下一棒=照单验收(机械判据,Opus 可胜任)→step2 准入仲裁(判断密集,宜强模型);资源地 spec 待 owner 终审。
+- [Command owner pipeline progress](command-owner-pipeline-progress.md) — step1→3 已全部完结审查 PASS（2026-07-11 终态），产出=CommandExecutionPipeline+scripts/command-owner-step1 扫描器；后续演进以 7月14日后端架构 v2.3 路线图为准。
 - [Role separation: dispatch + review only](role-separation-dispatch-review.md) — 钦定:我只派任务单进仓库+审查证据,绝不亲自执行实现;Codex 是唯一执行者。手越多幻觉越多。
 - [Model seat policy](model-seat-policy.md) — 外部席位国产模型只留 GLM-5.2;kimi/deepseek/minimax/qwen 不再派活;执行端=Codex(Sol,有加严条款);评审主力=Claude 自家 subagents。
-- [Battle system](battle-system.md) — new entity-based 三国群英传-style battle; core/AI/service/lab built + tested; live in-game wiring pending.
+- [Battle system](battle-system.md) — 交互式实时实体战（20Hz，战中军令/技能/撤退），客户端演出+录指令流+服务器确定性重放裁决；已接好世界（占城/野怪双链，占城为被动版）live in main；守方 AI 客户端录制=已知作弊面。
 - [Dev-stage, debt-for-velocity](project-stage-dev.md) — pre-launch game on a dev server; aim work at tech debt that speeds feature dev, NOT prod hardening (TLS/staging/Postgres are parked).
 - [Deploy URLs](deploy-urls.md) — H5 frontend at https://kodagame.top; tool pages under /tools/ (use `../assets/`, only resolves via the domain).
 - [Push GitHub over HTTPS](github-push-https.md) — SSH port 22 to github.com is blocked here; use the HTTPS `origin` URL (GCM has the token). The `private` server remote is HTTP and auto-deploys.
@@ -13,7 +13,7 @@
 - [Deploy lint gate](deploy-lint-gate.md) — test-server pre-deploy gate runs `npm run lint`; stale eslint suppressions (exit 2) abort the deploy. Run `npm run lint` before pushing (npm test + architecture-smoke don't lint); prune suppressions after deleting code.
 - [World-march passability](world-march-passability.md) — 单源 `worldMarchCore.MARCH_BLOCKED_TERRAINS=['ocean','river']`；**shore 海岸地形**（纯 edge/corner 模板=格心在陆）可走到格心+沿岸连走，full/river-mouth/river 禁入；存档水系自愈两层；'coast' 名被 planning 占用勿撞；boats 扩展点在后端 canTraverseRouteTile。
 - [P0 combat in world](p0-combat-in-world.md) — 玩法填充：战斗系统**已接好世界**（占城/打野怪两链闭环、可重放、美术全在盘），缺内容/利害/数值。**野怪营地切片1a DONE+双部署+WSL验证**（多营地确定性铺设+冷却重生+战利品）；待做空城守军/老兵营地/真实平衡。
-- [Architecture refactor](architecture-refactor.md) — project-wide decouple: server=ABCD pipelines, client=ECS, shared/ pure rules, mandatory per-stage trace; north star "fix any bug without a global search"; living plan in docs/architecture/.
+- [Architecture refactor](architecture-refactor.md) — project-wide decouple: server=ABCD pipelines, client=ECS, shared/ pure rules, mandatory per-stage trace; north star "fix any bug without a global search"; living plan in docs/architecture/.主计划现为 7月14日后端架构/ v2.3 参考架构+M0-M7 迁移路线图。
 - [Frontend ECS bridge retirement](frontend-ecs-bridge-retirement.md) — Batch 8 COMPLETE: 8A-8E sealed+deployed; **8F blockingPanel 已执行且 live**(12 面板入 ModalStore 单源;`buildRendererPanelFacts` 在 CanvasModeOwnershipRuntime.js,旧 Bridge 文件名已亡)。
 - [Refactor server push-deploy 502 fix](refactor-server-push-deploy-502-fix.md) — refactor test-server post-receive hook (runs as www) now launches deploy detached, so pushes return <1s instead of 502; manual-deploy + SSH-ops notes inside.
 - [Refactor deploy fast pipeline](refactor-deploy-fast-pipeline.md) — deploy was 20-60min + dead-502 on failure; fixed `2c891d2f`: fast gate (server trusts local CI, syntax smoke only), backend deps skipped on lockfile-hash match, hardlink snapshot + auto-rollback on health failure. **Measured push→deployed 17s.** Refactor backend port = **3003** (player path `/wxgame-refactor-api`); 3002 is the OTHER test env — don't monitor it for refactor.

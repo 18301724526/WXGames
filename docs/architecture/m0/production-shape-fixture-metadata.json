@@ -1,0 +1,286 @@
+{
+  "artifact": {
+    "byteLength": 4672378,
+    "path": "tmp/m0-fixture/production-shape.fixture.json"
+  },
+  "checksum": {
+    "checksum": "ec06259d3ba4a86ad99a900c0229be0e793751ccad4d5ffe701c81c6ed495b62",
+    "rowCount": 5312,
+    "ruleVersion": "m0-production-shape-checksum-v1",
+    "schema": "wxgame-production-shape-checksum-v1",
+    "tableCount": 18
+  },
+  "checksumRule": {
+    "excludedVolatileTimeFields": [
+      "advancedAt",
+      "appliedAt",
+      "at",
+      "builtAt",
+      "capturedAt",
+      "checkedAt",
+      "claimedAt",
+      "completedAt",
+      "completesAt",
+      "createdAt",
+      "discoveredAt",
+      "durationMs",
+      "expiredAt",
+      "expiresAt",
+      "finishedAt",
+      "firstDiscoveredAt",
+      "foughtAt",
+      "foundedAt",
+      "generatedAt",
+      "grantedAt",
+      "importedAt",
+      "issuedAt",
+      "joinedAt",
+      "lastActiveAt",
+      "lastAdvancedAt",
+      "lastAppliedAt",
+      "lastAt",
+      "lastEventAt",
+      "lastGeneratedAt",
+      "lastScoutedAt",
+      "lockedAt",
+      "migratedAt",
+      "nextAt",
+      "nextStepAt",
+      "occupiedAt",
+      "receivedAt",
+      "resolvedAt",
+      "respawnAt",
+      "revealedAt",
+      "scoutedAt",
+      "serverTime",
+      "settledAt",
+      "since",
+      "startedAt",
+      "timestamp",
+      "updatedAt",
+      "upgradedAt",
+      "woundedUntil"
+    ],
+    "rowOrdering": "declared primary key; all columns when no primary key exists",
+    "tableOrdering": "UTF-8 byte order",
+    "version": "m0-production-shape-checksum-v1"
+  },
+  "excludedInstrumentationTables": [
+    "codex_db_write_probe"
+  ],
+  "fixtureSchema": "wxgame-production-shape-fixture-v1",
+  "sanitization": {
+    "assertions": {
+      "bearerPatternLeaks": 0,
+      "emailPatternLeaks": 0,
+      "jwtPatternLeaks": 0,
+      "querySecretPatternLeaks": 0,
+      "rawSensitiveValueLeaks": 0
+    },
+    "schema": "wxgame-production-shape-sanitization-v1",
+    "sourceSensitiveValueCount": 112,
+    "strategy": "deterministic-domain-separated-aliases"
+  },
+  "schema": "wxgame-production-shape-fixture-metadata-v1",
+  "source": {
+    "access": "sqlite-readonly-snapshot",
+    "label": "wsl:wxgame-test"
+  },
+  "tables": [
+    {
+      "excludedChecksumColumns": [
+        "timestamp"
+      ],
+      "name": "api_logs",
+      "primaryKey": [
+        "id"
+      ],
+      "rowCount": 715
+    },
+    {
+      "excludedChecksumColumns": [
+        "timestamp"
+      ],
+      "name": "client_operation_logs",
+      "primaryKey": [
+        "id"
+      ],
+      "rowCount": 0
+    },
+    {
+      "excludedChecksumColumns": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "name": "command_idempotency",
+      "primaryKey": [
+        "playerId",
+        "idempotencyKey"
+      ],
+      "rowCount": 39
+    },
+    {
+      "excludedChecksumColumns": [
+        "since",
+        "updatedAt"
+      ],
+      "name": "faction_diplomacy",
+      "primaryKey": [
+        "worldId",
+        "fromFactionId",
+        "toFactionId"
+      ],
+      "rowCount": 2
+    },
+    {
+      "excludedChecksumColumns": [
+        "updatedAt"
+      ],
+      "name": "factions",
+      "primaryKey": [
+        "id"
+      ],
+      "rowCount": 0
+    },
+    {
+      "excludedChecksumColumns": [
+        "lastEventAt",
+        "updatedAt"
+      ],
+      "name": "game_states",
+      "primaryKey": [
+        "playerId"
+      ],
+      "rowCount": 37
+    },
+    {
+      "excludedChecksumColumns": [
+        "firstDiscoveredAt",
+        "updatedAt"
+      ],
+      "name": "global_world_chunks",
+      "primaryKey": [
+        "chunkKey"
+      ],
+      "rowCount": 15
+    },
+    {
+      "excludedChecksumColumns": [
+        "firstDiscoveredAt",
+        "updatedAt"
+      ],
+      "name": "global_world_tiles",
+      "primaryKey": [
+        "canonicalId"
+      ],
+      "rowCount": 945
+    },
+    {
+      "excludedChecksumColumns": [
+        "expiresAt",
+        "lockedAt"
+      ],
+      "name": "owner_locks",
+      "primaryKey": [
+        "ownerKey"
+      ],
+      "rowCount": 0
+    },
+    {
+      "excludedChecksumColumns": [
+        "createdAt",
+        "updatedAt"
+      ],
+      "name": "player_spawn_allocations",
+      "primaryKey": [
+        "playerId"
+      ],
+      "rowCount": 4
+    },
+    {
+      "excludedChecksumColumns": [
+        "discoveredAt",
+        "lastScoutedAt",
+        "updatedAt"
+      ],
+      "name": "player_world_visibility",
+      "primaryKey": [
+        "playerId",
+        "canonicalId"
+      ],
+      "rowCount": 3440
+    },
+    {
+      "excludedChecksumColumns": [
+        "createdAt",
+        "lastActiveAt"
+      ],
+      "name": "players",
+      "primaryKey": [
+        "playerId"
+      ],
+      "rowCount": 37
+    },
+    {
+      "excludedChecksumColumns": [
+        "lockedAt"
+      ],
+      "name": "schema_migration_locks",
+      "primaryKey": [
+        "id"
+      ],
+      "rowCount": 0
+    },
+    {
+      "excludedChecksumColumns": [
+        "appliedAt",
+        "durationMs"
+      ],
+      "name": "schema_migrations",
+      "primaryKey": [
+        "id"
+      ],
+      "rowCount": 6
+    },
+    {
+      "excludedChecksumColumns": [
+        "updatedAt"
+      ],
+      "name": "shared_world_territories",
+      "primaryKey": [
+        "id"
+      ],
+      "rowCount": 1
+    },
+    {
+      "excludedChecksumColumns": [
+        "updatedAt"
+      ],
+      "name": "world_cities",
+      "primaryKey": [
+        "id"
+      ],
+      "rowCount": 15
+    },
+    {
+      "excludedChecksumColumns": [
+        "updatedAt"
+      ],
+      "name": "world_encounters",
+      "primaryKey": [
+        "id"
+      ],
+      "rowCount": 56
+    },
+    {
+      "excludedChecksumColumns": [
+        "updatedAt"
+      ],
+      "name": "world_people",
+      "primaryKey": [
+        "id"
+      ],
+      "rowCount": 0
+    }
+  ]
+}

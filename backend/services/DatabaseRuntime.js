@@ -50,7 +50,12 @@ function openDatabase(Database, dbPath, options = {}) {
   if (typeof Database !== 'function') throw new Error('openDatabase requires Database constructor');
   const env = options.env || process.env;
   const busyTimeoutMs = resolveBusyTimeoutMs(env);
-  const db = new Database(dbPath, { timeout: busyTimeoutMs });
+  const databaseOptions = { timeout: busyTimeoutMs };
+  if (env.M0_WRITER_TRACE === '1') {
+    const { createWriterTraceProbe } = require('./WriterTraceProbe');
+    databaseOptions.verbose = createWriterTraceProbe({ dbPath, env });
+  }
+  const db = new Database(dbPath, databaseOptions);
   const runtimeConfig = configureDatabase(db, { env });
   return { db, runtimeConfig };
 }
