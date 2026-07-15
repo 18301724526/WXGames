@@ -81,6 +81,7 @@ test('computePayloadHash rejects non-plain payload containers', () => {
     new ArrayBuffer(8),
     new DataView(new ArrayBuffer(8)),
     new Uint8Array([1, 2, 3]),
+    Buffer.from([1, 2, 3]),
   ];
 
   for (const payload of containers) {
@@ -102,6 +103,7 @@ test('computePayloadHash rejects payloads with custom toJSON methods', () => {
 
 test('top-level undefined is the empty command payload', () => {
   assert.equal(stableStringify(undefined), '{}');
+  assert.equal(computePayloadHash(), computePayloadHash({}));
   assert.equal(computePayloadHash(undefined), computePayloadHash({}));
 });
 
@@ -110,6 +112,38 @@ test('computePayloadHash normalizes visually identical Unicode strings to NFC', 
   const nfd = 'Cafe\u0301';
 
   assert.equal(computePayloadHash({ label: nfc }), computePayloadHash({ label: nfd }));
+  assert.equal(
+    computePayloadHash({ anchor: true, [nfc]: 'value' }),
+    computePayloadHash({ anchor: true, [nfd]: 'value' }),
+  );
+  assert.equal(
+    computePayloadHash({ nested: { deep: { label: nfc } } }),
+    computePayloadHash({ nested: { deep: { label: nfd } } }),
+  );
+  assert.equal(
+    computePayloadHash({ labels: ['plain', nfc] }),
+    computePayloadHash({ labels: ['plain', nfd] }),
+  );
+});
+
+test('computePayloadHash treats negative and positive zero as the same JSON number', () => {
+  assert.equal(computePayloadHash({ value: -0 }), computePayloadHash({ value: +0 }));
+});
+
+test('computePayloadHash rejects duplicate keys after NFC normalization', () => {
+  const payload = {
+    Caf\u00e9: 'nfc',
+    Cafe\u0301: 'nfd',
+  };
+
+  assert.throws(() => computePayloadHash(payload), assertPayloadNotHashable);
+});
+
+test('computePayloadHash rejects enumerable Symbol keys', () => {
+  const payload = { visible: true };
+  payload[Symbol('hidden')] = 'value';
+
+  assert.throws(() => computePayloadHash(payload), assertPayloadNotHashable);
 });
 
 test('command ids normalize to the existing envelope character and length contract', () => {

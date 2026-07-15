@@ -84,6 +84,26 @@ test('responseDigest preserves the pre-hardening digest bytes for normal respons
   assert.equal(responseDigest(200, reordered), expected);
 });
 
+test('responseDigest degrades non-JSON response values without losing determinism', () => {
+  const first = responseDigest(200, {
+    handler: () => 'first',
+    negativeInfinity: -Infinity,
+    notANumber: NaN,
+    positiveInfinity: Infinity,
+    token: Symbol('first'),
+  });
+  const second = responseDigest(200, {
+    token: Symbol('second'),
+    positiveInfinity: Infinity,
+    notANumber: NaN,
+    negativeInfinity: -Infinity,
+    handler: () => 'second',
+  });
+
+  assert.match(first, /^[a-f0-9]{64}$/);
+  assert.equal(first, second);
+});
+
 test('CommandIdempotencyStore records lossy non-JSON responses as terminal results', () => {
   const { db, store } = createStore();
   try {
