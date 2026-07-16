@@ -220,7 +220,15 @@ class CommandExecutionPipeline {
       };
     }
 
-    this._writeAcceptedReceipt(envelope, options.sessionContext);
+    try {
+      this._writeAcceptedReceipt(envelope, options.sessionContext);
+    } catch (error) {
+      this._warnReceiptShadow('COMMAND_RECEIPT_ADMISSION_FAILED', envelope, {
+        errorCode: error?.code || '',
+        errorName: error?.name || 'Error',
+        message: error?.message || '',
+      });
+    }
     const trace = this.traceFactory(envelope, {
       retryAttempt: options.retryAttempt || 0,
       now: options.now,

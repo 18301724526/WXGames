@@ -466,6 +466,59 @@ test('CommandExecutionPipeline warns and preserves the domain result when receip
   }
 });
 
+test('CommandExecutionPipeline contains receipt admission failures outside the main path', () => {
+  const cases = [
+    {
+      name: 'symbol epoch',
+      sessionContext: { ...SESSION_CONTEXT, credentialVersion: Symbol('credential-version') },
+      errorName: 'TypeError',
+    },
+    {
+      name: 'throwing getter',
+      sessionContext: {
+        ...SESSION_CONTEXT,
+        get credentialVersion() {
+          throw new Error('credential version unavailable');
+        },
+      },
+      errorName: 'Error',
+    },
+  ];
+
+  for (const admissionCase of cases) {
+    const warnings = [];
+    const fixture = createPipeline({
+      receiptStore: true,
+      receiptNow: FIXED_TRACE_NOW,
+      logger: warningLogger(warnings),
+      monotonicNow: FIXED_MONOTONIC_NOW,
+    });
+    try {
+      const result = fixture.pipeline.execute(
+        command({
+          commandId: `cmd-receipt-admission-${admissionCase.name}`,
+          idempotencyKey: `idem-receipt-admission-${admissionCase.name}`,
+          clientSequence: 45,
+        }),
+        successfulDefinition(fixture.calls),
+        { now: FIXED_TRACE_NOW, sessionContext: admissionCase.sessionContext },
+      );
+
+      assert.equal(result.statusCode, 200);
+      assert.equal(result.payload.success, true);
+      assert.equal(
+        fixture.db.prepare('SELECT COUNT(*) AS count FROM command_receipts').get().count,
+        0,
+      );
+      assert.equal(warnings.length, 1);
+      assert.equal(warnings[0].detail.code, 'COMMAND_RECEIPT_ADMISSION_FAILED');
+      assert.equal(warnings[0].detail.errorName, admissionCase.errorName);
+    } finally {
+      fixture.db.close();
+    }
+  }
+});
+
 test('CommandExecutionPipeline skips receipt shadowing when an admission epoch is unavailable', () => {
   const warnings = [];
   const fixture = createPipeline({
