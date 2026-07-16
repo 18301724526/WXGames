@@ -565,6 +565,66 @@ test('CommandExecutionPipeline skips receipt shadowing when an admission epoch i
   }
 });
 
+test('CommandExecutionPipeline rejects BigInt epochs without discarding a numeric session id', () => {
+  const warnings = [];
+  const fixture = createPipeline({
+    receiptStore: true,
+    receiptNow: FIXED_TRACE_NOW,
+    logger: warningLogger(warnings),
+    monotonicNow: FIXED_MONOTONIC_NOW,
+  });
+  try {
+    const bigIntEpochResult = fixture.pipeline.execute(
+      command({
+        commandId: 'cmd-receipt-bigint-epoch',
+        idempotencyKey: 'idem-receipt-bigint-epoch',
+        clientSequence: 46,
+      }),
+      successfulDefinition(fixture.calls),
+      {
+        now: FIXED_TRACE_NOW,
+        sessionContext: { ...SESSION_CONTEXT, credentialVersion: 3n },
+      },
+    );
+
+    assert.equal(bigIntEpochResult.statusCode, 200);
+    assert.equal(bigIntEpochResult.payload.success, true);
+    assert.equal(
+      fixture.db.prepare('SELECT COUNT(*) AS count FROM command_receipts').get().count,
+      0,
+    );
+    assert.equal(warnings.length, 1);
+    assert.equal(warnings[0].detail.code, 'COMMAND_RECEIPT_ADMISSION_CONTEXT_INCOMPLETE');
+    assert.deepEqual(warnings[0].detail.missingFields, ['credentialVersion']);
+
+    const numericSessionResult = fixture.pipeline.execute(
+      command({
+        commandId: 'cmd-receipt-numeric-session',
+        idempotencyKey: 'idem-receipt-numeric-session',
+        clientSequence: 47,
+      }),
+      successfulDefinition(fixture.calls),
+      {
+        now: FIXED_TRACE_NOW,
+        sessionContext: { ...SESSION_CONTEXT, sessionId: 0 },
+      },
+    );
+
+    assert.equal(numericSessionResult.statusCode, 200);
+    assert.equal(numericSessionResult.payload.success, true);
+    assert.equal(warnings.length, 1);
+    assert.deepEqual(
+      fixture.db.prepare(`
+        SELECT command_id, session_id
+        FROM command_receipts
+      `).get(),
+      { command_id: 'cmd-receipt-numeric-session', session_id: '0' },
+    );
+  } finally {
+    fixture.db.close();
+  }
+});
+
 test('CommandExecutionPipeline routes PAYLOAD_NOT_HASHABLE by code and keeps a NaN command on the main path', () => {
   const warnings = [];
   const fixture = createPipeline({

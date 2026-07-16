@@ -23,14 +23,16 @@ const { toNonNegativeInteger } = require('../../../shared/numberUtils.js');
 // 保留 presence 语义：缺失或非法值返回 null 以跳过影子写，数值规范化仍委托共享单源。
 function toEpochOrNull(value) {
   if (value === undefined || value === null || value === '') return null;
+  if (typeof value === 'bigint') return null;
   const normalized = Number(value);
   if (!Number.isFinite(normalized)) return null;
   return toNonNegativeInteger(normalized);
 }
 
 function resolveReceiptAdmission(envelope = {}, sessionContext = {}) {
+  const sessionId = sessionContext?.sessionId;
   const admission = {
-    sessionId: String(sessionContext?.sessionId || '').trim(),
+    sessionId: sessionId == null ? '' : String(sessionId).trim(),
     clientSeq: toEpochOrNull(envelope.client?.clientSequence),
     credentialVersion: toEpochOrNull(sessionContext?.credentialVersion),
     sessionEpoch: toEpochOrNull(sessionContext?.sessionEpoch),
