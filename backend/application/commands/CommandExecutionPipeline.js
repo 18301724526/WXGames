@@ -116,6 +116,12 @@ class CommandExecutionPipeline {
     }
   }
 
+  // 当前阶段的 receipt 影子写是惰性的：admission epoch（credential_version、
+  // session_epoch、authz_epoch）由 M5 会话状态机提供，而现有路由尚未传入
+  // sessionContext，因此默认跳过是预期状态；unknown=0 不代表写路径已通过运行时验证。
+  // accepted receipt 写在 idempotency 检查和 domain 提交之前，主链 replay、冲突或回滚
+  // 可能留下无 terminal 的孤儿行。本阶段只写不读；M5/contract 下游开始读取 accepted
+  // 行做时序或对账前，必须先实现孤儿收敛。
   _writeAcceptedReceipt(envelope = {}, sessionContext = {}) {
     if (!this.receiptStore) return;
     const { admission, missingFields } = resolveReceiptAdmission(envelope, sessionContext);
