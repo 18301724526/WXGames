@@ -388,10 +388,12 @@ test('CommandExecutionPipeline keeps the response DTO byte-identical with receip
   }
 });
 
-test('CommandExecutionPipeline receipt shadow retries and session sequence conflicts stay single-row', () => {
+test('CommandExecutionPipeline warns on receipt sequence conflicts but not command replays', () => {
+  const warnings = [];
   const fixture = createPipeline({
     receiptStore: true,
     receiptNow: FIXED_TRACE_NOW,
+    logger: warningLogger(warnings),
     monotonicNow: FIXED_MONOTONIC_NOW,
   });
   try {
@@ -411,6 +413,7 @@ test('CommandExecutionPipeline receipt shadow retries and session sequence confl
       successfulDefinition(fixture.calls),
       executionOptions,
     );
+    assert.equal(warnings.length, 0);
     const sequenceConflict = fixture.pipeline.execute(
       command({
         commandId: 'cmd-receipt-sequence-conflict',
@@ -426,6 +429,10 @@ test('CommandExecutionPipeline receipt shadow retries and session sequence confl
     assert.equal(replay.idempotencyStatus, 'replay');
     assert.equal(sequenceConflict.statusCode, 200);
     assert.equal(sequenceConflict.payload.success, true);
+    assert.equal(warnings.length, 1);
+    assert.equal(warnings[0].detail.code, 'COMMAND_RECEIPT_SEQ_CONFLICT');
+    assert.equal(warnings[0].detail.commandId, 'cmd-receipt-sequence-conflict');
+    assert.equal(warnings[0].detail.existingCommandId, 'cmd-receipt-retry');
     assert.equal(
       fixture.db.prepare('SELECT COUNT(*) AS count FROM command_receipts').get().count,
       1,

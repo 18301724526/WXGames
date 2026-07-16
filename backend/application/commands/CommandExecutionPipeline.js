@@ -146,11 +146,20 @@ class CommandExecutionPipeline {
     }
 
     try {
-      this.receiptStore.writeAccepted({
+      const writeResult = this.receiptStore.writeAccepted({
         commandId: envelope.commandId,
         payloadHash,
         ...admission,
       });
+      if (writeResult?.inserted === false
+          && writeResult?.changes === 0
+          && writeResult?.existingCommandId !== envelope.commandId) {
+        this._warnReceiptShadow('COMMAND_RECEIPT_SEQ_CONFLICT', envelope, {
+          sessionId: admission.sessionId,
+          clientSeq: admission.clientSeq,
+          existingCommandId: writeResult?.existingCommandId || '',
+        });
+      }
     } catch (error) {
       this._warnReceiptShadow('COMMAND_RECEIPT_SHADOW_WRITE_FAILED', envelope, {
         errorCode: error?.code || '',

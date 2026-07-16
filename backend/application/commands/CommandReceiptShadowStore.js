@@ -29,8 +29,18 @@ class CommandReceiptShadowStore {
         created_at, updated_at
       ) VALUES (?, ?, ?, ?, 'accepted', ?, ?, ?, ?, ?)
     `);
-    this.insertAcceptedTransaction = this.db.transaction((receipt) => (
-      this.insertAcceptedStatement.run(
+    this.findByCommandIdStatement = this.db.prepare(`
+      SELECT command_id
+      FROM command_receipts
+      WHERE command_id = ?
+    `);
+    this.findBySessionSequenceStatement = this.db.prepare(`
+      SELECT command_id
+      FROM command_receipts
+      WHERE session_id = ? AND client_seq = ?
+    `);
+    this.insertAcceptedTransaction = this.db.transaction((receipt) => {
+      const result = this.insertAcceptedStatement.run(
         receipt.commandId,
         receipt.payloadHash,
         receipt.sessionId,
@@ -40,8 +50,15 @@ class CommandReceiptShadowStore {
         receipt.authzEpoch,
         receipt.createdAt,
         receipt.createdAt,
-      )
-    ));
+      );
+      if (result.changes > 0) return { result, existingCommandId: '' };
+      const commandMatch = this.findByCommandIdStatement.get(receipt.commandId);
+      const sequenceMatch = commandMatch || this.findBySessionSequenceStatement.get(
+        receipt.sessionId,
+        receipt.clientSeq,
+      );
+      return { result, existingCommandId: sequenceMatch?.command_id || '' };
+    });
   }
 
   _nowIso() {
@@ -63,10 +80,11 @@ class CommandReceiptShadowStore {
       authzEpoch: requireNonNegativeInteger(receipt.authzEpoch, 'authzEpoch'),
       createdAt: this._nowIso(),
     };
-    const result = this.insertAcceptedTransaction(normalized);
+    const { result, existingCommandId } = this.insertAcceptedTransaction(normalized);
     return {
       inserted: result.changes > 0,
       changes: result.changes,
+      existingCommandId,
     };
   }
 }
